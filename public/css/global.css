@@ -1,0 +1,59 @@
+html{
+    background-color: #FCBABE;
+}
+.main-sidebar{
+    background-color: #A01E2A;
+}
+.brand-text{
+    color: #A01E2A;
+}
+.nav-link{
+    color: #FFFFFF !important;
+}
+.nav-link.active{
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+    border-color: #FFFFFF!important;
+}
+
+.main-header{
+    background-color: #A01E2A;
+}
+
+/* .main-sidebar, .main-sidebar::before {
+    transition: margin-left .3s ease-in-out,width .3s ease-in-out;
+    width: 300px;
+}
+.sidebar-collapse .main-sidebar, .sidebar-collapse .main-sidebar::before {
+    margin-left: -300px;
+}
+@media (min-width: 768px) {
+    body:not(.sidebar-mini-md) .content-wrapper, body:not(.sidebar-mini-md) .main-footer, body:not(.sidebar-mini-md) .main-header {
+        transition: margin-left .3s ease-in-out;
+        margin-left: 300px;
+    }
+} */
+
+/* add required text after  label */
+.required_field::after {
+    content: " *";
+    color: red;
+    font-weight: bold;
+}
+.optional_field::after {
+    content: " (optional)";
+    color: gray;
+}
+.select2-results__option--disabled {
+    color: brown;
+    font-weight: bold;
+}
+
+.cursor-pointer{
+    cursor: pointer;
+}
+
+/* set semua datatable td jadi pointer */
+.dataTable td:not(.dataTables_empty) {
+    cursor:pointer;
+}
