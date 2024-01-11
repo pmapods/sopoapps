@@ -498,6 +498,14 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                 <ul class="nav nav-treeview">
                                     @if (((Auth::user()->menu_access->operational ?? 0) & 1) != 0)
                                         <li class="nav-item">
+                                            <a href="/renewalarmada" class="nav-link">
+                                                <i class="fad fa-truck-container nav-icon"></i>
+                                                <p>Peremajaan Armada</p>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if (((Auth::user()->menu_access->operational ?? 0) & 1) != 0)
+                                        <li class="nav-item">
                                             <a href="/ticketing" class="nav-link">
                                                 <i class="fad fa-ticket nav-icon"></i>
                                                 <p>Pengadaan</p>

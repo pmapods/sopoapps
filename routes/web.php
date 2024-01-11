@@ -42,6 +42,7 @@ use App\Http\Controllers\Budget\AssumptionBudgetUploadController;
 use App\Http\Controllers\Budget\HOBudgetUploadController;
 
 // Operational
+use App\Http\Controllers\Operational\RenewalArmadaController;
 use App\Http\Controllers\Operational\TicketingController;
 use App\Http\Controllers\Operational\TicketingBlockController;
 use App\Http\Controllers\Operational\ArmadaTicketingController;
@@ -444,6 +445,20 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['menu_access:operational:1'])->group(function () {
         // Custom Ticket
         Route::post('/customticketing/ticket/create', [TicketingController::class, 'createTicket']);
+
+        // Peremajaan Armada
+        Route::get('/renewalarmada', [RenewalArmadaController::class, 'renewalArmadaView']);
+        Route::post('/updaterenewalarmada', [RenewalArmadaController::class, 'updateRenewalArmada']);
+        Route::post('/addrenewalarmada', [RenewalArmadaController::class, 'addRenewalArmada']);
+        Route::get('/getarmadabysalespoint/{salespoint_id}', [RenewalArmadaController::class, 'getArmadabySalespoint']);
+        Route::get('/getarmadatype/{armada_type_id}', [RenewalArmadaController::class, 'getArmadaTypebyID']);
+        Route::get('/getarmadabyplate/{plate}', [RenewalArmadaController::class, 'getArmadaByPlate']);
+        Route::post('/renewalarmada/terminate', [RenewalArmadaController::class, 'terminateRenewal']);
+        Route::middleware(['superadmin'])->group(function () {
+            // superadmin only
+            Route::post('/renewalarmada/confirm', [RenewalArmadaController::class, 'confirmRenewal']);
+            Route::post('/renewalarmada/reject', [RenewalArmadaController::class, 'rejectRenewal']);
+        });
 
         // Barang Jasa
         Route::get('/ticketing', [TicketingController::class, 'ticketingView']);
