@@ -111,6 +111,7 @@
                                     <option value="13">Form Evaluasi Vendor</option>
                                     <option value="14">Form Over Budget (Area)</option>
                                     <option value="15">Form Over Budget (HO)</option>
+                                    <option value="16">Form Peremajaan Armada</option>
                                 </select>
                             </div>
                         </div>
@@ -288,6 +289,7 @@
                                     <option value="13">Form Evaluasi Vendor</option>
                                     <option value="14">Form Over Budget (Area)</option>
                                     <option value="15">Form Over Budget (HO)</option>
+                                    <option value="16">Form Peremajaan Armada</option>
                                 </select>
                             </div>
                         </div>
@@ -506,6 +508,7 @@
         let formevaluasivendor = ["Menilai", "Mengetahui"];
         let formoverbudgetarea = ['Diperiksa Oleh', 'Disetujui Oleh', 'Disetujui Oleh'];
         let formoverbudgetho = ['Disetujui Oleh', 'Disetujui Oleh'];
+        let formperemajaanarmada = ['Disetujui Oleh'];
 
         $(document).ready(function() {
             // var table = $('#authorDT').DataTable(datatable_settings);
@@ -533,6 +536,8 @@
                 let employee_select = modal.find('.employee_select2');
                 let position_select = modal.find('.position_select2');
                 let form_type = modal.find('select[name="form_type"]');
+                form_type.val(data['form_type']);
+                form_type.trigger('change');
 
                 let notes = modal.find('.basic_notes input');
                 modal.find('.notes_field').addClass('d-none');
@@ -552,8 +557,6 @@
 
                 salespoint.val(data['salespoint_id']);
                 salespoint.trigger('change');
-                form_type.val(data['form_type']);
-                form_type.trigger('change');
                 notes.val(data['notes']);
 
                 table_level.find('tbody').empty();
@@ -647,6 +650,9 @@
                         break;
                     case "15":
                         value_array = formoverbudgetho;
+                        break;
+                    case "16":
+                        value_array = formperemajaanarmada;
                         break;
                     default:
                         return;

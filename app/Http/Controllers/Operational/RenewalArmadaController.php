@@ -18,6 +18,7 @@ use App\Models\Employee;
 use App\Models\EmployeePosition;
 use App\Models\PoManual;
 use App\Models\Po;
+use App\Models\AuthorizationDetail;
 
 class RenewalArmadaController extends Controller
 {
@@ -27,10 +28,13 @@ class RenewalArmadaController extends Controller
         $employees = Employee::all();
         $armada_types = ArmadaType::all();
         $renewalarmadas = RenewalArmada::all();
+        $authorizations = Authorization::all();
+        $authorization_details = AuthorizationDetail::all();
         $renewalauthorizations = RenewalArmadaAuthorization::all();
+        $user_login = Auth::user()->id;
         $salespoint = SalesPoint::find($employee_access[0]);
         $salespoints = SalesPoint::whereIn('id', $employee_access)->get();
-        return view('Operational.Armada.renewalarmada',compact('employees','salespoints','renewalauthorizations','renewalarmadas', 'employee_positions', 'armada_types'));
+        return view('Operational.Armada.renewalarmada',compact('user_login','employees','salespoints','renewalauthorizations','renewalarmadas', 'employee_positions', 'armada_types', 'authorization_details', 'authorizations'));
     }
 
     public function addRenewalArmada(Request $request){
@@ -159,7 +163,6 @@ class RenewalArmadaController extends Controller
             }else{
                 $status = '1';
             }
-            dd($request);
             $getRenewalArmada                   = RenewalArmada::findOrFail($request->id);
             $RenewalArmada->approved_by         = Auth::user()->id;
             $RenewalArmada->finished_date       = now()->format('Y-m-d');
@@ -195,14 +198,12 @@ class RenewalArmadaController extends Controller
         if (
             Auth::user()->id != 1 &&
             Auth::user()->id != 115 &&
-            Auth::user()->id != 116 &&
+            Auth::user()->id != 120 &&
             Auth::user()->id != 117 &&
-            Auth::user()->id != 197 &&
             Auth::user()->id != 118 &&
-            Auth::user()->id != 717 &&
-            Auth::user()->id != 153
+            Auth::user()->id != 809
         ) {
-            return back()->with('error', 'Hanya Admin dan Purchasing yang dapat membatalkan tiket');
+            return back()->with('error', 'Hanya Admin dan Purchasing yang dapat confim tiket');
         }
 
         $open_request = null;
@@ -288,6 +289,17 @@ class RenewalArmadaController extends Controller
 
     public function terminateRenewal(Request $request)
     {
+        // Superadmin Only
+        if (
+            Auth::user()->id != 1 &&
+            Auth::user()->id != 115 &&
+            Auth::user()->id != 120 &&
+            Auth::user()->id != 117 &&
+            Auth::user()->id != 118 &&
+            Auth::user()->id != 809
+        ) {
+            return back()->with('error', 'Hanya Admin dan Purchasing yang dapat membatalkan tiket');
+        }
         try {
             DB::beginTransaction();
             $open_request                      = RenewalArmada::findOrFail($request->id);
@@ -312,14 +324,12 @@ class RenewalArmadaController extends Controller
         if (
             Auth::user()->id != 1 &&
             Auth::user()->id != 115 &&
-            Auth::user()->id != 116 &&
+            Auth::user()->id != 120 &&
             Auth::user()->id != 117 &&
-            Auth::user()->id != 197 &&
             Auth::user()->id != 118 &&
-            Auth::user()->id != 717 &&
-            Auth::user()->id != 153
+            Auth::user()->id != 809
         ) {
-            return back()->with('error', 'Hanya Admin dan Purchasing yang dapat membatalkan tiket');
+            return back()->with('error', 'Hanya Admin dan Purchasing yang dapat mereject tiket');
         }
         try {
             DB::beginTransaction();

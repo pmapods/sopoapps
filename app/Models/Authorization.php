@@ -84,6 +84,9 @@ class Authorization extends Model
             case 15:
                 return 'Form Over Budget (HO)';
                 break;
+            case 16:
+                return 'Form Peremajaan Armada';
+                break;
             default:
                 return 'form_type_undefined';
                 break;

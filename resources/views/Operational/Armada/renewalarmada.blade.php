@@ -39,6 +39,7 @@
                         <th>Nomor Kendaaraan Baru</th>
                         <th>Request By</th>
                         <th>Status Approval</th>
+
                 </thead>
                 <tbody>
                     @foreach ($renewalarmadas as $key => $renewalarmada)
@@ -90,7 +91,7 @@
                                         </div>
                                         <div>{{ $renewalarmada->rejected_by_employee()->name }}</div>
                                     @endif
-                                </div>  
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -98,6 +99,7 @@
             </table>
         </div>
     </div>
+
 
     <div class="modal fade" id="addRenewalArmadaModal" tabindex="-1" data-backdrop="static" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -152,11 +154,11 @@
                                 <div class="form-group">
                                     <label class="required_field">Nopol Kendaraan Lama</label>
                                     <input type="text" class="form-control plate" name="old_plate"
-                                        placeholder="Masukkan Nopol Kendaraan" required>
+                                        placeholder="Masukkan Nopol Kendaraan" id="forbiddenChar" required>
 
                                     <label class="required_field">Nopol Kendaraan Baru</label>
                                     <input type="text" class="form-control" name="new_plate"
-                                        placeholder="Masukkan Nopol Kendaraan" required>
+                                        placeholder="Masukkan Nopol Kendaraan" id="forbiddenChar" required>
                                 </div>
                             </div>
                             <div class="col-4">
@@ -164,12 +166,12 @@
                                     <label class="required_field">Tahun Kend. Lama</label>
                                     <input type="number" class="form-control vehicle_year" min="1900"
                                         max="{{ now()->format('Y') }}" value="{{ now()->format('Y') }}"
-                                        name="old_vehicle_year" id="forbiddenChar" required>
+                                        name="old_vehicle_year" required>
 
                                     <label class="required_field">Tahun Kend. Baru</label>
                                     <input type="number" class="form-control autonumber" min="1900"
                                         max="{{ now()->format('Y') }}" value="{{ now()->format('Y') }}"
-                                        name="new_vehicle_year" id="forbiddenChar" required>
+                                        name="new_vehicle_year" required>
                                 </div>
                             </div>
                             <div class="col-8">
@@ -177,10 +179,12 @@
                                     <label class="required_field">Pilih Approval</label>
                                     <select class="form-control select2" id="approval" name="approved_by" required>
                                         <option value="">-- Pilih Approval --</option>
-                                        @foreach ($employees as $employee)
-                                            @if ($employee->id == 153)
-                                                <option value="{{ $employee->id }}">{{ Auth::user()->name }} -> {{ $employee->name }}</option>
-                                            @endif
+                                        @foreach ($authorizations->where('form_type', 16) as $authorization)
+                                            @foreach ($authorization_details->where('authorization_id', $authorization->id) as $approval)
+                                                @if ($employee = $employees->find($approval->employee_id))
+                                                    <option value="{{ $employee->id }}">{{ Auth::user()->name }} -> {{ $employee->name }}</option>
+                                                @endif
+                                            @endforeach
                                         @endforeach
                                     </select>
                                 </div>
@@ -308,6 +312,7 @@
 
                     <div class="modal-footer">
                         <div id="buttonContainer"></div>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
                     </div>
                 </form>
             </div>
@@ -337,6 +342,9 @@
                 autonumber($(this));
             });
 
+            var user_login = {{ $user_login }};
+            console.log("user_login");
+            console.log(user_login);
             var table = $('#renewalArmadaDT').DataTable(datatable_settings);
             $('#renewalArmadaDT tbody').on('click', 'tr', function() {
                 let modal = $('#detailRenewalArmadaModal');
@@ -344,33 +352,16 @@
                 let newyear = data['new_vehicle_year'].split('-')[0];
                 let oldyear = data['old_vehicle_year'].split('-')[0];
                 let bastkPath = data['bastk_path'];
-                let user = data['approved_by'];
+                let user_approved = data['approved_by'];
                 let status = data['status'];
                 let linkContainer = $('#linkContainer');
                 let buttonContainer = $('#buttonContainer');
                 buttonContainer.empty();
                 linkContainer.empty();
-                console.log(data);
-                console.log(user);
 
-                if (status == 0) {
-                    let closeButton = $('<button>', {
-                        type: 'button',
-                        class: 'btn btn-secondary',
-                        'data-dismiss': 'modal',
-                        text: 'Tutup'
-                    });
-                    buttonContainer.append(closeButton);
-
-                    let terminateButton = $('<button>', {
-                        type: 'button',
-                        class: 'btn btn-warning',
-                        text: 'Batalkan Peremajaan',
-                        click: terminateRenewal
-                    });
-                    buttonContainer.append(terminateButton);
-
-                    if (user == 153 || user == 1){
+                if ((user_login == 1 ||  user_login == 115 ||
+                    user_login == user_approved) && status == 0)
+                    {
                         let rejectButton = $('<button>', {
                             type: 'button',
                             class: 'btn btn-danger',
@@ -386,17 +377,21 @@
                             click: confirmRenewal
                         });
                         buttonContainer.append(confirmButton);
-                    }
 
-                } else {
-                    let closeButton = $('<button>', {
-                        type: 'button',
-                        class: 'btn btn-secondary',
-                        'data-dismiss': 'modal',
-                        text: 'Tutup'
-                    });
-                    buttonContainer.append(closeButton);
+                } else if ((user_login == 1 || user_login == 115 || user_login == 117 ||
+                            user_login == 118 || user_login == 120 || user_login == 809)
+                            && status == 0)
+                    {
+                        let terminateButton = $('<button>', {
+                            type: 'button',
+                            class: 'btn btn-warning',
+                            text: 'Batalkan Peremajaan',
+                            click: terminateRenewal
+                        });
+                        buttonContainer.append(terminateButton);
                 }
+
+
 
                 if (bastkPath) {
                     linkContainer.html('<a href="#" onclick="window.open(\'/storage/' + bastkPath + '\')">Tampilkan File BA</a>');
@@ -456,8 +451,6 @@
                     url: '/getarmadabysalespoint/' + salespointId,
                     success: function(response) {
                         let data = response.data;
-                        console.log("armada by salespoint");
-                        console.log(data);
                         if (data && data.length > 0) {
                             data.forEach(item => {
                                 $.ajax({
@@ -465,8 +458,6 @@
                                     url: '/getarmadatype/' + item.armada_type_id,
                                     success: function(response) {
                                         let dataType = response.data;
-                                        console.log("armada type");
-                                        console.log(dataType);
                                         dataType.forEach(type => {
                                             let optionText = '<option value="' + item.plate + '">' +
                                                 item.plate + '-' + type.name + '(' + type.brand_name + ')</option>';
@@ -511,8 +502,6 @@
                         url: '/getarmadabyplate/' + armadaTypeId,
                         success: function(response) {
                             let dataType = response.data;
-                            console.log("dataType");
-                            console.log(dataType);
                             if (dataType && dataType.length > 0) {
                                 dataType.forEach(item => {
                                     let yearPart = item.vehicle_year.substring(0, 4);

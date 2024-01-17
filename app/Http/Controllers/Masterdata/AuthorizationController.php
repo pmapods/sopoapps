@@ -135,6 +135,9 @@ class AuthorizationController extends Controller
         if (str_contains(strtolower("form FRI"), strtolower($search_value))) {
             array_push($formtype_found_array, 12);
         }
+        if (str_contains(strtolower("form Peremajaan Armada"), strtolower($search_value))) {
+            array_push($formtype_found_array, 16);
+        }
 
         // dd($search_value,$region_found_array,$formtype_found_array);
         $employee_access = Auth::user()->location_access_list();
@@ -272,6 +275,11 @@ class AuthorizationController extends Controller
                     $detail_counts = [2];
                     $errMessage = "Form Over Budget HO membutuhkan 2 pilihan otorisasi";
                     break;
+                case '16':
+                    // 16 form peremajaan armada
+                    $detail_counts = [1];
+                    $errMessage = "Form Over Budget HO membutuhkan 1 pilihan otorisasi";
+                    break;
             }
             if ($detail_counts != -1) {
                 if (!in_array(count($request->authorization), $detail_counts)) {
@@ -399,6 +407,11 @@ class AuthorizationController extends Controller
                     // 15 form over budget ho
                     $detail_counts = [2];
                     $errMessage = "Form Over Budget HO membutuhkan 2 pilihan otorisasi";
+                    break;
+                case '16':
+                    // 16 form peremajaan armada
+                    $detail_counts = [1];
+                    $errMessage = "Form Over Budget HO membutuhkan 1 pilihan otorisasi";
                     break;
             }
 
