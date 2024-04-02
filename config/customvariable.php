@@ -14,7 +14,8 @@ return [
         'Notification Email',
         'Custom Ticketing',
         'Ticketing Block',
-        'Email CC'
+        'Email CC',
+        'Upload PO Manual'
     ],
 
     'budget_accesses' => [
@@ -32,7 +33,8 @@ return [
         'Purchase Order (Setup)',
         'Purchase Order (Process)',
         'Form Validation',
-        'Vendor Evaluation'
+        'Vendor Evaluation',
+        'Peremajaan Armada'
     ],
 
     'monitoring_accesses' => [

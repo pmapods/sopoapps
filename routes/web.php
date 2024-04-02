@@ -34,6 +34,7 @@ use App\Http\Controllers\Masterdata\MailingController;
 use App\Http\Controllers\Masterdata\CustomTicketingController;
 use App\Http\Controllers\Masterdata\MasterDataTicketingBlockController;
 use App\Http\Controllers\Masterdata\CcEmailController;
+use App\Http\Controllers\Masterdata\PoManualController;
 
 // Budget
 use App\Http\Controllers\Budget\BudgetUploadController;
@@ -358,6 +359,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/emailcc/delete/{id}', [CcEmailController::class, 'ccEmailDelete']);
     });
 
+    // Upload PO Manual
+    Route::middleware(['menu_access:masterdata:16384'])->group(function () {
+        Route::get('/pomanual', [PoManualController::class, 'pomanualView']);
+        Route::post('/addpomanual', [PoManualController::class, 'addPoManual'])->name('upload.excel');
+    });
+
+
     // BUDGET UPLOAD
     Route::get('/getSalespointBudget', [BudgetUploadController::class, 'getSalespointBudget']);
     Route::get('/budget/itemtracking', [BudgetUploadController::class, 'itemTracking']);
@@ -441,24 +449,27 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // OPERATIONAL
-    // Pengadaan
-    Route::middleware(['menu_access:operational:1'])->group(function () {
-        // Custom Ticket
-        Route::post('/customticketing/ticket/create', [TicketingController::class, 'createTicket']);
 
-        // Peremajaan Armada
+    // Peremajaan Armada
+    Route::middleware(['menu_access:operational:128'])->group(function () {
         Route::get('/renewalarmada', [RenewalArmadaController::class, 'renewalArmadaView']);
         Route::post('/updaterenewalarmada', [RenewalArmadaController::class, 'updateRenewalArmada']);
         Route::post('/addrenewalarmada', [RenewalArmadaController::class, 'addRenewalArmada']);
-        Route::get('/getarmadabysalespoint/{salespoint_id}', [RenewalArmadaController::class, 'getArmadabySalespoint']);
-        Route::get('/getarmadatype/{armada_type_id}', [RenewalArmadaController::class, 'getArmadaTypebyID']);
-        Route::get('/getarmadabyplate/{plate}', [RenewalArmadaController::class, 'getArmadaByPlate']);
-        Route::post('/renewalarmada/terminate', [RenewalArmadaController::class, 'terminateRenewal']);
         Route::middleware(['superadmin'])->group(function () {
             // superadmin only
             Route::post('/renewalarmada/confirm', [RenewalArmadaController::class, 'confirmRenewal']);
             Route::post('/renewalarmada/reject', [RenewalArmadaController::class, 'rejectRenewal']);
         });
+    });
+
+    // Pengadaan
+    Route::middleware(['menu_access:operational:1'])->group(function () {
+        // Custom Ticket
+        Route::post('/customticketing/ticket/create', [TicketingController::class, 'createTicket']);
+        Route::get('/getarmadabysalespoint/{salespoint_id}', [RenewalArmadaController::class, 'getArmadabySalespoint']);
+        Route::get('/getarmadatype/{armada_type_id}', [RenewalArmadaController::class, 'getArmadaTypebyID']);
+        Route::get('/getarmadabyplate/{plate}', [RenewalArmadaController::class, 'getArmadaByPlate']);
+        Route::post('/renewalarmada/terminate', [RenewalArmadaController::class, 'terminateRenewal']);
 
         // Barang Jasa
         Route::get('/ticketing', [TicketingController::class, 'ticketingView']);

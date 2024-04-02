@@ -33,6 +33,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('sap:refreshpoelogtable')->daily()->runInBackground();
         $schedule->command('barangjasait:reminder')->daily()->runInBackground();
 
+        $schedule->command('po:sendemail')->runOnce();
+
         $schedule->call(function () {
             info('cron is activated every hour');
         })->hourly()->runInBackground();
@@ -50,3 +52,19 @@ class Kernel extends ConsoleKernel
         require base_path('routes/console.php');
     }
 }
+
+
+Schedule::macro('runOnce', function () {
+    $this->executed = false;
+
+    $this->callAfter(function () {
+        if (!$this->executed) {
+            $this->executed = true;
+            $this->skip(function () {
+                return true;
+            });
+        }
+    });
+
+    return $this;
+});

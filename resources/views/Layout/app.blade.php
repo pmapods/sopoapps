@@ -428,6 +428,14 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                             </a>
                                         </li>
                                     @endif
+                                    @if (((Auth::user()->menu_access->masterdata ?? 0) & 16384) != 0)
+                                        <li class="nav-item">
+                                            <a href="/pomanual" class="nav-link">
+                                                <i class="fad fa-file-upload nav-icon"></i>
+                                                <p>Upload PO Manual</p>
+                                            </a>
+                                        </li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif
@@ -496,7 +504,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                     </p>
                                 </a>
                                 <ul class="nav nav-treeview">
-                                    @if (((Auth::user()->menu_access->operational ?? 0) & 1) != 0)
+                                    @if (((Auth::user()->menu_access->operational ?? 0) & 128) != 0)
                                         <li class="nav-item">
                                             <a href="/renewalarmada" class="nav-link">
                                                 <i class="fad fa-truck-container nav-icon"></i>

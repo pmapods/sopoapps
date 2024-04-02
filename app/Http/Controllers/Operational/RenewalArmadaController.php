@@ -194,6 +194,7 @@ class RenewalArmadaController extends Controller
 
     public function confirmRenewal(Request $request)
     {
+
         // Superadmin Only
         if (
             Auth::user()->id != 1 &&
@@ -207,40 +208,56 @@ class RenewalArmadaController extends Controller
         }
 
         $open_request = null;
-        $msgPo = null;
+        $po_normals = null;
+        $po_manuals = null;
+        $po_armada_tickets = null;
+        $searchPlate = null;
         try {
             DB::beginTransaction();
-            $open_request                = RenewalArmada::findOrFail($request->id);
+            $open_request                = RenewalArmada::where('id', $request->id)->first();
             $open_request->approved_by   = Auth::user()->id;
             $open_request->status        = 1;
             $open_request->finished_date = now()->format('Y-m-d');
             $open_request->updated_at    = now()->format('Y-m-d');
             $open_request->save();
 
-            // cek Po Normal
-            $po_armada_tickets = ArmadaTicket::whereIn('po_number', function ($query) use ($open_request) {
-                $query->select('no_po_sap')
-                    ->distinct()
-                    ->from('po')
-                    ->whereIn('no_po_sap', function ($subQuery) use ($open_request) {
-                        $subQuery->select('po_number')
-                                    ->distinct()
-                                    ->from('armada_ticket')
-                                    ->where('salespoint_id', $open_request->last_salespoint_id)
-                                    ->where('armada_type_id', $open_request->armada_type_id)
-                                    ->where('armada_id', $open_request->armada_id)
-                                    ->where('status', '6')
-                                    ->whereIn('ticketing_type', [0, 1, 2])
-                                    ->whereNull('deleted_at');
-                    })
-                    ->where('status', 3)
-                    ->whereNull('deleted_at');
-            })->get();
+            // cek armada tiket PO status selain -1 dan 6
+            $po_armada_tickets = ArmadaTicket::whereNotIn('status', [-1, 6])
+            ->where('salespoint_id', '==', $open_request->last_salespoint_id)
+            ->where('armada_type_id', '==', $open_request->armada_type_id)
+            ->where('armada_id', '==', $open_request->armada_id)
+            ->whereNull('deleted_at')
+            ->orderBy('created_at', 'desc')
+            ->first();
 
+            if ($po_armada_tickets != null) {
+                $po_normals = Po::where('no_po_sap', $po_armada_ticket->po_reference_number)->first();
+            }else{
+                // cek armada tiket PO dengan status 6
+                $po_armada_tickets = ArmadaTicket::where('status', 6)
+                    ->where('salespoint_id', $open_request->last_salespoint_id)
+                    ->where('armada_type_id', $open_request->armada_type_id)
+                    ->where('armada_id', $open_request->armada_id)
+                    ->whereNull('deleted_at')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
 
-            // cek Po Manual dengan transaksi aktif
+                if ($po_armada_tickets != null) {
+                    $po_normals = Po::where('no_po_sap', $po_armada_tickets->po_number)->first();
+                }
+
+            }
+
             $searchPlate = $open_request->old_plate;
-            $po_manuals = PoManual::where('salespoint_id', $open_request->last_salespoint_id)
+
+            if ($po_normals) {
+                $update_armada_ticket = ArmadaTicket::where('code', $po_armada_tickets->code)->first();
+                $update_armada_ticket->gt_plate  = $open_request->new_plate;
+                $update_armada_ticket->save();
+                $msg = 'dan PO';
+            }else{
+                // cek Po Manual dengan transaksi aktif
+                $po_manuals = PoManual::where('salespoint_id', $open_request->last_salespoint_id)
                 ->where('armada_type_id', $open_request->armada_type_id)
                 ->where('status', 3)
                 ->where(function ($query) use ($searchPlate) {
@@ -248,28 +265,22 @@ class RenewalArmadaController extends Controller
                         ->orWhere('gt_plate', $searchPlate);
                 })->get();
 
-            if($po_armada_tickets){
-                foreach($po_armada_tickets as $po_armada){
-                    $update_po            = Po::find($po_armada['no_po_sap']);
-                    $update_po->gt_plate  = $open_request->new_plate;
-                    $update_po->gs_plate  = $open_request->new_plate;
-                    $update_po->save();
+                if($po_manuals) {
+                    foreach($po_manuals as $po_manual){
+                        $update_po_manual            = PoManual::where($po_manual['po_number']);
+                        $update_po_manual->gt_plate  = $open_request->new_plate;
+                        $update_po_manual->save();
+                    }
+
+                    $msg = 'dan PO Manual';
                 }
-
-                $msg = 'dan PO';
-
-            } elseif($po_manuals) {
-                foreach($po_manuals as $po_manual){
-                    $update_po_manual            = PoManual::find($po_manual['po_number']);
-                    $update_po_manual->gt_plate  = $open_request->new_plate;
-                    $update_po_manual->gs_plate  = $open_request->new_plate;
-                    $update_po_manual->save();
-                }
-
-                $msg = 'dan PO Manual';
             }
 
-            $msg = 'dan tidak ada PO';
+            if (is_null($po_normals) && is_null($po_manuals)){
+                DB::rollback();
+                return back()->with('error', 'Gagal Konfirmasi Renewal Armada data PO tidak ditemukan');
+            }
+
 
             // update master armada
             $get_armada                = Armada::find($open_request->armada_id);
