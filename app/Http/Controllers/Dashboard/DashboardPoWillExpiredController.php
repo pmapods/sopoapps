@@ -167,7 +167,7 @@ class DashboardPoWillExpiredController extends Controller
         ]);
     }
 
-    public function getPoWillExpiredCount()
+    public static function getPoWillExpiredCount()
     {
         $user_location_access  = EmployeeLocationAccess::where('employee_id', Auth::user()->id)->get()->pluck('salespoint_id');
 

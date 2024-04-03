@@ -134,7 +134,7 @@ class DashboardPengadaanCOPController extends Controller
         ]);
     }
 
-    public function getPengadaanCOPCount()
+    public static function getPengadaanCOPCount()
     {
         $salespoint_ids = Auth::user()->location_access->pluck('salespoint_id');
         $pengadaan_cops = Ticket::where('custom_settings', '!=', null)

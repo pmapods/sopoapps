@@ -56,7 +56,7 @@ class DashboardBaVerificationController extends Controller
         ]);
     }
 
-    public function getBAverificationCount()
+    public static function getBAverificationCount()
     {
         $BAverification = TicketingBlockOpenRequest::where('status', 0)->count();
 

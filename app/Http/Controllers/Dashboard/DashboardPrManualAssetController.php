@@ -57,7 +57,7 @@ class DashboardPrManualAssetController extends Controller
         ]);
     }
 
-    public function getPrManualAssetCount()
+    public static function getPrManualAssetCount()
     {
         $salespoint_ids = Auth::user()->location_access->pluck('salespoint_id');
         $pr_manual_assets = Ticket::where('status', '=', 5)

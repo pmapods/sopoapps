@@ -194,7 +194,7 @@ class DashboardRequestTypePendingController extends Controller
         ]);
     }
 
-    public function getRequestTypePendingCount()
+    public static function getRequestTypePendingCount()
     {
         $status_security = [0, 2];
         $salespoint_ids = Auth::user()->location_access->pluck('salespoint_id');

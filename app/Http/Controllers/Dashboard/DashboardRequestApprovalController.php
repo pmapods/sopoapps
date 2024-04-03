@@ -868,7 +868,7 @@ class DashboardRequestApprovalController extends Controller
         }
     }
 
-    public function getCurrentAuthorizationCount()
+    public static function getCurrentAuthorizationCount()
     {
         // Budget Upload Authorization
         $budget_upload_authorization = BudgetUploadAuthorization::leftJoin('budget_upload', 'budget_upload_authorization.budget_upload_id', '=', 'budget_upload.id')

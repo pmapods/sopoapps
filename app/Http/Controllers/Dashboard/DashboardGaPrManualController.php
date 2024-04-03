@@ -162,7 +162,7 @@ class DashboardGaPrManualController extends Controller
         ]);
     }
 
-    public function getGaPrManualCount()
+    public static function getGaPrManualCount()
     {
         $data = [];
         $show_status_pr = [1, 2];

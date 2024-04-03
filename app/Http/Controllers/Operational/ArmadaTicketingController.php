@@ -527,6 +527,8 @@ class ArmadaTicketingController extends Controller
                     $flag = false;
                 }
             } while (!$flag);
+
+            
             $form                           = new MutasiForm;
             $form->armada_ticket_id         = $request->armada_ticket_id;
             $form->salespoint_id            = $request->sender_salespoint_id;
@@ -534,7 +536,7 @@ class ArmadaTicketingController extends Controller
             $form->armada_id                = $request->armada_id;
             $form->code                     = $code;
             $form->sender_salespoint_name   = $request->sender_salespoint_name;
-            $receiver_salespoint_name = SalesPoint::find($request->receive_salespoint_id)->name;
+            $receiver_salespoint_name       = SalesPoint::find($request->receive_salespoint_id)->name;
             $form->receiver_salespoint_name = $receiver_salespoint_name;
             $form->mutation_date            = $request->mutation_date;
             $form->received_date            = $request->received_date;
@@ -556,6 +558,13 @@ class ArmadaTicketingController extends Controller
             $form->buku                     = $request->buku;
             $form->nama_tempat              = $request->nama_tempat;
             $form->created_by               = Auth::user()->id;
+            $ba_mutasi                      = $request->file('upload_ba_mutasi');
+            $file_ba_mutasi_ext             = pathinfo($ba_mutasi->getClientOriginalName(), PATHINFO_EXTENSION);
+            $salespointname                 = str_replace(' ', '_', $request->sender_salespoint_name);
+            $path                           = '/attachments/ticketing/armada/' . str_replace('/', '-', $code) . '/mutasi/BA_MUTASI_' . $salespointname . '.' . $file_ba_mutasi_ext;
+            $info                           = pathinfo($path);
+            $ba_mutasi_path                 = $ba_mutasi->storeAs($info['dirname'], $info['basename'], 'public');
+            $form->file_ba_mutasi           = $ba_mutasi_path;          
             $form->alasan_mutasi            = $request->alasan_mutasi;
             $form->save();
 

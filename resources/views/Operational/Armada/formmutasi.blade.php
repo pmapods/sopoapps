@@ -41,10 +41,10 @@
                 rincian data armada sebagai berikut:</p>
             <div class="row">
                 <!-- <div class="col-4 small py-2 "><i class="fa fa-circle fa-xs mr-1" style="font-size : 0.5rem"
-                        aria-hidden="true"></i>Alasan Mutasi</div>
-                <div class="col-8 small">
-                    {{ $mutasiform->alasan_mutasi }}
-                </div> -->
+                                                                                                                                            aria-hidden="true"></i>Alasan Mutasi</div>
+                                                                                                                                    <div class="col-8 small">
+                                                                                                                                        {{ $mutasiform->alasan_mutasi }}
+                                                                                                                                    </div> -->
                 <div class="col-4 small py-2 "><i class="fa fa-circle fa-xs mr-1" style="font-size : 0.5rem"
                         aria-hidden="true"></i>No. Polisi</div>
                 <div class="col-8 small">
@@ -189,6 +189,15 @@
             <div class="col-md-8">
                 <div class="form-group">
                     <div class="row">
+                        <a class="text-primary font-weight-bold ml-1" style="cursor: pointer;"
+                            onclick='window.open("/storage/{{ $mutasiform->file_ba_mutasi }}")'>Tampilkan BA
+                            Mutasi</a><br>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="form-group">
+                    <div class="row">
                         <label>Alasan Mutasi</label>
                         <input type="input" class="form-control" name="alasan_mutasi"
                             value="{{ $mutasiform->alasan_mutasi ?? '-' }}" readonly>
@@ -211,7 +220,7 @@
             @endif
         </div>
     @else
-        <form id="formmutasi" method="post" action="/addmutasiform">
+        <form id="formmutasi" method="post" action="/addmutasiform" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="armada_ticket_id" value="{{ $armadaticket->id }}">
             <input type="hidden" name="armada_id" value="{{ $armadaticket->armada_id }}">
@@ -481,8 +490,18 @@
             <div class="col-md-8">
                 <div class="form-group">
                     <div class="row">
+                        <label class="required_field">Upload BA Mutasi</label>
+                        <input type="file" class="form-control-file form-control-sm validatefilesize"
+                            name="upload_ba_mutasi" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="form-group">
+                    <div class="row">
                         <label class="required_field">Alasan Mutasi</label>
-                        <input type="input" class="form-control" name="alasan_mutasi">
+                        <input type="input" class="form-control" name="alasan_mutasi" required>
                     </div>
                     <br>
                 </div>
@@ -546,6 +565,11 @@
 
                 formmutasi.find('.authorization_table tbody').empty();
                 formmutasi.find('.authorization_table tbody').append(table_string);
+            });
+            $('.validatefilesize').change(function(event) {
+                if (!validatefilesize(event)) {
+                    $(this).val('');
+                }
             });
         });
 

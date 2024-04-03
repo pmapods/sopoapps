@@ -50,7 +50,7 @@ class DashboardVendorEvaluationController extends Controller
         ]);
     }
 
-    public function getVendorEvaluationCount()
+    public static function getVendorEvaluationCount()
     {
         $vendorevaluation = VendorEvaluationAuthorization::where('status', 0)
             ->where('employee_id', Auth::user()->id)

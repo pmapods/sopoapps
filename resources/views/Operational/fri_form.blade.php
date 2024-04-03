@@ -66,7 +66,20 @@
                 Application Details
             </div>
             @php
-                $application_detail_items = ['Microsoft Office 2007', 'Anti Virus MS Essential / MS Defender', 'SAP', 'Mozilla Firefox / Google Chrome / IE', 'Adobe Acrobat', 'free_text', '7Zip', 'free_text', 'PDF Creator', 'free_text', 'Team Viewer QS6 / QS7', 'free_text'];
+                $application_detail_items = [
+                    'Microsoft Office 2007',
+                    'Anti Virus MS Essential / MS Defender',
+                    'SAP',
+                    'Mozilla Firefox / Google Chrome / IE',
+                    'Adobe Acrobat',
+                    'free_text',
+                    '7Zip',
+                    'free_text',
+                    'PDF Creator',
+                    'free_text',
+                    'Team Viewer QS6 / QS7',
+                    'free_text',
+                ];
             @endphp
             <div class="row">
                 @foreach ($application_detail_items as $item)
@@ -86,7 +99,12 @@
             </div>
             @php
                 $sebagais = ['Dibuat Oleh', 'Diperiksa Oleh', 'Diketahui Oleh', 'Diinput Oleh'];
-                $positions = ['User ( Min. SPV )', 'Atasan Langsung (Min.manager)', 'IT OSM', 'IT IS Staff / IT IS SPV'];
+                $positions = [
+                    'User ( Min. SPV )',
+                    'Atasan Langsung (Min.manager)',
+                    'IT OSM',
+                    'IT IS Staff / IT IS SPV',
+                ];
             @endphp
             <div class="row">
                 @foreach ($sebagais as $sebagai)
@@ -105,8 +123,10 @@
                 <div class="col-6 border border-dark small text-center">
                     @php
                         if (isset($fri_authorization)) {
-                            $string_authorization = $fri_authorization->authorization_detail->pluck('employee_name')->toArray();
-                            $string_authorization = implode($string_authorization, ' -> ');
+                            $string_authorization = $fri_authorization->authorization_detail
+                                ->pluck('employee_name')
+                                ->toArray();
+                            $string_authorization = implode(' -> ', $string_authorization);
                         } else {
                             $string_authorization = 'Approval FRI belum terdaftar';
                         }
@@ -126,155 +146,182 @@
     @endphp
     <div class="row">
         @foreach ($fri_forms as $fri_form)
-        <div class="col-md-6 px-1 mt-2">
-            <div class="box p-3">
-                <div class="text-center h5">FORM<br>REQUEST INFRASTRUKTUR</div>
-                <table class="table table-bordered table-sm small">
-                    <tbody>
-                        <tr>
-                            <td>Date Request</td>
-                            <td>{{ $fri_form->date_request }}</td>
-                        </tr>
-                        <tr>
-                            <td>Date Use</td>
-                            <td>{{ $fri_form->date_use }}</td>
-                        </tr>
-                        <tr>
-                            <td>Work Location</td>
-                            <td>{{ $fri_form->work_location }}</td>
-                        </tr>
-                        <tr>
-                            <td>Area</td>
-                            <td>{{ $fri_form->salespoint_name }}</td>
-                        </tr>
-                        <tr>
-                            <td>User Name / Position</td>
-                            <td>{{ $fri_form->username_position }}</td>
-                        </tr>
-                        <tr>
-                            <td>Div / Dept</td>
-                            <td>{{ $fri_form->division_department }}</td>
-                        </tr>
-                        <tr>
-                            <td>Contact Number</td>
-                            <td>{{ $fri_form->contact_number }}</td>
-                        </tr>
-                        <tr>
-                            <td>Email Address</td>
-                            <td>{{ $fri_form->email_address }}</td>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="h5 text-center">HARDWARE DETAILS</div>
-                <table class="table table-bordered table-sm small">
-                    <thead>
-                        <tr class="text-center">
-                            <th width="8%">NO</th>
-                            <th>UNIT</th>
-                            <th>QTY</th>
-                            <th width="50%">REMARK</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php
-                            $hardware_details = json_decode($fri_form->hardware_details);
-                            $disabled_hardware_details = ($fri_form->disabled_hardware_details != null) ? json_decode($fri_form->disabled_hardware_details) : [];
-                        @endphp
-                        @foreach ($hardware_details as $key => $detail)
-                            @php
-                                $isDisabled = false;
-                                if(in_array($detail->name,$disabled_hardware_details)){
-                                    $isDisabled = true;
-                                }
-                            @endphp
-                            <tr class="text-center">
-                                <td>{{ $key + 1 }}</td>
-                                <td>{{ $detail->name }}</td>
-                                <td @if($isDisabled) style="text-decoration: line-through;" @endif>{{ $detail->qty != 0 ? $detail->qty : '' }}</td>
-                                <td @if($isDisabled) style="text-decoration: line-through;" @endif>{{ $detail->remark }}</td>
+            <div class="col-md-6 px-1 mt-2">
+                <div class="box p-3">
+                    <div class="text-center h5">FORM<br>REQUEST INFRASTRUKTUR</div>
+                    <table class="table table-bordered table-sm small">
+                        <tbody>
+                            <tr>
+                                <td>Date Request</td>
+                                <td>{{ $fri_form->date_request }}</td>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                <div class="text-center h5">
-                    Application Details
-                </div>
-                @php
-                    $application_detail_items = ['Microsoft Office 2007', 'Anti Virus MS Essential / MS Defender', 'SAP', 'Mozilla Firefox / Google Chrome / IE', 'Adobe Acrobat', 'free_text', '7Zip', 'free_text', 'PDF Creator', 'free_text', 'Team Viewer QS6 / QS7', 'free_text'];
-                    $selected_details = json_decode($fri_form->application_details);
-                    $custom_details = [];
-                    foreach ($selected_details as $key => $detail) {
-                        // filter untuk item2 dengan nama custom
-                        if (!in_array($detail, $application_detail_items)) {
-                            unset($selected_details[$key]);
-                            array_push($custom_details, $detail);
+                            <tr>
+                                <td>Date Use</td>
+                                <td>{{ $fri_form->date_use }}</td>
+                            </tr>
+                            <tr>
+                                <td>Work Location</td>
+                                <td>{{ $fri_form->work_location }}</td>
+                            </tr>
+                            <tr>
+                                <td>Area</td>
+                                <td>{{ $fri_form->salespoint_name }}</td>
+                            </tr>
+                            <tr>
+                                <td>User Name / Position</td>
+                                <td>{{ $fri_form->username_position }}</td>
+                            </tr>
+                            <tr>
+                                <td>Div / Dept</td>
+                                <td>{{ $fri_form->division_department }}</td>
+                            </tr>
+                            <tr>
+                                <td>Contact Number</td>
+                                <td>{{ $fri_form->contact_number }}</td>
+                            </tr>
+                            <tr>
+                                <td>Email Address</td>
+                                <td>{{ $fri_form->email_address }}</td>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="h5 text-center">HARDWARE DETAILS</div>
+                    <table class="table table-bordered table-sm small">
+                        <thead>
+                            <tr class="text-center">
+                                <th width="8%">NO</th>
+                                <th>UNIT</th>
+                                <th>QTY</th>
+                                <th width="50%">REMARK</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php
+                                $hardware_details = json_decode($fri_form->hardware_details);
+                                $disabled_hardware_details =
+                                    $fri_form->disabled_hardware_details != null
+                                        ? json_decode($fri_form->disabled_hardware_details)
+                                        : [];
+                            @endphp
+                            @foreach ($hardware_details as $key => $detail)
+                                @php
+                                    $isDisabled = false;
+                                    if (in_array($detail->name, $disabled_hardware_details)) {
+                                        $isDisabled = true;
+                                    }
+                                @endphp
+                                <tr class="text-center">
+                                    <td>{{ $key + 1 }}</td>
+                                    <td>{{ $detail->name }}</td>
+                                    <td @if ($isDisabled) style="text-decoration: line-through;" @endif>
+                                        {{ $detail->qty != 0 ? $detail->qty : '' }}</td>
+                                    <td @if ($isDisabled) style="text-decoration: line-through;" @endif>
+                                        {{ $detail->remark }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <div class="text-center h5">
+                        Application Details
+                    </div>
+                    @php
+                        $application_detail_items = [
+                            'Microsoft Office 2007',
+                            'Anti Virus MS Essential / MS Defender',
+                            'SAP',
+                            'Mozilla Firefox / Google Chrome / IE',
+                            'Adobe Acrobat',
+                            'free_text',
+                            '7Zip',
+                            'free_text',
+                            'PDF Creator',
+                            'free_text',
+                            'Team Viewer QS6 / QS7',
+                            'free_text',
+                        ];
+                        $selected_details = json_decode($fri_form->application_details);
+                        $custom_details = [];
+                        foreach ($selected_details as $key => $detail) {
+                            // filter untuk item2 dengan nama custom
+                            if (!in_array($detail, $application_detail_items)) {
+                                unset($selected_details[$key]);
+                                array_push($custom_details, $detail);
+                            }
                         }
-                    }
-                @endphp
-                <div class="row">
-                    @foreach ($application_detail_items as $item)
-                        <div class="col-6">
-                            @if (in_array($item, $selected_details))
-                                <i class="fal fa-check-square mr-1" aria-hidden="true"></i>{{ $item }}
-                            @elseif($item == 'free_text' && count($custom_details) > 0)
-                                <i class="fal fa-check-square mr-1" aria-hidden="true"></i>{{ $custom_details[0] }}
-                                @php array_shift($custom_details); @endphp
-                            @else
-                                <i class="fal fa-square mr-1" aria-hidden="true"></i>{{ $item != 'free_text' ? $item : '' }}
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-        
-                @php
-                    $sebagais = ['Dibuat Oleh', 'Diperiksa Oleh', 'Diketahui Oleh', 'Diinput Oleh'];
-                    $positions = ['User ( Min. SPV )', 'Atasan Langsung (Min.manager)', 'IT OSM', 'IT IS Staff / IT IS SPV'];
-                    $level = [1, 2, 4, 3];
-                @endphp
-                <div class="row">
-                    @foreach ($sebagais as $sebagai)
-                        <div class="col-3 border border-dark small text-center">
-                            {{ $sebagai }}
-                        </div>
-                    @endforeach
-                    @foreach ($positions as $key => $position)
-                        @php
-                            $author = $fri_form->authorizations->where('level', $level[$key])->first();
-                        @endphp
-                        <div class="col-3 border border-dark small text-center d-flex justify-content-between flex-column">
-                            <span style="white-space: pre-line;">{{ $position }}</span>
-                            <div>
-                                @if ($author->status == 1)
-                                    <span class="text-success">Approved</span><br>
-                                    <span
-                                        class="text-success">{{ $author->updated_at->translatedFormat('d F Y (H:i)') }}</span><br>
-                                @endif
-                                @if ($author->status == 0)
-                                    <span class="text-warning">Menunggu Approval</span><br>
+                    @endphp
+                    <div class="row">
+                        @foreach ($application_detail_items as $item)
+                            <div class="col-6">
+                                @if (in_array($item, $selected_details))
+                                    <i class="fal fa-check-square mr-1" aria-hidden="true"></i>{{ $item }}
+                                @elseif($item == 'free_text' && count($custom_details) > 0)
+                                    <i class="fal fa-check-square mr-1" aria-hidden="true"></i>{{ $custom_details[0] }}
+                                    @php array_shift($custom_details); @endphp
+                                @else
+                                    <i class="fal fa-square mr-1"
+                                        aria-hidden="true"></i>{{ $item != 'free_text' ? $item : '' }}
                                 @endif
                             </div>
-                            <span>{{ $author->employee_name }}</span>
-                        </div>
-                    @endforeach
-        
-                </div>
-        
-                @if ($fri_form->status == 1)
-                    <div class="d-flex justify-content-center mt-2">
-                        <a class="btn btn-primary btn-sm text-light" href="/printfriform/{{ $fri_form->id }}"
-                            role="button">Cetak</a>
-                        @if ($fri_form->ticket_vendor_id == null && Auth::user()->id == 1)
-                        <a class="btn btn-primary btn-sm text-light ml-2" onclick="splitFRI({{ $fri_form->id }})" role="button">Split Form</a>
-                        @endif
+                        @endforeach
                     </div>
-                @endif
-                @if (isset($fri_form->ticket_vendor))
-                <small class="text-secondary">* terkait vendor terpilih "{{ $fri_form->ticket_vendor->name }}"</small>
-                @endif
-                <br>FRM-ITD-008 REV 02
+
+                    @php
+                        $sebagais = ['Dibuat Oleh', 'Diperiksa Oleh', 'Diketahui Oleh', 'Diinput Oleh'];
+                        $positions = [
+                            'User ( Min. SPV )',
+                            'Atasan Langsung (Min.manager)',
+                            'IT OSM',
+                            'IT IS Staff / IT IS SPV',
+                        ];
+                        $level = [1, 2, 4, 3];
+                    @endphp
+                    <div class="row">
+                        @foreach ($sebagais as $sebagai)
+                            <div class="col-3 border border-dark small text-center">
+                                {{ $sebagai }}
+                            </div>
+                        @endforeach
+                        @foreach ($positions as $key => $position)
+                            @php
+                                $author = $fri_form->authorizations->where('level', $level[$key])->first();
+                            @endphp
+                            <div
+                                class="col-3 border border-dark small text-center d-flex justify-content-between flex-column">
+                                <span style="white-space: pre-line;">{{ $position }}</span>
+                                <div>
+                                    @if ($author->status == 1)
+                                        <span class="text-success">Approved</span><br>
+                                        <span
+                                            class="text-success">{{ $author->updated_at->translatedFormat('d F Y (H:i)') }}</span><br>
+                                    @endif
+                                    @if ($author->status == 0)
+                                        <span class="text-warning">Menunggu Approval</span><br>
+                                    @endif
+                                </div>
+                                <span>{{ $author->employee_name }}</span>
+                            </div>
+                        @endforeach
+
+                    </div>
+
+                    @if ($fri_form->status == 1)
+                        <div class="d-flex justify-content-center mt-2">
+                            <a class="btn btn-primary btn-sm text-light" href="/printfriform/{{ $fri_form->id }}"
+                                role="button">Cetak</a>
+                            @if ($fri_form->ticket_vendor_id == null && Auth::user()->id == 1)
+                                <a class="btn btn-primary btn-sm text-light ml-2"
+                                    onclick="splitFRI({{ $fri_form->id }})" role="button">Split Form</a>
+                            @endif
+                        </div>
+                    @endif
+                    @if (isset($fri_form->ticket_vendor))
+                        <small class="text-secondary">* terkait vendor terpilih
+                            "{{ $fri_form->ticket_vendor->name }}"</small>
+                    @endif
+                    <br>FRM-ITD-008 REV 02
+                </div>
             </div>
-        </div>
         @endforeach
     </div>
 @endif
@@ -283,8 +330,8 @@
     <script>
         let pageURL = $(location).attr("href");
         let fri_form_data = null;
-        @if(isset($ticket))
-            fri_form_data = @json(($ticket->fri_forms->count()>0) ? $ticket->fri_forms->first() : null);
+        @if (isset($ticket))
+            fri_form_data = @json($ticket->fri_forms->count() > 0 ? $ticket->fri_forms->first() : null);
         @endif
         if (pageURL.includes('/ticketing/') || pageURL.includes('/addnewticket')) {
             $(document).ready(function() {
@@ -303,28 +350,28 @@
                     let kantor_type = "";
                     switch ($(this).find('option:selected').data('status')) {
                         case 0: // 0 depo
-                            kantor_type ="Kantor Cabang";
+                            kantor_type = "Kantor Cabang";
                             break;
                         case 1: // 1 cabang
-                            kantor_type ="Kantor Cabang";
+                            kantor_type = "Kantor Cabang";
                             break;
                         case 2: // 2 cellpoint
-                            kantor_type ="Kantor Cabang";
+                            kantor_type = "Kantor Cabang";
                             break;
                         case 3: // 3 subdist / indirect
-                            kantor_type ="Kantor Cabang";
+                            kantor_type = "Kantor Cabang";
                             break;
                         case 4: // 4 nasional
-                            kantor_type ="Kantor Cabang";
+                            kantor_type = "Kantor Cabang";
                             break;
                         case 5: // 5 HO
-                            kantor_type ="Kantor Pusat";
+                            kantor_type = "Kantor Pusat";
                             break;
                         case 6: // 6 cellpoint+
-                            kantor_type ="Kantor Cabang";
+                            kantor_type = "Kantor Cabang";
                             break;
                         default:
-                            kantor_type ="";
+                            kantor_type = "";
                             break;
                     }
                     $('#fri_form_create input[name="work_location"]').val(kantor_type);
@@ -496,11 +543,11 @@
             }
         }
 
-        function splitFRI(fri_form_id){
+        function splitFRI(fri_form_id) {
             $('#submitform').prop('action', '/bidding/manualsplit');
             $('#submitform').find('div').empty();
             $('#submitform').prop('method', 'POST');
-            $('#submitform').find('div').append('<input type="hidden" name="fri_form_id" value="'+fri_form_id+'">');
+            $('#submitform').find('div').append('<input type="hidden" name="fri_form_id" value="' + fri_form_id + '">');
             $('#submitform').submit();
         }
     </script>

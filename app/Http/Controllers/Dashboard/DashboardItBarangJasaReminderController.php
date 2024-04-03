@@ -61,7 +61,7 @@ class DashboardItBarangJasaReminderController extends Controller
     }
 
 
-    public function getItBarangJasaReminderCount()
+    public static function getItBarangJasaReminderCount()
     {
         $barang_jasa_it = Ticket::leftJoin('po', 'po.ticket_id', '=', 'ticket.id')
             ->where('ticket.is_it', 1)
