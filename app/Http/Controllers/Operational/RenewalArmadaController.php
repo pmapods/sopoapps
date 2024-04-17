@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operational;
 use DB;
 use Auth;
+use Carbon\Carbon;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -32,9 +33,166 @@ class RenewalArmadaController extends Controller
         $authorization_details = AuthorizationDetail::all();
         $renewalauthorizations = RenewalArmadaAuthorization::all();
         $user_login = Auth::user()->id;
-        $salespoint = SalesPoint::find($employee_access[0]);
         $salespoints = SalesPoint::whereIn('id', $employee_access)->get();
         return view('Operational.Armada.renewalarmada',compact('user_login','employees','salespoints','renewalauthorizations','renewalarmadas', 'employee_positions', 'armada_types', 'authorization_details', 'authorizations'));
+    }
+
+    public function renewalArmadaData(Request $request) {
+        $search_value = $request->search["value"];
+        $employee_access = Auth::user()->location_access_list();
+
+        $renewalTable = RenewalArmada::leftJoin('armada as a', 'a.id', '=', 'renewal_armada_detail.armada_id')
+                ->leftJoin('salespoint as b', 'b.id', '=', 'renewal_armada_detail.last_salespoint_id')
+                ->leftJoin('salespoint as c', 'c.id', '=', 'renewal_armada_detail.new_salespoint_id')
+                ->leftJoin('armada_type', 'armada_type.id', '=', 'renewal_armada_detail.armada_type_id')
+                ->leftJoin('employee', 'employee.id', '=', 'renewal_armada_detail.created_by')
+                ->leftJoin('renewal_armada_authorization', 'renewal_armada_authorization.renewal_armada_id', '=', 'renewal_armada_detail.id')
+                ->leftJoin('employee as d', 'd.id', 'renewal_armada_detail.rejected_by')
+                ->leftJoin('employee as e', 'e.id', 'renewal_armada_detail.terminated_by')
+                ->whereNull('renewal_armada_authorization.deleted_at');
+
+        if ($request->status == -1) {
+            $renewalTable = $renewalTable->where('renewal_armada_detail.status', '!=', 0);
+        }
+        else {
+            $renewalTable = $renewalTable->where('renewal_armada_detail.status', '=', 0);
+        }
+        
+        $renewalTable = $renewalTable->select('renewal_armada_detail.*', 'b.name as last_salespoint', 'c.name as new_salespoint', 'armada_type.*', 'renewal_armada_authorization.*', 'employee.name as emp_name', 'renewal_armada_detail.deleted_at as delete_at', 'd.name as reject_by_name', 'e.name as terminate_by_name')
+                ->orderBy('renewal_armada_detail.id')
+                ->get();
+        
+        $renewal_paginate = $renewalTable->skip($request->start)->take($request->length);
+
+        $datas = [];
+        $count = 1 + $request->start;
+        foreach ($renewal_paginate as $renewals) {
+            $array = [];
+
+            $idRenewal = "";
+            if(isset($renewals->id)) {
+                $idRenewal = $renewals->id;
+            }
+
+            $codeRenewal = "";
+            if(isset($renewals->code)) {
+                $codeRenewal = $renewals->code;
+            }
+
+            $created_by_employee = "";
+            if (isset($renewals->created_by)) {
+                $created_by_employee = $renewals->emp_name;
+            }
+
+            $last_salespoint = "";
+            if (isset($renewals->last_salespoint)) {
+                $last_salespoint = $renewals->last_salespoint;
+            }
+            
+            $new_salespoint = "";
+            if (isset($renewals->new_salespoint)) {
+                $new_salespoint = $renewals->new_salespoint;
+            }
+            
+            $jenis_kendaraan = "";
+            if (isset($renewals->name)) {
+                $jenis_kendaraan = $renewals->name;
+            }
+
+            $old_plate = "";
+            if (isset($renewals->old_plate)) {
+                $old_plate = $renewals->old_plate . " (" . date('Y', strtotime($renewals->old_vehicle_year)) . ")";
+            }
+            
+            $new_plate = "";
+            if (isset($renewals->new_plate)) {
+                $new_plate = $renewals->new_plate . " (" . date('Y', strtotime($renewals->new_vehicle_year)) . ")";
+            }
+            
+            $status = "";
+            $alasan = "";
+            if (isset($renewals->status)) {
+                // $status = $renewals->status;
+                if ($renewals->status == 0) {
+                    $status = "Waiting Approval " . $renewals->employee_name;
+                }
+                elseif ($renewals->status == -1) {
+                    $alasan = $renewals->terminated_reason;
+                    $status = "Terminate by " . $renewals->terminate_by_name . ", " . date('d F Y', strtotime($renewals->delete_at)) . ", Alasan : " . $alasan;
+                }
+                elseif ($renewals->status == 1) {
+                    $status = "Approved by " . $renewals->employee_name . ", " . date('d F Y', strtotime($renewals->finished_date));
+                }
+                elseif ($renewals->status == 2) {
+                    $alasan = $renewals->reject_reason;
+                    $status = "Rejected by " . $renewals->reject_by_name . ", " . date('d F Y', strtotime($renewals->updated_at)) . ", Alasan : " . $alasan;
+                }
+            }
+
+            $bastk_path = "";
+            if (isset($renewals->bastk_path)) {
+                $bastk_path = $renewals->bastk_path;
+            }
+
+            $approved_by = "";
+            if (isset($renewals->approved_by)) {
+                $approved_by = $renewals->approved_by;
+            }
+
+            $statusId = "";
+            if (isset($renewals->status)) {
+                $statusId = $renewals->status;
+            }
+
+            $armada_id = "";
+            if (isset($renewals->armada_type_id)) {
+                $armada_id = $renewals->armada_type_id;
+            }
+
+            $last_salespoint_id = "";
+            if (isset($renewals->last_salespoint_id)) {
+                $last_salespoint_id = $renewals->last_salespoint_id;
+            }
+
+            $new_salespoint_id = "";
+            if (isset($renewals->new_salespoint_id)) {
+                $new_salespoint_id = $renewals->new_salespoint_id;
+            }
+
+            $created_by = "";
+            if (isset($renewals->created_by)) {
+                $created_by = $renewals->created_by;
+            }
+
+            // dd($renewals);
+
+            array_push($array, $count); 
+            array_push($array, $codeRenewal); 
+            array_push($array, $last_salespoint);
+            array_push($array, $new_salespoint);
+            array_push($array, $jenis_kendaraan);
+            array_push($array, $old_plate);
+            array_push($array, $new_plate);
+            array_push($array, $created_by_employee);
+            array_push($array, $status);
+            array_push($array, $bastk_path);
+            array_push($array, $approved_by);
+            array_push($array, $statusId);
+            array_push($array, $idRenewal); 
+            array_push($array, $armada_id); 
+            array_push($array, $last_salespoint_id); 
+            array_push($array, $new_salespoint_id); 
+            array_push($array, $created_by); 
+            array_push($datas, $array);
+            $count++;
+        }
+
+        return response()->json([
+            "data" => $datas,
+            "draw" => $request->draw,
+            "recordsFiltered" => $renewalTable->count(),
+            "recordsTotal" => $renewalTable->count(),
+        ]);
     }
 
     public function addRenewalArmada(Request $request){
@@ -46,6 +204,8 @@ class RenewalArmadaController extends Controller
             $deleted_at = null;
             $status = '0';
 
+            $code_type = 'RNW01';
+
             if ($request->old_plate == "" || $request->old_plate == null || $request->new_plate == "" || $request->new_plate == null) {
                 throw new \Exception('Nomor Plat tidak boleh ada yang kosong.');
             }
@@ -54,8 +214,24 @@ class RenewalArmadaController extends Controller
             $armadaData = json_decode($getArmada->getContent());
 
             $get_salespoint = SalesPoint::find($request->new_salespoint_id);
-
+            
             $salespointname = str_replace(' ', '_', $get_salespoint->name);
+            $initialsalespoint = strtoupper($get_salespoint->initial);
+
+
+            $countRenewal = RenewalArmada::whereBetween('created_at', [
+                                Carbon::now()->startOfMonth(),
+                                Carbon::now()->endOfMonth(),
+                            ])
+                            ->withTrashed()
+                            ->count();
+
+            do {
+                $codeRenewal = $code_type . "-" . $initialsalespoint . "-" . now()->translatedFormat('dmy') . str_repeat("0", 4 - strlen($countRenewal + 1)) . ($countRenewal + 1);
+                $countRenewal++;
+                $checkRenewal = RenewalArmada::where('code', $codeRenewal)->first();
+                ($checkRenewal != null) ? $flag = false : $flag = true;
+            } while (!$flag);
 
             $ext = pathinfo($request->file('bastk_file')->getClientOriginalName(), PATHINFO_EXTENSION);
             $name = "BASTK_" . $salespointname . '.' . $ext;
@@ -64,6 +240,7 @@ class RenewalArmadaController extends Controller
             $path = $request->file('bastk_file')->storeAs($file['dirname'], $file['basename'], 'public');
 
             $newRenewalArmada                      = new RenewalArmada;
+            $newRenewalArmada->code                = $codeRenewal;
             $newRenewalArmada->armada_id           = $armadaData->data[0]->id;
             $newRenewalArmada->last_salespoint_id  = ($request->last_salespoint_id ?? null);
             $newRenewalArmada->new_salespoint_id   = ($request->new_salespoint_id ?? null);

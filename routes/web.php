@@ -453,6 +453,7 @@ Route::middleware(['auth'])->group(function () {
     // Peremajaan Armada
     Route::middleware(['menu_access:operational:128'])->group(function () {
         Route::get('/renewalarmada', [RenewalArmadaController::class, 'renewalArmadaView']);
+        Route::get('/renewalarmada/data', [RenewalArmadaController::class, 'renewalArmadaData']);
         Route::post('/updaterenewalarmada', [RenewalArmadaController::class, 'updateRenewalArmada']);
         Route::post('/addrenewalarmada', [RenewalArmadaController::class, 'addRenewalArmada']);
         Route::middleware(['superadmin'])->group(function () {

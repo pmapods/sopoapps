@@ -1,5 +1,27 @@
 @extends('Layout.app')
 @section('local-css')
+    <style>
+        #renewalArmadaDT tbody td:nth-child(2) {
+            white-space: nowrap;
+        }
+
+        #renewalArmadaDT tbody td:nth-child(6) {
+            white-space: pre-line !important;
+            font-size: 80% !important;
+            font-weight: 400 !important;
+        }
+
+        #renewalArmadaDT tbody td:nth-child(8),
+        #renewalArmadaDT tbody td:nth-child(9) {
+            white-space: pre-line !important;
+            font-size: 80% !important;
+            font-weight: 400 !important;
+        }
+
+        button {
+            margin-right: 5px;
+        }
+    </style>
 @endsection
 
 @section('content')
@@ -7,10 +29,10 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-sm-6">
-                    <h1 class="m-0 text-dark">Peremajaan Armada</h1>
-                    {{-- <div class="text-info">* Data yang ditampilkan berdasarkan hak akses area.
-                    <a class="font-weight-bold" href="/myaccess">Cek Disini</a>
-                </div> --}}
+                    <h1 class="m-0 text-dark">Peremajaan Armada @if (request()->get('status') == -1)
+                            (History)
+                        @endif
+                    </h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
@@ -23,6 +45,11 @@
                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addRenewalArmadaModal">
                     Request Renewal Armada
                 </button>
+                @if (request()->get('status') == -1)
+                    <a href="/renewalarmada" class="btn btn-success ml-2">Peremajaan Aktif</a>
+                @else
+                    <a href="/renewalarmada?status=-1" class="btn btn-info ml-2">History</a>
+                @endif
             </div>
         </div>
     </div>
@@ -32,6 +59,7 @@
                 <thead>
                     <tr role="row">
                         <th>#</th>
+                        <th>Renewal Code</th>
                         <th>SalesPoint Awal</th>
                         <th>SalesPoint Baru</th>
                         <th>Jenis Kendaraan</th>
@@ -39,10 +67,17 @@
                         <th>Nomor Kendaaraan Baru</th>
                         <th>Request By</th>
                         <th>Status Approval</th>
-
+                        <th>BASTK Path</th>
+                        <th>Approved By Id</th>
+                        <th>Status</th>
+                        <th>Id Renewal</th>
+                        <th>Armada Id</th>
+                        <th>Last Salespoint Id</th>
+                        <th>New Salespoint Id</th>
+                        <th>Created by Id</th>
                 </thead>
                 <tbody>
-                    @foreach ($renewalarmadas as $key => $renewalarmada)
+                    {{-- @foreach ($renewalarmadas as $key => $renewalarmada)
                         <tr data-armada="{{ $renewalarmada }}">
                             <td>{{ $key + 1 }}</td>
                             <td>
@@ -94,14 +129,15 @@
                                 </div>
                             </td>
                         </tr>
-                    @endforeach
+                    @endforeach --}}
                 </tbody>
             </table>
         </div>
     </div>
 
 
-    <div class="modal fade" id="addRenewalArmadaModal" tabindex="-1" data-backdrop="static" role="dialog" aria-hidden="true">
+    <div class="modal fade" id="addRenewalArmadaModal" tabindex="-1" data-backdrop="static" role="dialog"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -117,15 +153,16 @@
                             <div class="col-12">
                                 <div class="form-group">
                                     <label class="required_field">Pilih File BASTK lengkap dengan ttd</label>
-                                    <input type="file" class="form-control-file validatefilesize"
-                                        name="bastk_file" accept="image/*,application/pdf" required>
+                                    <input type="file" class="form-control-file validatefilesize" name="bastk_file"
+                                        accept="image/*,application/pdf" required>
                                     <small class="text-danger">*jpg, jpeg, pdf (MAX 5MB)</small>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-group">
                                     <label class="required_field">SalesPoint Awal</label>
-                                    <select class="form-control select2 salespoint_select2" name="last_salespoint_id" required>
+                                    <select class="form-control select2 salespoint_select2" name="last_salespoint_id"
+                                        required>
                                         <option value="">-- Pilih SalesPoint --</option>
                                         @foreach ($salespoints as $salespoint)
                                             <option value="{{ $salespoint->id }}">{{ $salespoint->name }}</option>
@@ -145,9 +182,10 @@
                                 <div class="form-group">
                                     <label class="required_field">Armada</label>
                                     <select class="form-control armada_type" name="armada_type_plate" required>
-                                            <option>-- Pilih Jenis Kendaraan --</option>
+                                        <option>-- Pilih Jenis Kendaraan --</option>
                                     </select>
-                                    <small class="text-danger">*Armada lama akan terhapus dari sistem secara otomatis</small>
+                                    <small class="text-danger">*Armada lama akan terhapus dari sistem secara
+                                        otomatis</small>
                                 </div>
                             </div>
                             <div class="col-8">
@@ -182,7 +220,8 @@
                                         @foreach ($authorizations->where('form_type', 16) as $authorization)
                                             @foreach ($authorization_details->where('authorization_id', $authorization->id) as $approval)
                                                 @if ($employee = $employees->find($approval->employee_id))
-                                                    <option value="{{ $employee->id }}">{{ Auth::user()->name }} -> {{ $employee->name }}</option>
+                                                    <option value="{{ $employee->id }}">{{ Auth::user()->name }} ->
+                                                        {{ $employee->name }}</option>
                                                 @endif
                                             @endforeach
                                         @endforeach
@@ -221,7 +260,8 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form action="/updateRenewalArmada" method="post" enctype="multipart/form-data" id="detailrenewalarmadaform">
+                <form action="/updateRenewalArmada" method="post" enctype="multipart/form-data"
+                    id="detailrenewalarmadaform">
                     @csrf
                     @method('post')
                     <input type="hidden" name="id" class="id">
@@ -255,7 +295,8 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <small class="text-danger">*Armada lama akan terhapus dari sistem secara otomatis</small>
+                                    <small class="text-danger">*Armada lama akan terhapus dari sistem secara
+                                        otomatis</small>
                                 </div>
                             </div>
                             <div class="col-8">
@@ -292,10 +333,10 @@
                                 </div>
                             </div>
                             <div class="col-8">
-                                    <div class="form-group">
-                                        <label class="required_field">File</label>
-                                        <div id="linkContainer"></div>
-                                    </div>
+                                <div class="form-group">
+                                    <label class="required_field">File</label>
+                                    <div id="linkContainer"></div>
+                                </div>
                             </div>
                             <div class="col-8">
                                 <div class="form-group">
@@ -311,8 +352,8 @@
                     </div>
 
                     <div class="modal-footer">
-                        <div id="buttonContainer"></div>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                        <div id="buttonContainer">&nbsp;</div>
+                        {{-- <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button> --}}
                     </div>
                 </form>
             </div>
@@ -338,89 +379,145 @@
 @section('local-js')
     <script>
         $(document).ready(function() {
+            const urlParam = new URLSearchParams(window.location.search);
+            const status = urlParam.get('status');
+
+            let tableRenewal = $('#renewalArmadaDT').DataTable({
+                "processing": true,
+                "serverSide": true,
+                "ajax": {
+                    'url': '/renewalarmada/data?status=' + status,
+                    'data': function(data) {},
+                    'error': function(e) {
+                        console.log(e);
+                    }
+                },
+                "createdRow": function(row, data, dataIndex) {
+                    Object.keys(data).forEach((el, idx) => {
+                        let cell = data[el];
+                        if (cell) {
+                            $("td", row).eq(idx).attr("data-armada", cell);
+                        }
+                    });
+                    console.log(row);
+                }
+            });
+
+            tableRenewal.columns([9, 10, 11, 12, 13, 14, 15, 16]).visible(false);
+
+
             $('.autonumber').change(function() {
                 autonumber($(this));
             });
 
             var user_login = {{ $user_login }};
-            console.log("user_login");
-            console.log(user_login);
-            var table = $('#renewalArmadaDT').DataTable(datatable_settings);
-            $('#renewalArmadaDT tbody').on('click', 'tr', function() {
+            // var table = $('#renewalArmadaDT').DataTable(datatable_settings);
+            $('#renewalArmadaDT tbody').on('click', 'tr', function(e) {
+
+                e.preventDefault();
                 let modal = $('#detailRenewalArmadaModal');
-                let data = $(this).data('armada');
-                let newyear = data['new_vehicle_year'].split('-')[0];
-                let oldyear = data['old_vehicle_year'].split('-')[0];
-                let bastkPath = data['bastk_path'];
-                let user_approved = data['approved_by'];
-                let status = data['status'];
+
+                var currentRow = $(this).closest("tr");
+                var data = $('#renewalArmadaDT').DataTable().row(currentRow).data();
+
+                let code = data[1];
+                let oldyear = data[5].substr(data[5].length - 5, 4);
+                let newyear = data[6].substr(data[6].length - 5, 4);
+                let bastkPath = data[9];
+                let user_approved = data[10];
+                let status = data[11];
+                let oldplateArray = data[5].split(" ");
+                let oldplate = oldplateArray[0];
+                let newplateArray = data[6].split(" ");
+                let newplate = newplateArray[0];
+                let id_oldplate = data[14];
+                let id_newplate = data[15];
+                let id_armada = data[13];
+                let created_by = data[16];
+
                 let linkContainer = $('#linkContainer');
                 let buttonContainer = $('#buttonContainer');
                 buttonContainer.empty();
                 linkContainer.empty();
 
-                if ((user_login == 1 ||  user_login == 115 ||
-                    user_login == user_approved) && status == 0)
-                    {
-                        let rejectButton = $('<button>', {
-                            type: 'button',
-                            class: 'btn btn-danger',
-                            text: 'Reject',
-                            click: rejectRenewal
-                        });
-                        buttonContainer.append(rejectButton);
+                if ((user_login == 1 || user_login == 115 ||
+                        user_login == user_approved ||
+                        user_login == 828
+                    ) && status == 0) {
 
-                        let confirmButton = $('<button>', {
-                            type: 'button',
-                            class: 'btn btn-success',
-                            text: 'Confirm',
-                            click: confirmRenewal
-                        });
-                        buttonContainer.append(confirmButton);
+                    let rejectButton = $('<button>', {
+                        type: 'button',
+                        class: 'btn btn-danger',
+                        text: 'Reject',
+                        click: rejectRenewal
+                    });
+                    buttonContainer.append(rejectButton);
 
-                } else if ((user_login == 1 || user_login == 115 || user_login == 117 ||
-                            user_login == 118 || user_login == 120 || user_login == 809)
-                            && status == 0)
-                    {
-                        let terminateButton = $('<button>', {
-                            type: 'button',
-                            class: 'btn btn-warning',
-                            text: 'Batalkan Peremajaan',
-                            click: terminateRenewal
-                        });
-                        buttonContainer.append(terminateButton);
+                    let confirmButton = $('<button>', {
+                        type: 'button',
+                        class: 'btn btn-success',
+                        text: 'Confirm',
+                        click: confirmRenewal
+                    });
+                    buttonContainer.append(confirmButton);
+
+                }
+                if ((user_login == 1 || user_login == 115 || user_login == 117 ||
+                        user_login == 118 || user_login == 120 || user_login == 809 ||
+                        user_login == 828
+                    ) &&
+                    status == 0) {
+
+                    let terminateButton = $('<button>', {
+                        type: 'button',
+                        class: 'btn btn-warning',
+                        text: 'Batalkan Peremajaan',
+                        click: terminateRenewal
+                    });
+                    buttonContainer.append(terminateButton);
+
                 }
 
-
+                let closeButton = $('<button>', {
+                    type: 'button',
+                    class: 'btn btn-secondary',
+                    text: 'Tutup',
+                    click: closeModal
+                });
+                buttonContainer.append(closeButton);
 
                 if (bastkPath) {
-                    linkContainer.html('<a href="#" onclick="window.open(\'/storage/' + bastkPath + '\')">Tampilkan File BA</a>');
+                    linkContainer.html('<a href="#" onclick="window.open(\'/storage/' + bastkPath +
+                        '\')">Tampilkan File BA</a>');
                 }
 
-                modal.find('input[name="id"]').val(data['id']);
-                modal.find('select[name="bastk_path"]').val(data['bastk_path']);
-                modal.find('select[name="last_salespoint_id"]').val((data['last_salespoint_id'] == null) ? '' : data[
-                    'last_salespoint_id']);
+                modal.find('input[name="id"]').val(data[12]);
+                modal.find('select[name="bastk_path"]').val(bastkPath);
+                modal.find('select[name="last_salespoint_id"]').val((id_oldplate ==
+                        null) ?
+                    '' : id_oldplate);
                 modal.find('select[name="last_salespoint_id"]').trigger('change');
-                modal.find('select[name="new_salespoint_id"]').val((data['new_salespoint_id'] == null) ? '' : data[
-                    'new_salespoint_id']);
+                modal.find('select[name="new_salespoint_id"]').val((id_newplate == null) ?
+                    '' : id_newplate);
                 modal.find('select[name="new_salespoint_id"]').trigger('change');
-                modal.find('select[name="armada_type_id"]').val(data['armada_type_id']);
+                modal.find('select[name="armada_type_id"]').val(id_armada);
                 modal.find('select[name="armada_type_id"]').trigger('change');
-                modal.find('input[name="old_plate"]').val(data['old_plate']);
-                modal.find('input[name="new_plate"]').val(data['new_plate']);
+                modal.find('input[name="old_plate"]').val(oldplate);
+                modal.find('input[name="new_plate"]').val(newplate);
                 modal.find('input[name="new_vehicle_year"]').val(newyear);
                 modal.find('input[name="old_vehicle_year"]').val(oldyear);
-                modal.find('select[name="approved_by"]').val(data['approved_by']);
+                modal.find('select[name="approved_by"]').val(user_approved);
                 modal.find('select[name="approved_by"]').trigger('change');
-                modal.find('select[name="status"]').val(data['status']);
+                modal.find('select[name="status"]').val(status);
                 modal.find('select[name="status"]').trigger('change');
-                modal.data('created_by', data['created_by']);
-                modal.data('approved_by', data['approved_by']);
-                modal.data('current-id', data['id']);
-                modal.data('new_plate', data['new_plate']);
-                modal.data('new_salespoint_id', data['new_salespoint_id']);
-                modal.data('new_vehicle_year', data['new_vehicle_year']);
+                modal.data('created_by', created_by);
+                modal.data('approved_by', user_approved);
+                modal.data('current-id', data[12]);
+                modal.data('new_plate', newplate);
+                modal.data('new_salespoint_id', id_newplate);
+                modal.data('new_vehicle_year', newyear);
+
+                console.log(created_by, user_approved, data[12], newplate, id_newplate, newyear);
 
                 modal.modal('show');
             });
@@ -430,7 +527,7 @@
                 var created_by = modal.data('created_by');
                 var approved_by = modal.data('approved_by');
 
-                let option_text = '<option>' + created_by + '->' + approved_by +'</option>';
+                let option_text = '<option>' + created_by + '->' + approved_by + '</option>';
                 $('#approval').append(option_text);
             });
 
@@ -455,21 +552,39 @@
                             data.forEach(item => {
                                 $.ajax({
                                     type: "get",
-                                    url: '/getarmadatype/' + item.armada_type_id,
+                                    url: '/getarmadatype/' + item
+                                        .armada_type_id,
                                     success: function(response) {
                                         let dataType = response.data;
                                         dataType.forEach(type => {
-                                            let optionText = '<option value="' + item.plate + '">' +
-                                                item.plate + '-' + type.name + '(' + type.brand_name + ')</option>';
-                                            armadaTypeSelect.append(optionText);
+                                            let optionText =
+                                                '<option value="' +
+                                                item.plate +
+                                                '">' +
+                                                item.plate +
+                                                '-' +
+                                                type.name +
+                                                '(' +
+                                                type
+                                                .brand_name +
+                                                ')</option>';
+                                            armadaTypeSelect
+                                                .append(
+                                                    optionText);
                                         });
 
-                                        armadaTypeSelect.val("").prop('required', true);
-                                        armadaTypeSelect.trigger('change');
-                                        armadaTypeSelect.prop('disabled', false);
+                                        armadaTypeSelect.val("").prop(
+                                            'required', true);
+                                        armadaTypeSelect.trigger(
+                                            'change');
+                                        armadaTypeSelect.prop(
+                                            'disabled',
+                                            false);
                                     },
                                     error: function(response) {
-                                        alert('Load data failed. Please refresh the browser or contact admin');
+                                        alert(
+                                            'Load data failed. Please refresh the browser or contact admin'
+                                        );
                                     },
                                 });
                             });
@@ -479,7 +594,8 @@
                         }
                     },
                     error: function(response) {
-                        alert('Load data failed. Please refresh the browser or contact admin');
+                        alert(
+                            'Load data failed. Please refresh the browser or contact admin');
                     },
                 });
             });
@@ -504,7 +620,8 @@
                             let dataType = response.data;
                             if (dataType && dataType.length > 0) {
                                 dataType.forEach(item => {
-                                    let yearPart = item.vehicle_year.substring(0, 4);
+                                    let yearPart = item.vehicle_year.substring(0,
+                                        4);
 
                                     plateInput.val(item.plate);
                                     vehicleYearInput.val(yearPart);
@@ -518,7 +635,9 @@
                             }
                         },
                         error: function(response) {
-                            alert('Load data failed. Please refresh the browser or contact admin');
+                            alert(
+                                'Load data failed. Please refresh the browser or contact admin'
+                            );
                         },
                     });
                 }
@@ -542,7 +661,7 @@
                 $('#addRenewalArmadaModal .status').trigger('change');
             });
 
-            $('#forbiddenChar').on('input', function (event) {
+            $('#forbiddenChar').on('input', function(event) {
                 if ($(this).val().includes(' ')) {
                     event.preventDefault();
                     alert('Spaces are not allowed in this field.');
@@ -560,10 +679,19 @@
 
             $('#confirmform .input_list').empty();
             $('#confirmform .input_list').append('<input type="hidden" name="id" value="' + id + '">');
-            $('#confirmform .input_list').append('<input type="hidden" name="new_salespoint_id" value="' + new_salespoint_id + '">');
-            $('#confirmform .input_list').append('<input type="hidden" name="new_plate" value="' + new_plate + '">');
-            $('#confirmform .input_list').append('<input type="hidden" name="new_vehicle_year" value="' + new_vehicle_year + '">');
+            $('#confirmform .input_list').append('<input type="hidden" name="new_salespoint_id" value="' +
+                new_salespoint_id + '">');
+            $('#confirmform .input_list').append('<input type="hidden" name="new_plate" value="' + new_plate +
+                '">');
+            $('#confirmform .input_list').append('<input type="hidden" name="new_vehicle_year" value="' +
+                new_vehicle_year +
+                '">');
             $('#confirmform').submit();
+        }
+
+        function closeModal() {
+            var modal = $('#detailRenewalArmadaModal');
+            modal.modal('hide');
         }
 
 
@@ -578,7 +706,8 @@
                 }
                 $('#terminateform .input_list').empty();
                 $('#terminateform .input_list').append('<input type="hidden" name="id" value="' + id + '">');
-                $('#terminateform .input_list').append('<input type="hidden" name="reason" value="' + reason + '">');
+                $('#terminateform .input_list').append('<input type="hidden" name="reason" value="' + reason +
+                    '">');
                 $('#terminateform').submit();
             }
         }
@@ -598,6 +727,5 @@
                 $('#rejectform').submit();
             }
         }
-
     </script>
 @endsection

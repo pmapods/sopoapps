@@ -27,7 +27,7 @@
             font-size: 80% !important;
             font-weight: 400 !important;
             /* display: -webkit-box !important;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            -webkit-line-clamp: 4 !important; */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        -webkit-line-clamp: 4 !important; */
         }
 
         #armadaticketDT tbody td:nth-child(2) {
