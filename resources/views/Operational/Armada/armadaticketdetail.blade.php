@@ -209,7 +209,10 @@
                         <label>Pilihan PO</label>
                         @php
                             $po = \App\Models\Po::where('no_po_sap', $armadaticket->po_reference_number)->first();
-                            $po_manual = \App\Models\PoManual::where('po_number', $armadaticket->po_reference_number)->first();
+                            $po_manual = \App\Models\PoManual::where(
+                                'po_number',
+                                $armadaticket->po_reference_number,
+                            )->first();
                             $po_end_date = '';
                             if (isset($po)) {
                                 $po_end_date = $po->end_date;
@@ -230,8 +233,16 @@
                         value="{{ $armadaticket->vendor_recommendation_name }}">
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="vendor_recommendation_name">Jenis Otorisasi</label>
+                    <input type="text" id="vendor_recommendation_name" class="form-control" readonly
+                            value="{{ $armadaticket->authorization_type() }}">
+                </div>
+            </div>
             @php
-                $mutation_salespoint_id = $armadaticket->mutation_salespoint_id != null ? $armadaticket->mutation_salespoint_id : -1;
+                $mutation_salespoint_id =
+                    $armadaticket->mutation_salespoint_id != null ? $armadaticket->mutation_salespoint_id : -1;
                 $mutation_salespoint = \App\Models\SalesPoint::find($mutation_salespoint_id);
             @endphp
             @if ($mutation_salespoint)
@@ -263,7 +274,7 @@
                     <div>-</div>
                 @endif
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <b>PO</b>
                 @if ($armadaticket->po->count() < 1)
                     <div>-</div>
@@ -283,7 +294,19 @@
                 <button type="button"
                     onclick="issuePO()"
                     class="btn btn-warning btn-sm">Laporkan Kesalahan PO</button>
-            </div> --}}
+                </div> --}}
+            </div>
+            <div class="col-md-4">
+                <b>BA Pengadaan Armada Baru</b>
+                @if ($armadaticket->ba_new_armada)
+                    <div>
+                        <a href='#' onclick='window.open("/storage/{{ $armadaticket->ba_new_armada }}")'>
+                            Tampilkan BA Pengadaan Baru
+                        </a><br>
+                    </div>
+                @else
+                    <div>-</div>
+                @endif
             </div>
             {{-- <div class="col-md-4">
             <b>Issue PO</b>
@@ -314,7 +337,7 @@
             @php
                 $isRequirementFinished = true;
             @endphp
-            @if ($armadaticket->isNiaga == false && $armadaticket->ticketing_type == 0)
+            @if ($armadaticket->isNiaga == false && $armadaticket->ticketing_type == 0 && $armadaticket->authorization_type == 1)
                 <div class="col-md-6">
                     @php
                         if (($armadaticket->facility_form->status ?? -1) != 1) {
@@ -796,7 +819,9 @@
                 </div>
             @endif
         </div>
-        @if ($armadaticket->ticketing_type == 0 && $armadaticket->isNiaga == true)
+        @if (
+            ($armadaticket->ticketing_type == 0 && $armadaticket->isNiaga == true) ||
+                ($armadaticket->isNiaga == false && $armadaticket->authorization_type == 0))
             <div class="row mt-3">
                 <div class="col-md-12 d-flex flex-row justify-content-center align-items-center">
                     @foreach ($armadaticket->authorizations as $authorization)
@@ -893,7 +918,11 @@
                                 </div>
                             </div>
                             @php
-                                $salespoints = \App\Models\SalesPoint::where('id', '!=', $armadaticket->salespoint_id)->get();
+                                $salespoints = \App\Models\SalesPoint::where(
+                                    'id',
+                                    '!=',
+                                    $armadaticket->salespoint_id,
+                                )->get();
                             @endphp
                             <div class="col-md-12">
                                 <div class="form-group">

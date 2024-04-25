@@ -65,7 +65,7 @@
         </div>
     </div>
     <div class="content-body">
-        <form action="/createarmadaticket" id="armadaform" method="post">
+        <form action="/createarmadaticket" id="armadaform" method="post" enctype="multipart/form-data">
             @csrf
             <div class="row">
                 <div class="col-md-12 text-right">
@@ -185,6 +185,15 @@
                         </select>
                         {{-- <small class="text-danger">*approval hanya untuk pengadaan baru dan muncul berdasarkan pilihan salespoint</small> --}}
                     </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 upload_ba_armada_new" style="display:none">
+                    {{-- <div class="form-group">
+                        <label class="required_field">Upload BA Pengadaan Baru</label>
+                        <input type="file" class="form-control-file form-control-sm validatefilesize"
+                            name="upload_ba_armada_new" required>
+                    </div> --}}
                 </div>
             </div>
             <div class="col-md-12 d-flex flex-row justify-content-center align-items-center" id="authorization_field">
@@ -309,6 +318,8 @@
                 $('.po').val("").prop('disabled', true).prop('required', false);
                 $('.po').trigger('change');
                 $('.armada_type_field').hide();
+                $('.upload_ba_armada_new').hide();
+                $('.upload_ba_armada_new').empty();
                 $('.armada_type').val("").prop('disabled', true).prop('required', false);
 
                 $('#authorization').prop('disabled', true).prop('required', false);
@@ -319,6 +330,13 @@
                     // REVISI 09-06-2022
                     if (isNiaga == true) {
                         $('#authorization').prop('disabled', false).prop('required', true);
+                        $('.upload_ba_armada_new').show();
+                        $(".upload_ba_armada_new").append(
+                            `<div class="form-group">
+                                <label class="required_field">Upload BA Pengadaan Baru</label>
+                                <input type="file" class="form-control-file form-control-sm validatefilesize"
+                                    name="upload_ba_armada_new" required>
+                        </div>`);
                     }
 
                     $('.armada_type_field').show();
@@ -330,7 +348,8 @@
                             let data = response.data;
 
                             data.forEach(item => {
-                                let option_text = '<option value="' + item.id + '">' +
+                                let option_text = '<option value="' + item.id + '_' +
+                                    item.isSBH + '">' +
                                     item.name + ' -- ' + item.brand_name + '</option>';
                                 armada_type_select.append(option_text);
                             });
@@ -393,16 +412,20 @@
                 $('.is_budget, .author_select').prop('disabled', true).prop('required', false);
                 $('.is_budget, .author_select').val('');
                 if (armada_type_id != "") {
-                    if (isNiaga == true || armada_type_id == "8") {
+                    if (isNiaga == true || armada_type_id.substring(armada_type_id.length - 1) == "1") {
                         $('.is_budget_field').show();
                         $('.is_budget').prop('disabled', false).prop('required', true);
+                    } else if (isNiaga == false && armada_type_id != "8") {
+                        $('.upload_ba_armada_new').empty();
                     } else {
                         $('.is_budget_field').show();
                         $('.is_budget').val(1);
                     }
                     $('.is_budget').trigger('change');
 
-                    if (armada_type_id == "8") {
+                    console.log(armada_type_id.substring(armada_type_id.length - 1));
+
+                    if (armada_type_id.substring(armada_type_id.length - 1) == "1") {
                         $('.author_select_field').show();
                         $('.author_select').prop('disabled', false).prop('required', true);
                     }
@@ -411,10 +434,19 @@
             $('.author_select').change(function() {
                 $('#authorization').val("");
                 $('#authorization').trigger('change');
+                $('.upload_ba_armada_new').hide();
                 if ($(this).val() == "pr_manual") {
                     $('#authorization').prop('disabled', false).prop('required', true);
+                    $('.upload_ba_armada_new').show();
+                    $(".upload_ba_armada_new").append(
+                        `<div class="form-group">
+                                <label class="required_field">Upload BA Pengadaan Baru</label>
+                                <input type="file" class="form-control-file form-control-sm validatefilesize"
+                                    name="upload_ba_armada_new" required>
+                        </div>`);
                 } else {
                     $('#authorization').prop('disabled', true).prop('required', false);
+                    $('.upload_ba_armada_new').empty();
                 }
             })
 

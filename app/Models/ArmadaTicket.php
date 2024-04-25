@@ -240,6 +240,17 @@ class ArmadaTicket extends Model
         // 4 Otorisasi Selesai
     }
 
+    public function authorization_type() {
+        switch ($this->authorization_type) {
+            case 0:
+                return 'PR Manual';
+                break;
+            case 1:
+                return 'Form Fasilitas';
+                break;
+        }
+    }
+
     public function type()
     {
         switch ($this->ticketing_type) {

@@ -46,11 +46,12 @@ class PRController extends Controller
                 ->where('item_type', '!=', 4)
                 ->get();
 
-            // pr hanya untuk pengadaan armada & niaga
+            // pr hanya untuk pengadaan armada & niaga, non niaga & pr manual
             $armadatickets = ArmadaTicket::where('status', '>', 4)
                 ->whereIn('salespoint_id', $salespoint_ids)
                 ->where('ticketing_type', 0)
-                ->where('isNiaga', 1)
+                ->whereIn('isNiaga', [0, 1])
+                ->where('authorization_type', 0)
                 ->get();
 
             // pr hanya untuk pengadaan security dan pengadaan lembur
@@ -67,7 +68,8 @@ class PRController extends Controller
             $armadatickets = ArmadaTicket::whereIn('status', [2, 3, 4])
                 ->whereIn('salespoint_id', $salespoint_ids)
                 ->where('ticketing_type', 0)
-                ->where('isNiaga', 1)
+                ->whereIn('isNiaga', [0, 1])
+                ->where('authorization_type', 0)
                 ->get();
 
             // pr hanya untuk pengadaan security dan pengadaan lembur

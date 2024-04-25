@@ -1,8 +1,6 @@
 @section('ba_ticketing_block')
     @php
-        $armada_ticketing_block = DB::table('ticketing_block')
-            ->where('ticketing_type_name', 'Armada')
-            ->first();
+        $armada_ticketing_block = DB::table('ticketing_block')->where('ticketing_type_name', 'Armada')->first();
         $ticketing_block_open_request = \App\Models\TicketingBlockOpenRequest::where('ticket_code', $armadaticket->code)
             ->whereIn('status', [0, 1])
             ->first();
@@ -264,6 +262,18 @@
                 </div>
             @endif
         </div>
+        <div class="col-12 d-flex flex-column mt-3">
+            <div class="form-group row mt-2">
+                {{-- <div class="col-1">7.</div> --}}
+                <div class="col-2">BA Renewal</div>
+                <div class="col-1">:</div>
+                <div class="col-7">
+                    <a class="text-primary font-weight-bold ml-1" style="cursor: pointer;"
+                        onclick='window.open("/storage/{{ $perpanjanganform->ba_renewal_path }}")'>Tampilkan
+                        BA Renewal</a>
+                </div>
+            </div>
+        </div>
     @else
         @php
             $po_before_end_date = false;
@@ -281,7 +291,7 @@
                 $po_before_end_date = true;
             }
         @endphp
-        <form id="formperpanjangan" method="post" action="/addperpanjanganform">
+        <form id="formperpanjangan" method="post" action="/addperpanjanganform" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="armada_ticket_id" value="{{ $armadaticket->id }}">
             <input type="hidden" name="armada_id" value="{{ $armadaticket->armada_id }}">
@@ -487,7 +497,7 @@
                         {{$string}}</option>
                     @endforeach
                 </select>
-            </div> --}}
+                </div> --}}
                     {{-- autoselect --}}
                     <div class="form-group">
                         <label class="required_field">Matriks Approval</label>
@@ -525,6 +535,9 @@
                 <div class="col-12 text-center">
                     <button type="submit" class="btn btn-primary">Submit</button>
                 </div>
+            </div>
+            <div class="col-12 d-flex flex-column mt-2 ba_renewal" name="ba_renewal" id="ba_renewal"
+                style="display:none !important">
             </div>
         </form>
     @endisset
@@ -641,6 +654,8 @@
                     case 'perpanjangan':
                         $('#perpanjangan_length').prop('disabled', false);
                         $('#perpanjangan_length').prop('required', true);
+                        $('#ba_renewal').attr('style', 'display: none !important');
+                        $("#ba_renewal").empty();
                         break;
                     case 'stopsewa':
                         $('#stopsewa_date').prop('disabled', false);
@@ -649,10 +664,31 @@
                         $('#renewal_radio').prop('disabled', false);
                         $('#end_radio').prop('disabled', false);
                         $('#replace_radio').prop('required', true);
+                        $('#ba_renewal').attr('style', 'display: none !important');
+                        $("#ba_renewal").empty();
                         break;
                 }
             });
             $('input[type=radio][name=form_type]').trigger('change');
+
+            $("input[type=radio][name=alasan]").change(function() {
+                let value = $(this).val();
+                if (value == "renewal") {
+                    $("#ba_renewal").show();
+                    $("#ba_renewal").append(
+                        `<div class="row mt-2"> 
+                            <div class="col-2 required_field font-weight-bold">BA Renewal</div>
+                            <div class="col-1">:</div>
+                            <div class="col-7">
+                                <input type="file" class="form-control-file form-control-sm validatefilesize"
+                                name="upload_ba_renewal" required>
+                            </div>
+                        </div>`);
+                } else {
+                    $('#ba_renewal').attr('style', 'display: none !important');
+                    $("#ba_renewal").empty();
+                }
+            });
         });
 
         function perpanjanganapprove(perpanjangan_form_id) {

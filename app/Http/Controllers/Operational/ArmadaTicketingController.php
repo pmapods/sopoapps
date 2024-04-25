@@ -91,7 +91,7 @@ class ArmadaTicketingController extends Controller
             // NEW tambah validasi untuk pengadaan baru "NON NIAGA" dengan jenis selain "GM PASSENGER" bisa skip validasi
             // HARDCODE --START
             $needvalidation = true;
-            if ($request->isNiaga == false && $request->armada_type_id != 8) {
+            if ($request->isNiaga == false && substr($request->armada_type_id, 0, 1) != 8) {
                 $needvalidation = false;
             }
             // HARDCODE --END
@@ -109,7 +109,7 @@ class ArmadaTicketingController extends Controller
                 if ($budget == null) {
                     return back()->with('error', 'Budget belum tersedia. harap melakukan request budget terlebih dahulu');
                 }
-                $armadatype = ArmadaType::find($request->armada_type_id);
+                $armadatype = ArmadaType::find(substr($request->armada_type_id, 0, 1));
                 $vendorname = $request->vendor_recommendation_name;
                 $checkBudget = $budget->budget_detail->filter(function ($item) use ($armadatype, $vendorname) {
                     $vendor = Vendor::where('code', trim($item->vendor_code))->first();
@@ -136,7 +136,7 @@ class ArmadaTicketingController extends Controller
 
             $isBudget = $request->isBudget ?? null;
             // jika non niaga selain GM passenger (armada_type_id = 8) auto budget true
-            if ($request->isNiaga == false && $request->armada_type_id == "8") {
+            if ($request->isNiaga == false && substr($request->armada_type_id, 0, 1) == "8") {
                 $isBudget = true;
             }
             $newTicket->isBudget         = $isBudget;
@@ -147,9 +147,30 @@ class ArmadaTicketingController extends Controller
             $newTicket->ticketing_type   = $request->pengadaan_type;
             // }
 
+            //Form Fasilitas / PR Manual
+            if ($request->authorSelect == "facility_form") {
+                $authorization_type = 1;
+            }
+            else {
+                $authorization_type = 0;
+            }
+
+            $newTicket->authorization_type   = $authorization_type;
+
             $newTicket->vendor_recommendation_name   = $request->vendor_recommendation_name;
             if ($newTicket->ticketing_type == 0) {
-                $newTicket->armada_type_id   = $request->armada_type_id;
+                $newTicket->armada_type_id   = substr($request->armada_type_id, 0, 1);
+
+                if ($request->isNiaga == true || $request->authorSelect == "pr_manual") {
+                    $ba_new_armada                  = $request->file('upload_ba_armada_new');
+                    $file_ba_new_armada_ext         = pathinfo($ba_new_armada->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $path                           = '/attachments/ticketing/armada/' . $code . '/new_armada/BA_NEW_ARMADA_' . $salespointname . '.' . $file_ba_new_armada_ext;
+                    $info                           = pathinfo($path);
+                    $ba_new_armada_path             = $ba_new_armada->storeAs($info['dirname'], $info['basename'], 'public');
+
+                    $newTicket->ba_new_armada       = $ba_new_armada_path;
+                }
             }
             if (in_array($newTicket->ticketing_type, [1, 2, 3, 4])) {
                 $po = Po::where('no_po_sap', $request->po_id)->first();
@@ -158,7 +179,7 @@ class ArmadaTicketingController extends Controller
                     throw new \Exception('PO belum dipilih');
                 }
                 if ($po) {
-                    $newTicket->armada_type_id      = $po->armada_ticket->armada_type_id;
+                    $newTicket->armada_type_id      = substr($po->armada_ticket->armada_type_id, 0, 1);
                     $newTicket->armada_id           = $po->armada_ticket->armada_id;
                     $newTicket->po_reference_number = $po->no_po_sap;
                 }
@@ -212,7 +233,7 @@ class ArmadaTicketingController extends Controller
             $newTicket->created_by       = Auth::user()->id;
             $newTicket->save();
 
-            if (($newTicket->ticketing_type == 0 && $newTicket->isNiaga == true) || $request->authorSelect == "pr_manual") {
+            if (($newTicket->ticketing_type == 0 && $newTicket->isNiaga == true) || $newTicket->isNiaga == false && $request->authorSelect == "pr_manual") {
                 // hanya pengadaan baru yang butuh otorisasi
                 // REVISI 09-06-2022 approval dipindah ke matriks form fasilitas
                 $authorization = Authorization::findOrFail($request->authorization_id);
@@ -418,6 +439,15 @@ class ArmadaTicketingController extends Controller
                 }
             }
 
+            $ba_renewal                     = $request->file('upload_ba_renewal');
+            $file_ba_renewal_ext            = pathinfo($ba_renewal->getClientOriginalName(), PATHINFO_EXTENSION);
+            $salespointname                 = str_replace(' ', '_', $request->salespoint_name);
+            $path                           = '/attachments/ticketing/armada/' . $armadaticket->code . '/renewal/BA_RENEWAL_' . $salespointname . '.' . $file_ba_renewal_ext;
+            $info                           = pathinfo($path);
+            $ba_renewal_path                = $ba_renewal->storeAs($info['dirname'], $info['basename'], 'public');
+
+            // dd($request, $ba_renewal_path);
+
             $form                   = new PerpanjanganForm;
             $form->armada_ticket_id = $request->armada_ticket_id;
             $form->salespoint_id    = $request->salespoint_id;
@@ -442,6 +472,13 @@ class ArmadaTicketingController extends Controller
                 if ($request->po_before_end_date == true) {
                     $form->is_percepatan = true;
                 }
+            }
+            if ($request->alasan == "renewal" ) {
+                $form->ba_renewal_path  = $ba_renewal_path;
+                $form->is_renewal       = 1;
+            }
+            else {
+                $form->is_renewal       = 0;
             }
             $form->created_by       = Auth::user()->id;
             $form->save();
@@ -1426,7 +1463,7 @@ class ArmadaTicketingController extends Controller
                     throw new \Exception('Nomor Plat tidak boleh kosong.');
                 }
                 $newArmada->salespoint_id   = $armadaticket->salespoint_id;
-                $newArmada->armada_type_id  = $armadaticket->armada_type_id;
+                $newArmada->armada_type_id  = substr($armadaticket->armada_type_id, 0, 1);
                 $newArmada->plate           = str_replace(' ', '', strtoupper($request->plate));
                 $newArmada->vehicle_year    = $request->vehicle_year . '-01-01';
                 $newArmada->status          = ($request->booked_by == null) ? 0 : 1;

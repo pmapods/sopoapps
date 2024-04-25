@@ -104,7 +104,7 @@ class SecurityTicketingController extends Controller
                 $budget = BudgetUpload::where('salespoint_id', $request->salespoint_id)
                     ->where('status', 1)
                     ->where('type', 'assumption')
-                    ->where('year', '=', 2023)
+                    ->where('year', '=', Carbon::now()->year)
                     ->first();
                 $budget_upload_id = $budget->id;
                 if ($budget == null) {

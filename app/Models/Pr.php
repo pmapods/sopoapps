@@ -10,7 +10,7 @@ class Pr extends Model
 {
     use SoftDeletes;
     protected $table = 'pr';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id'; 
 
     public function ticket(){
         return $this->belongsTo(Ticket::class);

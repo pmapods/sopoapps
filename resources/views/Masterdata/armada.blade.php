@@ -270,7 +270,11 @@
                                         @endif
                                     </td>
                                     <td>{{ $armada_type->brand_name }}</td>
-                                    <td>{{ $armada_type->isNiaga() }}</td>
+                                    <td>{{ $armada_type->isNiaga() }}
+                                        @if ($armada_type->isNiaga() == 'Non Niaga' && $armada_type->isSBH() == 'SBH')
+                                            {{ '(' . $armada_type->isSBH() . ')' }}
+                                        @endif
+                                    </td>
                                     <td class="text-danger"><i class="fas fa-trash delete_icon"
                                             data-id="{{ $armada_type->id }}" aria-hidden="true"></i></td>
                                 </tr>
@@ -306,7 +310,7 @@
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label class="required_field">Pilih Jenis Niaga</label>
-                                    <select class="form-control" name="isNiaga" required>
+                                    <select class="form-control isNiaga" name="isNiaga" required>
                                         <option value="">-- Pilih Jenis Niaga --</option>
                                         <option value="0">Non Niaga</option>
                                         <option value="1">Niaga</option>
@@ -319,6 +323,11 @@
                                     <label class="">&nbsp;</label>
                                     <button type="submit" class="btn btn-primary form-control">Tambah</button>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-2 isSBH" style="display:none">
+
                             </div>
                         </div>
                     </form>
@@ -390,6 +399,24 @@
                 let form = $('#deletearmadatypeform');
                 form.find('.armada_type_id').val(id);
                 form.submit();
+            })
+
+            $('.isNiaga').change(function() {
+                let isNiaga = $(this).val();
+                $('.isSBH').hide();
+                $('.isSBH').empty();
+                if (isNiaga == 0) {
+                    $('.isSBH').show();
+                    $(".isSBH").append(
+                        `<div class="form-group">
+                            <label class="required_field">Pilih Jenis SBH</label>
+                            <select class="form-control" name="isSBH" required>
+                                <option value="">-- Pilih Jenis SBH --</option>
+                                <option value="0">Non SBH</option>
+                                <option value="1">SBH</option>
+                            </select>
+                        </div>`);
+                }
             })
 
             let menu = @json(Session::get('menu'));

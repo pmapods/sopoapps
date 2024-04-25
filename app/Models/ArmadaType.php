@@ -33,4 +33,15 @@ class ArmadaType extends Model
                 break;
         }
     }
+
+    public function isSBH() {
+        switch ($this->isSBH) {
+            case 0:
+                return 'Non SBH';
+                break;
+            case 1:
+                return 'SBH';
+                break;
+        }
+    }
 }

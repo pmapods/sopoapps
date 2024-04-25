@@ -80,7 +80,16 @@
                         <input type="hidden" name="pr_detail_id" value="{{$detail->id}}">
                         <tr>
                             <td>1</td>
-                            <td>{{ $detail->name }}</td>
+                            <td>
+                                {{ $detail->name }}
+                                @if ($armadaticket->ticketing_type == 0)
+                                    @if (isset($armadaticket->ba_new_armada))
+                                        <a class="text-primary small text-nowrap" role="button"
+                                            onclick='window.open("/storage/{{ $armadaticket->ba_new_armada }}")'>
+                                            Tampilkan file BA pengadaan armada</a>    
+                                    @endif
+                                @endif
+                            </td>
                             <td>{{ $detail->uom }}</td>
                             <td>{{ $detail->qty }}</td>
                             <td>{{ $detail->price ?? '-' }}</td>
@@ -105,7 +114,16 @@
                     @if (empty($armadaticket->pr) || ($armadaticket->pr->pr_detail->count() ?? 0)  < 1)    
                     <tr>
                         <td>1</td>
-                        <td>{{$armadaticket->armada_type->name}} {{ $armadaticket->armada_type->brand_name }}</td>
+                        <td>
+                            {{$armadaticket->armada_type->name}} {{ $armadaticket->armada_type->brand_name }}
+                            @if ($armadaticket->ticketing_type == 0)
+                                @if (isset($armadaticket->ba_new_armada))
+                                    <a class="text-primary small text-nowrap" role="button"
+                                        onclick='window.open("/storage/{{ $armadaticket->ba_new_armada }}")'>
+                                        Tampilkan file BA pengadaan armada</a>    
+                                @endif
+                            @endif
+                        </td>
                         <td>Unit</td>
                         <td>1</td>
                         <td>-</td>

@@ -363,7 +363,7 @@
                 @endif
             @endif
 
-            @if (in_array($securityticket->type(), ['End Kontrak']))
+            @if (in_array($securityticket->type(), ['End Kontrak', 'Percepatan End Kontrak']))
                 @if ($securityticket->status == 5)
                     <div class="col-6 d-flex flex-column">
                         <form action="/uploadsecurityendkontrak" method="post" enctype="multipart/form-data">

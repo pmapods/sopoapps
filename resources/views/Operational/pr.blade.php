@@ -120,7 +120,11 @@
                                     <td>{{ $ticket->code }}</td>
                                     <td>{{ $ticket->salespoint->name }}</td>
                                     <td>{{ $ticket->created_at->translatedFormat('d F Y (H:i)') }}</td>
-                                    <td>{{ $ticket->armada_type->name }} {{ $ticket->armada_type->brand_name }}</td>
+                                    <td>{{ $ticket->armada_type->name }} {{ $ticket->armada_type->brand_name }}
+                                        @if ($ticket->armada_type->isSBH == 1)
+                                            ({{ $ticket->armada_type->isSBH() }})
+                                        @endif
+                                    </td>
                                     <td>
                                         {{ $ticket->status() }}
                                         @if (isset($ticket->pr) && ($ticket->pr->status ?? '') == -1)

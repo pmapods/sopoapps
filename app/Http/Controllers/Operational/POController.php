@@ -2442,7 +2442,6 @@ class POController extends Controller
                 ->select('po.no_po_sap AS po_number', 'armada.plate AS plate', 'armada_ticket.vendor_recommendation_name', 'armada_ticket.vendor_name', 'po.start_date as start_date', 'po.end_date as end_date', 'vendor.alias')
                 ->get();
 
-
             foreach ($pos as $po) {
                 $po->vendor = ($po->vendor_name != null) ? $po->vendor_name : $po->alias;
             }
@@ -2455,6 +2454,7 @@ class POController extends Controller
                     return false;
                 }
             });
+
             $salespoint_name = SalesPoint::find($request->salespoint_id)->name;
             $pomanual = PoManual::where('status', 3)
                 ->where('category_name', 'armada')
