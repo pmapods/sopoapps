@@ -91,7 +91,7 @@ class ArmadaTicketingController extends Controller
             // NEW tambah validasi untuk pengadaan baru "NON NIAGA" dengan jenis selain "GM PASSENGER" bisa skip validasi
             // HARDCODE --START
             $needvalidation = true;
-            if ($request->isNiaga == false && substr($request->armada_type_id, 0, 1) != 8) {
+            if ($request->isNiaga == false && $request->armada_type_id != 8) {
                 $needvalidation = false;
             }
             // HARDCODE --END
@@ -109,7 +109,7 @@ class ArmadaTicketingController extends Controller
                 if ($budget == null) {
                     return back()->with('error', 'Budget belum tersedia. harap melakukan request budget terlebih dahulu');
                 }
-                $armadatype = ArmadaType::find(substr($request->armada_type_id, 0, 1));
+                $armadatype = ArmadaType::find($request->armada_type_id);
                 $vendorname = $request->vendor_recommendation_name;
                 $checkBudget = $budget->budget_detail->filter(function ($item) use ($armadatype, $vendorname) {
                     $vendor = Vendor::where('code', trim($item->vendor_code))->first();
@@ -136,7 +136,7 @@ class ArmadaTicketingController extends Controller
 
             $isBudget = $request->isBudget ?? null;
             // jika non niaga selain GM passenger (armada_type_id = 8) auto budget true
-            if ($request->isNiaga == false && substr($request->armada_type_id, 0, 1) == "8") {
+            if ($request->isNiaga == false && $request->armada_type_id == 8) {
                 $isBudget = true;
             }
             $newTicket->isBudget         = $isBudget;
@@ -159,7 +159,7 @@ class ArmadaTicketingController extends Controller
 
             $newTicket->vendor_recommendation_name   = $request->vendor_recommendation_name;
             if ($newTicket->ticketing_type == 0) {
-                $newTicket->armada_type_id   = substr($request->armada_type_id, 0, 1);
+                $newTicket->armada_type_id   = $request->armada_type_id;
 
                 if ($request->isNiaga == true || $request->authorSelect == "pr_manual") {
                     if ($request->hasFile('upload_ba_armada_new')) {
@@ -1467,7 +1467,7 @@ class ArmadaTicketingController extends Controller
                     throw new \Exception('Nomor Plat tidak boleh kosong.');
                 }
                 $newArmada->salespoint_id   = $armadaticket->salespoint_id;
-                $newArmada->armada_type_id  = substr($armadaticket->armada_type_id, 0, 1);
+                $newArmada->armada_type_id  = $armadaticket->armada_type_id;
                 $newArmada->plate           = str_replace(' ', '', strtoupper($request->plate));
                 $newArmada->vehicle_year    = $request->vehicle_year . '-01-01';
                 $newArmada->status          = ($request->booked_by == null) ? 0 : 1;
