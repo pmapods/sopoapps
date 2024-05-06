@@ -173,6 +173,7 @@
             </div>
             <div class="col-12 text-center">
                 <span class="mr-2">Alasan : </span>
+                {{-- {{ $armadaticket->type() }} --}}
                 @switch($perpanjanganform->stopsewa_reason)
                     @case('replace')
                         Replace @if ($perpanjanganform->is_percepatan == true)

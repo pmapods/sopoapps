@@ -103,7 +103,6 @@ class POController extends Controller
                 ->where('item_type', '!=', 4)
                 ->select('ticket.*')
                 ->distinct('ticket.id')
-
                 ->get();
 
             // munculkan data ticket yang po nya belum selesai semua & yang masih belom ada po / masih di setup
@@ -190,6 +189,7 @@ class POController extends Controller
             $employee_access = Auth::user()->location_access_list();
             $ticketing =  ArmadaTicket::leftJoin('salespoint', 'salespoint.id', '=', 'armada_ticket.salespoint_id')
                 ->leftJoin('po', 'po.armada_ticket_id', '=', 'armada_ticket.id')
+                ->leftJoin('perpanjangan_form', 'perpanjangan_form.armada_ticket_id', '=', 'armada_ticket.id')
                 ->where(function ($query) use ($employee_access, $search_value) {
                     // filter apakan punya akses
                     $query->whereIn('armada_ticket.salespoint_id', $employee_access);
@@ -203,7 +203,7 @@ class POController extends Controller
                         ->orWhereIn('armada_ticket.ticketing_type', $ticketing_type_array);
                 })
                 ->where('armada_ticket.status', '>=', 4)
-                // ->where('po.armada_ticket_id', '!=', null)
+                ->where('perpanjangan_form.stopsewa_reason', '!=', 'end')
                 ->select('armada_ticket.*')
                 ->distinct('armada_ticket.id')
                 ->get();

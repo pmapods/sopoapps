@@ -15,7 +15,8 @@ use App\Models\MutasiForm;
 
 class FormValidationController extends Controller
 {
-    public function formValidationView(Request $request){
+    public function formValidationView(Request $request) {
+        // dd($request);
         $salespoint_ids = Auth::user()->location_access->pluck('salespoint_id');
         // ambil form2 yang sesuai akses salespoint dan status armada ticket nya sudah ready buat PO (4)
         $facility_form = FacilityForm::join('armada_ticket','armada_ticket.id','=','facility_form.armada_ticket_id')
@@ -28,7 +29,7 @@ class FormValidationController extends Controller
                 ->where('perpanjangan_form.is_form_validated',false)
                 ->whereIn('perpanjangan_form.salespoint_id',$salespoint_ids)
                 ->where('armada_ticket.status',4)
-                ->select('perpanjangan_form.*')
+                ->select('perpanjangan_form.*', 'armada_ticket.ticketing_type', 'perpanjangan_form.stopsewa_reason', 'perpanjangan_form.is_percepatan')
                 ->get();
         $mutasi_form = MutasiForm::join('armada_ticket','armada_ticket.id','=','mutasi_form.armada_ticket_id')
                 ->where('mutasi_form.is_form_validated',false)
@@ -49,7 +50,18 @@ class FormValidationController extends Controller
         foreach($perpanjangan_form as $form){
             $item = new \stdClass();
             $item->data = $form->toJson();
-            $item->type = 'perpanjangan_form';
+            if ($form->ticketing_type == 4 && $form->is_percepatan == true && $form->stopsewa_reason == 'replace') {
+                $item->type = 'percepatan_replace_form';
+            }
+            elseif ($form->ticketing_type == 4 && $form->is_percepatan == true && $form->stopsewa_reason == 'renewal') {
+                $item->type = 'percepatan_renewal_form';
+            }
+            elseif ($form->ticketing_type == 4 && $form->is_percepatan == true && $form->stopsewa_reason == 'end') {
+                $item->type = 'percepatan_end_kontrak_form';
+            }
+            else {
+                $item->type = 'perpanjangan_form';
+            }
             $item->armada_ticket = $form->armada_ticket;
             $item->salespoint = $form->armada_ticket->salespoint;
             $item->created_at = $form->created_at;
@@ -73,7 +85,7 @@ class FormValidationController extends Controller
             $type = $request->type;
             $formdata = json_decode($request->formdata);
             
-            if($type == "perpanjangan_form"){
+            if($type == "perpanjangan_form" || $type == "percepatan_replace_form" || $type == "percepatan_renewal_form" || $type == "percepatan_end_kontrak_form"){
                 $armadaticket = ArmadaTicket::findOrFail($formdata->armada_ticket_id);
                 if($armadaticket->status != 4){
                     throw new \Exception("Form Perpanjangan belum siap divalidasi");
@@ -101,6 +113,7 @@ class FormValidationController extends Controller
 
     public function formValidationApprove(Request $request){
         try{
+            // dd($request->type);
             DB::beginTransaction();
             switch($request->type){
                 case 'perpanjangan_form':
@@ -124,6 +137,59 @@ class FormValidationController extends Controller
                         $armadaticket->status = 5;
                         $armadaticket->save();
                     }
+                    break;
+                case 'percepatan_replace_form':
+                    $perpanjangan_form = PerpanjanganForm::findOrFail($request->perpanjangan_form_id);
+                    $armadaticket = $perpanjangan_form->armada_ticket;
+
+                    $perpanjangan_form->is_form_validated = true;
+                    $perpanjangan_form->validated_by = Auth::user()->id;
+                    $perpanjangan_form->validated_at = now();
+                    $perpanjangan_form->save();
+
+                    $monitor                        = new ArmadaTicketMonitoring;
+                    $monitor->armada_ticket_id      = $armadaticket->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Approve Validasi Formulir Percepatan Replace.';
+                    $monitor->save();
+                    break;
+                case 'percepatan_end_kontrak_form':
+                    $perpanjangan_form = PerpanjanganForm::findOrFail($request->perpanjangan_form_id);
+                    $armadaticket = $perpanjangan_form->armada_ticket;
+    
+                    $perpanjangan_form->is_form_validated = true;
+                    $perpanjangan_form->validated_by = Auth::user()->id;
+                    $perpanjangan_form->validated_at = now();
+                    $perpanjangan_form->save();
+    
+                    $monitor                        = new ArmadaTicketMonitoring;
+                    $monitor->armada_ticket_id      = $armadaticket->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Approve Validasi Formulir Percepatan End Kontrak.';
+                    $monitor->save();
+
+                    // jika form percepatan end kontrak, setelah tervalidasi oleh GA langsung ubah status "menunggu upload BASTK"
+                    $armadaticket->status = 5;
+                    $armadaticket->save();
+                    
+                    break;
+                case 'percepatan_renewal_form':
+                    $perpanjangan_form = PerpanjanganForm::findOrFail($request->perpanjangan_form_id);
+                    $armadaticket = $perpanjangan_form->armada_ticket;
+        
+                    $perpanjangan_form->is_form_validated = true;
+                    $perpanjangan_form->validated_by = Auth::user()->id;
+                    $perpanjangan_form->validated_at = now();
+                    $perpanjangan_form->save();
+        
+                    $monitor                        = new ArmadaTicketMonitoring;
+                    $monitor->armada_ticket_id      = $armadaticket->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Approve Validasi Formulir Percepatan Renewal.';
+                    $monitor->save();
                     break;
                 case 'mutasi_form':
                     $mutasi_form = MutasiForm::findOrFail($request->mutasi_form_id);
@@ -162,7 +228,7 @@ class FormValidationController extends Controller
                     break;
             }
             DB::commit();
-            return redirect('/form-validation')->with('success', 'Berhasil melakukan approve validasi form perpanjangan');
+            return redirect('/form-validation')->with('success', 'Berhasil melakukan approve validasi form ' . ucwords(str_replace("_"," ",$request->type)));
         }catch(\Exception $ex){
             DB::rollback();
             return back()->with('error','Gagal melakukan approve validasi form ('.$ex->getMessage().')');
@@ -193,6 +259,67 @@ class FormValidationController extends Controller
                     $monitor->employee_name         = Auth::user()->name;
                     $monitor->message               = 'Reject Validasi Formulir Perpanjangan.';
                     $monitor->save();
+                    break;
+                case 'percepatan_replace_form':
+                    $perpanjangan_form = PerpanjanganForm::findOrFail($request->perpanjangan_form_id);
+                    $armadaticket = $perpanjangan_form->armada_ticket;
+
+                    $perpanjangan_form->status              = -1;
+                    $perpanjangan_form->terminated_by       = Auth::user()->id;
+                    $perpanjangan_form->termination_reason  = $request->reason;
+                    $perpanjangan_form->save();
+                    $perpanjangan_form->delete();
+
+                    $armadaticket->status              = 0;
+                    $armadaticket->save();
+                    
+                    $armadaticket->refresh();
+                    $monitor                        = new ArmadaTicketMonitoring;
+                    $monitor->armada_ticket_id      = $armadaticket->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Reject Validasi Formulir Percepatan Replace.';
+                    $monitor->save();
+                    break;
+                case 'percepatan_renewal_form':
+                    $perpanjangan_form = PerpanjanganForm::findOrFail($request->perpanjangan_form_id);
+                    $armadaticket = $perpanjangan_form->armada_ticket;
+
+                    $perpanjangan_form->status              = -1;
+                    $perpanjangan_form->terminated_by       = Auth::user()->id;
+                    $perpanjangan_form->termination_reason  = $request->reason;
+                    $perpanjangan_form->save();
+                    $perpanjangan_form->delete();
+
+                    $armadaticket->status              = 0;
+                    $armadaticket->save();
+                    
+                    $armadaticket->refresh();
+                    $monitor                        = new ArmadaTicketMonitoring;
+                    $monitor->armada_ticket_id      = $armadaticket->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Reject Validasi Formulir Percepatan Renewal.';
+                    break;
+                case 'percepatan_end_kontrak_form':
+                    $perpanjangan_form = PerpanjanganForm::findOrFail($request->perpanjangan_form_id);
+                    $armadaticket = $perpanjangan_form->armada_ticket;
+
+                    $perpanjangan_form->status              = -1;
+                    $perpanjangan_form->terminated_by       = Auth::user()->id;
+                    $perpanjangan_form->termination_reason  = $request->reason;
+                    $perpanjangan_form->save();
+                    $perpanjangan_form->delete();
+
+                    $armadaticket->status              = 0;
+                    $armadaticket->save();
+                    
+                    $armadaticket->refresh();
+                    $monitor                        = new ArmadaTicketMonitoring;
+                    $monitor->armada_ticket_id      = $armadaticket->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Reject Validasi Formulir Percepatan End Kontrak.';
                     break;
                 case 'mutasi_form':
                     $mutasi_form = MutasiForm::findOrFail($request->mutasi_form_id);
@@ -241,7 +368,7 @@ class FormValidationController extends Controller
                     break;
                 }
             DB::commit();
-            return redirect('/form-validation')->with('success', 'Berhasil melakukan reject validasi form perpanjangan');
+            return redirect('/form-validation')->with('success', 'Berhasil melakukan reject validasi form '  . ucwords(str_replace("_"," ",$request->type)));
         }catch(\Exception $ex){
             DB::rollback();
             return back()->with('error','Gagal melakukan reject validasi form ('.$ex->getMessage().')');

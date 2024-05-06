@@ -162,14 +162,16 @@ class ArmadaTicketingController extends Controller
                 $newTicket->armada_type_id   = substr($request->armada_type_id, 0, 1);
 
                 if ($request->isNiaga == true || $request->authorSelect == "pr_manual") {
-                    $ba_new_armada                  = $request->file('upload_ba_armada_new');
-                    $file_ba_new_armada_ext         = pathinfo($ba_new_armada->getClientOriginalName(), PATHINFO_EXTENSION);
-                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
-                    $path                           = '/attachments/ticketing/armada/' . $code . '/new_armada/BA_NEW_ARMADA_' . $salespointname . '.' . $file_ba_new_armada_ext;
-                    $info                           = pathinfo($path);
-                    $ba_new_armada_path             = $ba_new_armada->storeAs($info['dirname'], $info['basename'], 'public');
-
-                    $newTicket->ba_new_armada       = $ba_new_armada_path;
+                    if ($request->hasFile('upload_ba_armada_new')) {
+                        $ba_new_armada                  = $request->file('upload_ba_armada_new');
+                        $file_ba_new_armada_ext         = pathinfo($ba_new_armada->getClientOriginalName(), PATHINFO_EXTENSION);
+                        $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                        $path                           = '/attachments/ticketing/armada/' . $code . '/new_armada/BA_NEW_ARMADA_' . $salespointname . '.' . $file_ba_new_armada_ext;
+                        $info                           = pathinfo($path);
+                        $ba_new_armada_path             = $ba_new_armada->storeAs($info['dirname'], $info['basename'], 'public');
+    
+                        $newTicket->ba_new_armada       = $ba_new_armada_path;
+                    }
                 }
             }
             if (in_array($newTicket->ticketing_type, [1, 2, 3, 4])) {
@@ -179,7 +181,7 @@ class ArmadaTicketingController extends Controller
                     throw new \Exception('PO belum dipilih');
                 }
                 if ($po) {
-                    $newTicket->armada_type_id      = substr($po->armada_ticket->armada_type_id, 0, 1);
+                    $newTicket->armada_type_id      = $po->armada_ticket->armada_type_id;
                     $newTicket->armada_id           = $po->armada_ticket->armada_id;
                     $newTicket->po_reference_number = $po->no_po_sap;
                 }
@@ -439,14 +441,14 @@ class ArmadaTicketingController extends Controller
                 }
             }
 
-            $ba_renewal                     = $request->file('upload_ba_renewal');
-            $file_ba_renewal_ext            = pathinfo($ba_renewal->getClientOriginalName(), PATHINFO_EXTENSION);
-            $salespointname                 = str_replace(' ', '_', $request->salespoint_name);
-            $path                           = '/attachments/ticketing/armada/' . $armadaticket->code . '/renewal/BA_RENEWAL_' . $salespointname . '.' . $file_ba_renewal_ext;
-            $info                           = pathinfo($path);
-            $ba_renewal_path                = $ba_renewal->storeAs($info['dirname'], $info['basename'], 'public');
-
-            // dd($request, $ba_renewal_path);
+            if ($request->hasFile('upload_ba_renewal')){
+                $ba_renewal                     = $request->file('upload_ba_renewal');
+                $file_ba_renewal_ext            = pathinfo($ba_renewal->getClientOriginalName(), PATHINFO_EXTENSION);
+                $salespointname                 = str_replace(' ', '_', $request->salespoint_name);
+                $path                           = '/attachments/ticketing/armada/' . $armadaticket->code . '/renewal/BA_RENEWAL_' . $salespointname . '.' . $file_ba_renewal_ext;
+                $info                           = pathinfo($path);
+                $ba_renewal_path                = $ba_renewal->storeAs($info['dirname'], $info['basename'], 'public');
+            }
 
             $form                   = new PerpanjanganForm;
             $form->armada_ticket_id = $request->armada_ticket_id;
@@ -595,13 +597,15 @@ class ArmadaTicketingController extends Controller
             $form->buku                     = $request->buku;
             $form->nama_tempat              = $request->nama_tempat;
             $form->created_by               = Auth::user()->id;
-            $ba_mutasi                      = $request->file('upload_ba_mutasi');
-            $file_ba_mutasi_ext             = pathinfo($ba_mutasi->getClientOriginalName(), PATHINFO_EXTENSION);
-            $salespointname                 = str_replace(' ', '_', $request->sender_salespoint_name);
-            $path                           = '/attachments/ticketing/armada/' . str_replace('/', '-', $code) . '/mutasi/BA_MUTASI_' . $salespointname . '.' . $file_ba_mutasi_ext;
-            $info                           = pathinfo($path);
-            $ba_mutasi_path                 = $ba_mutasi->storeAs($info['dirname'], $info['basename'], 'public');
-            $form->file_ba_mutasi           = $ba_mutasi_path;          
+            if ($request->hasFile('upload_ba_mutasi')) {
+                $ba_mutasi                      = $request->file('upload_ba_mutasi');
+                $file_ba_mutasi_ext             = pathinfo($ba_mutasi->getClientOriginalName(), PATHINFO_EXTENSION);
+                $salespointname                 = str_replace(' ', '_', $request->sender_salespoint_name);
+                $path                           = '/attachments/ticketing/armada/' . str_replace('/', '-', $code) . '/mutasi/BA_MUTASI_' . $salespointname . '.' . $file_ba_mutasi_ext;
+                $info                           = pathinfo($path);
+                $ba_mutasi_path                 = $ba_mutasi->storeAs($info['dirname'], $info['basename'], 'public');
+            }
+            $form->file_ba_mutasi           = $ba_mutasi_path;      
             $form->alasan_mutasi            = $request->alasan_mutasi;
             $form->save();
 
@@ -941,28 +945,28 @@ class ArmadaTicketingController extends Controller
             if ($authorization == null) {
                 switch ($armadaticket->type()) {
                     case 'Percepatan Replace':
-                        $armadaticket->status = 5;
+                        $armadaticket->status = 4;
                         $message = "Kelengkapan akan diteruskan ke GA untuk dilakukan proses validasi.";
                         $armadaticket->save();
                         DB::commit();
                         break;
 
                     case 'Percepatan Renewal':
-                        $armadaticket->status = 5;
+                        $armadaticket->status = 4;
                         $message = "Kelengkapan akan diteruskan ke GA untuk dilakukan proses validasi.";
                         $armadaticket->save();
                         DB::commit();
                         break;
 
                     case 'Percepatan End Kontrak':
-                        $armadaticket->status = 5;
+                        $armadaticket->status = 4;
                         $message = "Kelengkapan akan diteruskan ke GA untuk dilakukan proses validasi.";
                         $armadaticket->save();
                         DB::commit();
                         break;
 
                     case 'Percepatan Replace/Renewal/Stop Sewa':
-                        $armadaticket->status = 5;
+                        $armadaticket->status = 4;
                         $message = "Kelengkapan akan diteruskan ke GA untuk dilakukan proses validasi.";
                         $armadaticket->save();
                         DB::commit();
@@ -1524,7 +1528,7 @@ class ArmadaTicketingController extends Controller
             DB::commit();
             return back()->with('success', 'Berhasil Melakukan Upload Berkas Penyerahan (Replace dan Percepatan Replace)');
         } catch (\Exception $ex) {
-            dd($ex);
+            // dd($ex);
             DB::rollback();
             return back()->with('Gagal Melakukan Upload Berkas Penyerahan (Replace dan Percepatan Replace) ' . $ex->getMessage());
         }

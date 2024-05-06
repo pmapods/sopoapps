@@ -272,7 +272,7 @@ class TicketingController extends Controller
                         ->orWhere(DB::raw('lower(salespoint.name)'), 'like', '%' . strtolower($search_value) . '%')
                         ->orWhereIn('armada_ticket.ticketing_type', $ticketing_type_array);
                 })
-                ->select('armada_ticket.*')
+                ->select('armada_ticket_authorization.employee_id', 'armada_ticket.*')
                 ->orderBy('armada_ticket.status', 'desc')
                 ->orderBy('armada_ticket.created_at', 'asc')
                 ->distinct('armada_ticket.id');
@@ -342,6 +342,8 @@ class TicketingController extends Controller
                     }
                 }
             });
+
+            // dd($armada_ticketing);
 
             $tickets_paginate = $armada_ticketing->skip($request->start)->take($request->length);
             $datas = [];
@@ -476,6 +478,8 @@ class TicketingController extends Controller
 
     public function ticketingDetailView($code)
     {
+        // dd(base64_decode($code));
+
         $ticket = Ticket::where('code', $code)->first();
         // validate budget detail has akses area
         $user_location_access  = Auth::user()->location_access->pluck('salespoint_id');
@@ -1134,17 +1138,17 @@ class TicketingController extends Controller
                 if ($ticket->item_type == 0 || $ticket->item_type == 1) {
                     // barang , jasa
                     $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'inventory')
-                        ->where('year', '=', 2023)
+                        ->where('year', '=', Carbon::now()->year)
                         ->first();
                 } else if ($ticket->item_type == 2) {
                     // maintenance
                     $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'assumption')
-                        ->where('year', '=', 2023)
+                        ->where('year', '=', Carbon::now()->year)
                         ->first();
                 } else {
                     $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'ho')
                         ->where('division', $ticket->division)
-                        ->where('year', '=', 2023)
+                        ->where('year', '=', Carbon::now()->year)
                         ->first();
                 }
                 $ticket->budget_upload_id = $budget->id;
@@ -1311,16 +1315,16 @@ class TicketingController extends Controller
             if ($ticket->item_type == 0 || $ticket->item_type == 1) {
                 // barang / jasa / inventory
                 $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'inventory')
-                    ->where('year', '=', 2023)->first();
+                    ->where('year', '=', Carbon::now()->year)->first();
             } else if ($ticket->item_type == 2) {
                 // maintenance / assumption
                 $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'assumption')
-                    ->where('year', '=', 2023)->first();
+                    ->where('year', '=', Carbon::now()->year)->first();
             } else {
                 // ho budget
                 $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'ho')
                     ->where('division', $ticket->division)
-                    ->where('year', '=', 2023)->first();
+                    ->where('year', '=', Carbon::now()->year)->first();
             }
             if ($budget == null) {
                 $flag = false;

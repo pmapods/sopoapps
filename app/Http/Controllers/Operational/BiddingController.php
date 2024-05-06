@@ -663,6 +663,7 @@ class BiddingController extends Controller
 
                 $employee_ids = $bidding->bidding_authorization->pluck('employee_id');
                 $employee_emails = Employee::whereIn('id', $employee_ids)->get()->pluck('email')->toArray();
+                // dd($employee_emails);
                 $mail_to = $employee_emails;
                 $data = array(
                     'original_emails' => $mail_to,

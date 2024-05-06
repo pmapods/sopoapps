@@ -21,7 +21,7 @@
     </div>
 </div>
 <div class="content-body px-4">
-    @if ($type == "perpanjangan_form")
+    @if ($type == "perpanjangan_form" || $type == "percepatan_replace_form" || $type == "percepatan_renewal_form" || $type == "percepatan_end_kontrak_form")
         <div class="row">
             <div class="col-md-6">
                 @include("Operational.Armada.formperpanjanganperhentian")
@@ -66,7 +66,7 @@
         $('#submitform').prop('action', '/form-validation/approve');
         $('#submitform').find('div').empty();
         $('#submitform').find('div').append('<input type="hidden" name="type" value="'+type+'">');
-        if(type == "perpanjangan_form"){
+        if(type == "perpanjangan_form" || type == "percepatan_replace_form" || type == "percepatan_renewal_form" || type == "percepatan_end_kontrak_form"){
             $('#submitform').find('div').append('<input type="hidden" name="perpanjangan_form_id" value="'+id+'">');
         }
         if(type == "mutasi_form"){
@@ -88,7 +88,7 @@
             $('#submitform').prop('action', '/form-validation/reject');
             $('#submitform').find('div').append('<input type="hidden" name="reason" value="'+reason+'">');
             $('#submitform').find('div').append('<input type="hidden" name="type" value="'+type+'">');
-            if(type == "perpanjangan_form"){
+            if(type == "perpanjangan_form" || type == "percepatan_replace_form" || type == "percepatan_renewal_form" || type == "percepatan_end_kontrak_form"){
                 $('#submitform').find('div').append('<input type="hidden" name="perpanjangan_form_id" value="'+id+'">');
             }
             if(type == "mutasi_form"){

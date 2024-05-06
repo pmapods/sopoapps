@@ -357,7 +357,7 @@
             let armadatable;
             let securitytable;
             let selected_array = [];
-            $('a[data-toggle="pill"]').on('shown.bs.tab', function(event) {
+            $('a[data-toggle="pill"]').on('shown.bs.tab', function(event) { 
                 if ($(event.target).attr('href') == "#pills-armada" && !selected_array.includes(
                         "#pills-armada")) {
                     selected_array.push("#pills-armada");
@@ -440,6 +440,7 @@
             $('#ticketDT tbody').on('click', 'tr', function() {
                 let id = $(this).data('id');
                 let code = $(this).find('td:eq(1)').text().trim();
+                // console.log(window.btoa(code));
                 if (code != "") {
                     window.location.href = '/ticketing/' + code;
                 } else {

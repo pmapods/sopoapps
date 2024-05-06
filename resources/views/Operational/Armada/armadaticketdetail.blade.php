@@ -348,11 +348,17 @@
                 </div>
             @endif
             @if ($armadaticket->ticketing_type == 1 || $armadaticket->ticketing_type == 4)
+                @php
+                    $isRequirementFinished = false;
+                @endphp
                 <div class="col-md-6">
                     @include('Operational.Armada.formperpanjanganperhentian')
                 </div>
             @endif
             @if ($armadaticket->ticketing_type == 2)
+                @php
+                    $isRequirementFinished = false;
+                @endphp
                 <div class="col-md-6">
                     @include('Operational.Armada.formmutasi')
                 </div>
