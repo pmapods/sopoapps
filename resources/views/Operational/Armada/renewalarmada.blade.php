@@ -59,12 +59,12 @@
                 <thead>
                     <tr role="row">
                         <th>#</th>
-                        <th>Renewal Code</th>
-                        <th>SalesPoint Awal</th>
-                        <th>SalesPoint Baru</th>
+                        <th>Code</th>
+                        <th>Salespoint Awal</th>
+                        <th>Salespoint Baru</th>
                         <th>Jenis Kendaraan</th>
-                        <th>Nomor Kendaaraan Lama</th>
-                        <th>Nomor Kendaaraan Baru</th>
+                        <th>NoPol Lama</th>
+                        <th>NoPol Baru</th>
                         <th>Request By</th>
                         <th>Status Approval</th>
                         <th>BASTK Path</th>
@@ -382,9 +382,10 @@
             const urlParam = new URLSearchParams(window.location.search);
             const status = urlParam.get('status');
 
-            let tableRenewal = $('#renewalArmadaDT').DataTable({
+            var tableRenewal = $('#renewalArmadaDT').DataTable({
                 "processing": true,
                 "serverSide": true,
+                "async"     : true,
                 "ajax": {
                     'url': '/renewalarmada/data?status=' + status,
                     'data': function(data) {},
@@ -399,19 +400,25 @@
                             $("td", row).eq(idx).attr("data-armada", cell);
                         }
                     });
-                    console.log(row);
+                    
+                    let dtRenewal = localStorage.getItem("codeRenewal");
+
+                    // if (dtRenewal != undefined || dtRenewal != null) {
+                    //     let modal = $('#detailRenewalArmadaModal');
+                    //     modal.modal('show');  
+                    //     // localStorage.clear();                
+                    // }
                 }
             });
 
             tableRenewal.columns([9, 10, 11, 12, 13, 14, 15, 16]).visible(false);
-
 
             $('.autonumber').change(function() {
                 autonumber($(this));
             });
 
             var user_login = {{ $user_login }};
-            // var table = $('#renewalArmadaDT').DataTable(datatable_settings);
+
             $('#renewalArmadaDT tbody').on('click', 'tr', function(e) {
 
                 e.preventDefault();
@@ -419,6 +426,8 @@
 
                 var currentRow = $(this).closest("tr");
                 var data = $('#renewalArmadaDT').DataTable().row(currentRow).data();
+
+                console.log($(this));
 
                 let code = data[1];
                 let oldyear = data[5].substr(data[5].length - 5, 4);
@@ -491,7 +500,8 @@
                         '\')">Tampilkan File BA</a>');
                 }
 
-                modal.find('input[name="id"]').val(data[12]);
+                // modal.find('input[name="id"]').val(data[12]);
+                modal.find('input[name="id"]').val(code);
                 modal.find('select[name="bastk_path"]').val(bastkPath);
                 modal.find('select[name="last_salespoint_id"]').val((id_oldplate ==
                         null) ?
@@ -512,12 +522,10 @@
                 modal.find('select[name="status"]').trigger('change');
                 modal.data('created_by', created_by);
                 modal.data('approved_by', user_approved);
-                modal.data('current-id', data[12]);
+                modal.data('current-id', code);
                 modal.data('new_plate', newplate);
                 modal.data('new_salespoint_id', id_newplate);
                 modal.data('new_vehicle_year', newyear);
-
-                console.log(created_by, user_approved, data[12], newplate, id_newplate, newyear);
 
                 modal.modal('show');
             });
@@ -669,6 +677,18 @@
                 }
             });
         })
+
+        $(window).on/('load', function() {
+                let dtRenewal = localStorage.getItem("codeRenewal");
+                let modal = $('#detailRenewalArmadaModal');
+                console.log($('#renewalArmadaDT').DataTable()); 
+                console.log(dtRenewal);
+                // console.log($('#renewalArmadaDT tbody').find("tr:gt(0)"));
+                // if (dtRenewal != null) {
+                //     modal.modal('show');
+                // }
+                // localStorage.clear();
+        });
 
         function confirmRenewal() {
             var modal = $('#detailRenewalArmadaModal');

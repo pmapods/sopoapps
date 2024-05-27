@@ -379,6 +379,7 @@ class POController extends Controller
             }
             $user_location_access  = Auth::user()->location_access->pluck('salespoint_id');
             if ($ticket != null) {
+                $type = 'barangjasa';
                 // validate detail has akses area
                 if (!$user_location_access->contains($ticket->salespoint_id)) {
                     return redirect('/po')->with('error', 'Anda tidak memiliki akses untuk PO berikut. Tidak memiliki akses salespoint "' . $ticket->salespoint->name . '"');
@@ -386,14 +387,15 @@ class POController extends Controller
 
                 if ($ticket->po->count() > 0) {
                     $authorization_list = Authorization::where('form_type', 3)->whereIn('salespoint_id', $ticket->salespoint->salespoint_id_list())->get();
-                    return view('Operational.podetail', compact('ticket', 'authorization_list'));
+                    return view('Operational.podetail', compact('ticket', 'authorization_list', 'type'));
                 } else {
                     $issuepolist = Po::where('ticket_id', $ticket->id)->withTrashed()->get()->pluck('no_po_sap');
                     $issuepos = IssuePO::whereIn('po_number', $issuepolist->toArray())->get();
-                    return view('Operational.setuppo', compact('ticket', 'ticket_code', 'issuepos'));
+                    return view('Operational.setuppo', compact('ticket', 'ticket_code', 'issuepos', 'type'));
                 }
             }
             if ($armadaticket != null) {
+                $type = 'armada';
                 // validate detail has akses area
                 if (!$user_location_access->contains($armadaticket->salespoint_id)) {
                     return redirect('/po')->with('error', 'Anda tidak memiliki akses untuk PO berikut. Tidak memiliki akses salespoint "' . $armadaticket->salespoint->name . '"');
@@ -406,7 +408,7 @@ class POController extends Controller
 
                 if ($armadaticket->po->count() > 0) {
                     $authorization_list = Authorization::whereIn('salespoint_id', $armadaticket->salespoint->salespoint_id_list())->where('form_type', 3)->get();
-                    return view('Operational.podetail', compact('armadaticket', 'authorization_list'));
+                    return view('Operational.podetail', compact('armadaticket', 'authorization_list', 'type'));
                 } else {
                     // OLD SETUP PO
                     // =====================================
@@ -424,11 +426,12 @@ class POController extends Controller
 
                     $issuepolist = Po::where('armada_ticket_id', $armadaticket->id)->withTrashed()->get()->pluck('no_po_sap');
                     $issuepos = IssuePO::whereIn('po_number', $issuepolist->toArray())->get();
-                    return view('Operational.setuppo', compact('armadaticket', 'ticket_code', 'issuepos'));
+                    return view('Operational.setuppo', compact('armadaticket', 'ticket_code', 'issuepos', 'type'));
                 }
             }
 
             if ($securityticket != null) {
+                $type = 'security';
                 // validate detail has akses area
                 if (!$user_location_access->contains($securityticket->salespoint_id)) {
                     return redirect('/po')->with('error', 'Anda tidak memiliki akses untuk PO berikut. Tidak memiliki akses salespoint "' . $securityticket->salespoint->name . '"');
@@ -438,7 +441,7 @@ class POController extends Controller
                     $authorization_list = Authorization::where('form_type', 3)
                         ->whereIn('salespoint_id', $securityticket->salespoint->salespoint_id_list())
                         ->get();
-                    return view('Operational.podetail', compact('securityticket', 'authorization_list'));
+                    return view('Operational.podetail', compact('securityticket', 'authorization_list', 'type'));
                 } else {
                     // OLD SETUP PO
                     // =====================================
@@ -448,7 +451,7 @@ class POController extends Controller
                     // =====================================
                     $issuepolist = Po::where('armada_ticket_id', $securityticket->id)->withTrashed()->get()->pluck('no_po_sap');
                     $issuepos = IssuePO::whereIn('po_number', $issuepolist->toArray())->get();
-                    return view('Operational.setuppo', compact('securityticket', 'ticket_code', 'issuepos'));
+                    return view('Operational.setuppo', compact('securityticket', 'ticket_code', 'issuepos', 'type'));
                 }
             }
         } catch (\Exception $ex) {
@@ -563,6 +566,10 @@ class POController extends Controller
                 $monitor->employee_name  = Auth::user()->name;
                 $monitor->message        = 'Melakukan Setup PO';
                 $monitor->save();
+
+                // Done Revisi Status
+                $ticket->revise_po       = 2;
+                $ticket->save();
             }
 
             if ($armadaticket != null) {
@@ -597,6 +604,8 @@ class POController extends Controller
                         $armadaticket->armada_id        = $old_armada_ticket->armada_id;
                         break;
                 }
+                // Done Revisi Status
+                $armadaticket->revise_po       = 2;
                 $armadaticket->save();
 
                 $newPo                   = new Po;
@@ -689,6 +698,8 @@ class POController extends Controller
                         $selected_vendor             = $request->new_vendor;
                         break;
                 }
+                // Done Revisi Status
+                $securityticket->revise_po       = 2;
                 $securityticket->save();
 
                 // untuk item ppn
@@ -988,6 +999,23 @@ class POController extends Controller
                     // if($ticket->status() != "Menunggu proses PO & Penerimaan Barang"){
                     //     return back()->with('error','Gagal Melakukan Revisi PO');
                     // }
+                    
+                    // Monitoring Revise PO
+                    $monitor                        = new TicketMonitoring;
+                    $monitor->ticket_id             = $request->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Melakukan Revisi PO';
+                    $monitor->save();
+
+                    //Revise Reason
+                    $ticket->revise_by          = Auth::user()->id;
+                    $ticket->revise_po          = 1;
+                    $ticket->reason_revise      = $request->revise_notes;
+                    $ticket->revise_date        = now();
+                    $ticket->save();
+
+
                     break;
 
                 case 'armada':
@@ -995,6 +1023,22 @@ class POController extends Controller
                     // if($ticket->status() != "Menunggu proses PO"){
                     //     return back()->with('error','Gagal Melakukan Revisi PO');
                     // }
+                    
+                    // Monitoring Revise PO
+                    $monitor                        = new ArmadaTicketMonitoring;
+                    $monitor->armada_ticket_id      = $request->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Melakukan Revisi PO';
+                    $monitor->save();
+
+                    //Revise Reason
+                    $ticket->revise_by          = Auth::user()->id;
+                    $ticket->revise_po          = 1;
+                    $ticket->reason_revise      = $request->revise_notes;
+                    $ticket->revise_date        = now();
+                    $ticket->save();
+
                     break;
 
                 case 'security':
@@ -1002,6 +1046,22 @@ class POController extends Controller
                     // if($ticket->status() != "Menunggu proses PO"){
                     //     return back()->with('error','Gagal Melakukan Revisi PO Security');
                     // }
+
+                    // Monitoring Revise PO
+                    $monitor                        = new SecurityTicketMonitoring;
+                    $monitor->security_ticket_id    = $request->id;
+                    $monitor->employee_id           = Auth::user()->id;
+                    $monitor->employee_name         = Auth::user()->name;
+                    $monitor->message               = 'Melakukan Revisi PO';
+                    $monitor->save();
+
+                    //Revise Reason
+                    $ticket->revise_by          = Auth::user()->id;
+                    $ticket->revise_po          = 1;
+                    $ticket->reason_revise      = $request->revise_notes;
+                    $ticket->revise_date        = now();
+                    $ticket->save();
+                    
                     break;
 
                 default:

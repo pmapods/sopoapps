@@ -77,9 +77,37 @@
     @endif
     </div>
     <p>Harap Melakukan Pembuatan PR dan PO pada SAP dengan memasukan kode <b>{{ $ticket_code }}</b> pada kolom yang tersedia saat pembuatan PR SAP</p>
+
+    @if ($type == 'barangjasa') 
+        @if (count($ticket->po) == 0 && $ticket->revise_po == 1)
+            Di Revisi Oleh : <span
+                class="text-danger">{{ $ticket->revise_by_employee->name 
+                . ' (' . date('l, d F Y (H:i)', strtotime($ticket->revise_date)) . ')' ?? '-' }}</span><br>
+            Alasan Reject : <span
+                class="text-danger">{{ $ticket->reason_revise ?? '-' }}</span>
+        @endif
+    @elseif ($type == 'armada')
+        @if (count($armadaticket->po) == 0 && $armadaticket->revise_po == 1)
+            Di Revisi Oleh : <span
+                class="text-danger">{{ $armadaticket->revise_by_employee->name 
+                . ' (' . date('l, d F Y (H:i)', strtotime($armadaticket->revise_date)) . ')' ?? '-' }}</span><br>
+            Alasan Reject : <span
+                class="text-danger">{{ $armadaticket->reason_revise ?? '-' }}</span>
+        @endif
+    @elseif ($type == 'security')
+        @if (count($securityticket->po) == 0 && $securityticket->revise_po == 1)
+            Di Revisi Oleh : <span
+                class="text-danger">{{ $securityticket->revise_by_employee->name 
+                . ' (' . date('l, d F Y (H:i)', strtotime($securityticket->revise_date)) . ')' ?? '-' }}</span><br>
+            Alasan Reject : <span
+                class="text-danger">{{ $securityticket->reason_revise ?? '-' }}</span>
+        @endif
+    @endif
+
+    <hr>
+
     <div class="d-flex align-items-center">
         <button type="button" class="btn btn-primary mr-3" id="refresh_button">Quick Refresh</button>
-
     </div>
     <div class="d-flex flex-column align-items-center">
         <h5>Data PR</h5>

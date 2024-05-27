@@ -23,6 +23,21 @@ class RenewalArmada extends Model
         }
     }
 
+    public function authorizations(){
+        return $this->hasMany(RenewalArmadaAuthorization::class);
+    }
+
+    public function current_authorization(){
+        $queue = $this->authorizations->where('status',0)->sortBy('level');
+        $current = $queue->first();
+        if($this->status != 0){
+            // authorization done
+            return null;
+        }else{
+            return $current;
+        }
+    }
+
     public function new_salespoint(){
         if($this->new_salespoint_id != null){
             return SalesPoint::find($this->new_salespoint_id);

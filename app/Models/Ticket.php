@@ -197,8 +197,12 @@ class Ticket extends Model
                     }
                     $string_text .= "\n";
                     if (count($this->po) == 0) {
-                        $string_text .= "Menunggu Proses PO - oleh Purchasing (undone)";
-                    } else {
+                        $string_text .= "Menunggu Proses PO - oleh Purchasing (undone) ";
+                        if ($this->revise_po == 1) {
+                            $string_text .= "\r\n" . 'Po di Revisi oleh ' . $this->revise_by_employee->name . ', Alasan: ' . $this->reason_revise;
+                        }
+                    } 
+                    else {
                         $flag_alldone = true;
                         foreach ($this->po as $po) {
                             if ($po->status != 3) {
@@ -251,11 +255,17 @@ class Ticket extends Model
                 break;
 
             case '7':
+                $string_text = 'Pengadaan Selesai';
                 if ($this->item_type == 4) {
-                    return 'Pengadaan Disposal Inventaris Selesai';
-                } else {
-                    return 'Pengadaan Selesai';
+                    $string_text = 'Pengadaan Disposal Inventaris Selesai';
+                } 
+                elseif (count($this->po) == 0 && $this->revise_po == 1) {
+                    $string_text .= "\n";
+                    $string_text .= 'Po di Revisi oleh ' . $this->revise_by_employee->name . ', Alasan: ' . $this->reason_revise;
                 }
+
+                return $string_text;
+
                 break;
 
             case '-1':
@@ -314,6 +324,11 @@ class Ticket extends Model
     public function terminated_by_employee()
     {
         return $this->belongsTo(Employee::class, 'terminated_by', 'id')->withTrashed();
+    }
+
+    public function revise_by_employee()
+    {
+        return $this->belongsTo(Employee::class, 'revise_by', 'id')->withTrashed();
     }
 
     public function ticket_items_with_attachments()

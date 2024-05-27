@@ -88,6 +88,9 @@ class SecurityTicket extends Model
                     $string_text .= "\n";
                     if (count($this->po) == 0) {
                         $string_text .= "Menunggu Proses PO - oleh Purchasing (undone)";
+                        if ($this->revise_po == 1) {
+                            $string_text .= "\r\n" . 'Po di Revisi oleh ' . $this->revise_by_employee->name . ', Alasan: ' . $this->reason_revise;
+                        }
                     } else {
                         $flag_alldone = true;
                         foreach ($this->po as $po) {
@@ -134,7 +137,14 @@ class SecurityTicket extends Model
                 return 'Menunggu Upload Berkas dari Area';
 
             case '6':
-                return 'Pengadaan Security Selesai';
+                $string_text = 'Pengadaan Security Selesai';
+                if (count($this->po) == 0 && $this->revise_po == 1) {
+                    $string_text .= "\n";
+                    $string_text .= 'Po di Revisi oleh ' . $this->revise_by_employee->name . ', Alasan: ' . $this->reason_revise;
+                }
+
+                return $string_text;
+
                 break;
 
             case '-1':
@@ -198,6 +208,11 @@ class SecurityTicket extends Model
     public function terminated_by_employee()
     {
         return $this->belongsTo(Employee::class, 'terminated_by', 'id')->withTrashed();
+    }
+
+    public function revise_by_employee()
+    {
+        return $this->belongsTo(Employee::class, 'revise_by', 'id')->withTrashed();
     }
 
     public function evaluasi_form()

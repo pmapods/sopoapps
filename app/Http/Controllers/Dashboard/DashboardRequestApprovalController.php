@@ -30,6 +30,8 @@ use App\Models\TicketingBlockOpenRequest;
 use App\Models\SecurityTicketAuthorization;
 use App\Models\PerpanjanganFormAuthorization;
 use App\Models\VendorEvaluationAuthorization;
+use App\Models\RenewalArmada;
+use App\Models\RenewalArmadaAuthorization;
 
 class DashboardRequestApprovalController extends Controller
 {
@@ -525,6 +527,45 @@ class DashboardRequestApprovalController extends Controller
                 continue;
             }
         }
+
+        $renewalauthorization = RenewalArmadaAuthorization::where('employee_id', Auth::user()->id)
+            // ->where('status', 0)
+            ->get();
+        
+            
+        foreach ($renewalauthorization as $author) {
+            // dd($author);
+            try {
+                $newAuth = new \stdClass();
+                $newAuth->canQuickApprove = false;
+
+                $renewal_armada = $author->renewal_armada;
+                if ($renewal_armada->status == -1) {
+                    continue;
+                }
+
+                if ($author->renewal_armada->current_authorization()->employee_id == Auth::user()->id) {
+                    $newAuth->needApproval = true;
+                } else {
+                    $newAuth->needApproval = false;
+                }
+
+                // dd($renewal_armada->status() . ' ' . $renewal_armada->current_authorization()->employee_name);
+
+                $newAuth->salespoint = $renewal_armada->last_salespoint()->name;
+                $newAuth->code = $renewal_armada->code;
+                $newAuth->created_at = $renewal_armada->created_at->translatedFormat('d F Y (H:i)');
+                // $newAuth->created_by = $armada_ticket->authorizations->where('as','Pengaju')->first()->employee_name ?? '';
+                $newAuth->created_by = $renewal_armada->created_by_employee()->name;
+                $newAuth->transaction_type = 'Peremajaan Armada';
+                $newAuth->status = $renewal_armada->status() . ' ' . $renewal_armada->current_authorization()->employee_name;
+                $newAuth->link = "/renewalarmada";
+                array_push($data, $newAuth);
+            } catch (\Throwable $e) {
+                dd($e);
+            }
+        }
+
         $data = array_values(collect($data)->sortByDesc('needApproval')->toArray());
 
         foreach ($data as $key => &$xxx) {
@@ -1148,7 +1189,35 @@ class DashboardRequestApprovalController extends Controller
             }
         }
 
-        $request_approval =  $budget + $ticket + $armadaticket + $securityticket + $bidding + $pr + $evaluasi + $facility + $perpanjangan + $mutasi;
+        //Renewal Form Armada
+        $renewalauthorizations = RenewalArmadaAuthorization::leftJoin('renewal_armada_detail', 'renewal_armada_detail.id', '=', 'renewal_armada_authorization.renewal_armada_id')
+        ->where('renewal_armada_detail.status', 0)
+        ->whereNull('renewal_armada_detail.deleted_at')
+        ->where('renewal_armada_authorization.employee_id', Auth::user()->id)
+        ->get();
+
+        $renewalCount = 0;
+        foreach ($renewalauthorizations as $renewalauthorizations ) {
+            if ($renewalauthorizations->level == 1) {
+                $renewal_before = RenewalArmadaAuthorization::where('renewal_armada_id',        $renewalauthorizations->renewal_armada_id)
+                ->where('level', 1)
+                ->count();
+                if ($renewal_before) {
+                    $renewalCount++;
+                }
+            }
+            else {
+                $renewal_before = RenewalArmadaAuthorization::where('renewal_armada_id',        $renewalauthorizations->renewal_armada_id)
+                ->where('level', $renewalauthorizations->level - 1)
+                // ->where('status', 1)
+                ->count();
+                if ($renewal_before) {
+                    $renewalCount++;
+                }
+            } 
+        }
+
+        $request_approval =  $budget + $ticket + $armadaticket + $securityticket + $bidding + $pr + $evaluasi + $facility + $perpanjangan + $mutasi + $renewalCount;
 
         return $request_approval;
     }

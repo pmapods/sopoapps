@@ -997,11 +997,20 @@
         }
 
         function doRevisePO(type, id) {
-            $('#submitform').prop('action', '/revisePO');
-            $('#submitform div').empty();
-            $('#submitform div').append('<input type="hidden" name="type" value="' + type + '">');
-            $('#submitform div').append('<input type="hidden" name="id" value="' + id + '">');
-            $('#submitform').submit();
+            var reason = prompt("Masukan alasan Revisi");
+
+            if (reason != null) {
+                if (reason.trim() == '') {
+                    alert("Alasan Revisi Harus diisi");
+                    return;
+                }
+                $('#submitform').prop('action', '/revisePO');
+                $('#submitform div').empty();
+                $('#submitform div').append('<input type="hidden" name="type" value="' + type + '">');
+                $('#submitform div').append('<input type="hidden" name="id" value="' + id + '">');
+                $('#submitform div').append('<input type="hidden" name="revise_notes" value="' + reason + '">');
+                $('#submitform').submit();
+            }
         }
 
         function reminderUpdate(po_id, no_po_sap, start_date, end_date) {

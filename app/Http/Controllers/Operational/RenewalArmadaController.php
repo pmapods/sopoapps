@@ -391,7 +391,7 @@ class RenewalArmadaController extends Controller
         $searchPlate = null;
         try {
             DB::beginTransaction();
-            $open_request                = RenewalArmada::where('id', $request->id)->first();
+            $open_request                = RenewalArmada::where('code', $request->id)->first();
             $open_request->approved_by   = Auth::user()->id;
             $open_request->status        = 1;
             $open_request->finished_date = now()->format('Y-m-d');

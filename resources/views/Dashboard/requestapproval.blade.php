@@ -119,8 +119,10 @@
                 success: function(response) {
                     let data = response.data;
                     let count = 0;
+                    // localStorage.setItem('dtRenewal', JSON.stringify(data));
                     data.forEach(function(item) {
                         let append_text = '';
+                        let key = 'codeRenewal';
                         if (item.needApproval) {
                             append_text += '<tr class="table-warning">';
                         } else {
@@ -136,7 +138,7 @@
                         append_text += '<td data-link = "' + item.link + '">';
                         append_text +=
                             '<a href="#" class="text-primary font-weight-bold" onclick="window.open(\'' +
-                            item.link + '\')">Buka</a>';
+                            item.link + '\'); localStorage.setItem(\'' + key + '\',' + '\'' + item.code + '\');">Buka</a>';
                         if (item.needApproval && item.canQuickApprove) {
                             append_text +=
                                 '<a href="#" class="text-success ml-2 font-weight-bold" onclick="approveApproval(this)">Approve</a>';
