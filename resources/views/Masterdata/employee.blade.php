@@ -19,6 +19,8 @@
             </div>
         </div>
         <div class="d-flex justify-content-end mt-4">
+
+            <a href="/orgcharts" class="btn btn-success ml-2">Organization Chart</a>
             
             <button type="button" class="btn btn-info ml-2" data-toggle="modal" data-target="#resetPasswordModal">
                 Reset Password
