@@ -147,19 +147,27 @@ class ArmadaTicketingController extends Controller
             $newTicket->ticketing_type   = $request->pengadaan_type;
             // }
 
-            //Form Fasilitas / PR Manual
-            if ($request->authorSelect == "facility_form") {
-                $authorization_type = 1;
-            }
-            else {
-                $authorization_type = 0;
-            }
-
-            $newTicket->authorization_type   = $authorization_type;
-
             $newTicket->vendor_recommendation_name   = $request->vendor_recommendation_name;
             if ($newTicket->ticketing_type == 0) {
-                $newTicket->armada_type_id   = $request->armada_type_id;
+                $armada_type = explode("_", $request->armada_type_id);
+
+                $newTicket->armada_type_id   = $armada_type[0];
+
+                //Form Fasilitas / PR Manual
+                if (isset($request->authorSelect)) {
+                    if ($request->authorSelect == "facility_form") {
+                        $authorization_type = 1;
+                    }
+                    else {
+                        $authorization_type = 0;
+                    }
+                }
+                else if ($request->isNiaga == false && $armada_type != 8) {
+                    $authorization_type = 1;
+                }
+
+                $newTicket->authorization_type   = $authorization_type;
+
 
                 if ($request->isNiaga == true || $request->authorSelect == "pr_manual") {
                     if ($request->hasFile('upload_ba_armada_new')) {

@@ -241,6 +241,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/migrateemployeeconfirmation', [EmployeeController::class, 'migrateEmployeeConfirmationView']);
         Route::post('/employee/migrate', [EmployeeController::class, 'doMigrateEmployee']);
         Route::post('/resetemployeepassword', [EmployeeController::class, 'resetEmployeePassword']);
+        Route::get('/orgcharts', [EmployeeController::class, 'orgChartView']);
     });
 
     // Sales Point

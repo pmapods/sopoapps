@@ -91,6 +91,9 @@ class ArmadaController extends Controller
             $newArmadatype->brand_name = $request->brand_name;
             $newArmadatype->alias = $request->alias ?? null;
             $newArmadatype->isNiaga = $request->isNiaga;
+            if ($request->isSBH) {
+                $newArmadatype->isSBH = $request->isSBH;
+            }
             $newArmadatype->save();
             return back()->with('success','Berhasil Menambah Jenis Armada')->with('menu','armadatypelist');
         } catch (\Exception $ex) {

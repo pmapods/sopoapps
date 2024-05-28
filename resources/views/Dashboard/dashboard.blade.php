@@ -1,6 +1,64 @@
 @extends('Layout.app')
 
 @section('local-css')
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0px 5px 10px 0 rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .card-body {
+        z-index: 1;
+    }
+
+    .card-footer {
+        z-index: 1;
+    }
+
+    .card-footer .black-txt {
+        color: black !important;
+        background-color: transparent;
+        text-decoration: none;
+    }
+
+    .wave-container {
+        position: absolute;
+        width: 100%;
+        height: 70%;
+        top: 0;
+    }
+
+    .wave {
+        position: absolute;
+        height: 1000px;
+        width: 900px;
+        opacity: 0.6;
+        border-radius: 35%;
+        left: -250px;
+        top: 100px;
+        background: radial-gradient(#83a4d4, #b6fbff);
+        animation: wave 12s infinite linear;
+    }
+
+    .wave:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .wave:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    @keyframes wave {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
 @endsection
 
 @section('content')
@@ -22,22 +80,45 @@
     @endphp
 
     <div class="row">
-        <div class="col-xl-3 col-md-4">
+        <div class="col-xl-3 col-md-4 ">
+            @if ($request_approval != 0)
+            <div class="card text-black mb-4">
+                <div class="card-body">
+                    <div class="ml-0" style="font-size: 25px">
+                        {{ $request_approval }}
+                    </div>
+                    <i class="fad fa-ticket"></i>
+                    <span style="color: #007bff;">&nbsp;</span>
+                    <span>Request Approval</span>
+                </div>
+                <div class="wave-container">
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                </div>
+                <div class="card-footer d-flex align-items-center">
+                    <a class="small stretched-link black-txt" href="/dashboardRequestApproval">View Details</a>
+                    <span style="color: #007bff;">&nbsp;&nbsp;</span>
+                    <div class="small text-black"><i class="fas fa-angle-right"></i></div>
+                </div>
+            </div>
+            @else
             <div class="card bg-primary text-white mb-4">
                 <div class="card-body">
                     <div class="ml-0" style="font-size: 25px">
                         {{ $request_approval }}
                     </div>
                     <i class="fad fa-ticket"></i>
-                    <span style="color: #007bff;">..</span>
+                    <span style="color: #007bff;">&nbsp;</span>
                     <span>Request Approval</span>
                 </div>
                 <div class="card-footer d-flex align-items-center">
-                    <a class="small text-white stretched-link" href="/dashboardRequestApproval">View Details</a>
-                    <span style="color: #007bff;">...</span>
+                    <a class="small stretched-link text-white" href="/dashboardRequestApproval">View Details</a>
+                    <span style="color: #007bff;">&nbsp;&nbsp;</span>
                     <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
+            @endif
         </div>
 
         <div class="col-xl-3 col-md-4">
@@ -170,6 +251,28 @@
 
         @if (Auth::user()->id == 115 || Auth::user()->id == 1 || Auth::user()->id == 163)
             <div class="col-xl-3 col-md-4">
+                @if ($BAverification != 0)
+                <div class="card text-black mb-4">
+                    <div class="card-body">
+                        <div class="ml-0" style="font-size: 25px">
+                            {{ $BAverification }}
+                        </div>
+                        <i class="fad fa-file-check"></i>
+                        <span style="color: #007bff;">&nbsp;</span>
+                        <span>Verifikasi Upload BA</span>
+                    </div>
+                    <div class="wave-container">
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                    </div>
+                    <div class="card-footer d-flex align-items-center">
+                        <a class="small stretched-link black-txt" href="/dashboardBaVerification">View Details</a>
+                        <span style="color: #007bff;">&nbsp;&nbsp;</span>
+                        <div class="small text-black"><i class="fas fa-angle-right"></i></div>
+                    </div>
+                </div>
+                @else
                 <div class="card bg-primary text-white mb-4">
                     <div class="card-body">
                         <div class="ml-0" style="font-size: 25px">
@@ -185,6 +288,7 @@
                         <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                     </div>
                 </div>
+                @endif
             </div>
         @endif
 

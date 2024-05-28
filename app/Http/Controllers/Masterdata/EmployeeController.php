@@ -737,4 +737,11 @@ class EmployeeController extends Controller
             return back()->with('error', 'Gagal melakukan reset password (' . $ex->getMessage() . ')');
         }
     }
+
+    // Organization Chart
+    public function orgChartView()
+    {
+        // $employees = Employee::where('id', '!=', 1)->get();
+        return view('Masterdata.orgcharts');
+    }
 }
