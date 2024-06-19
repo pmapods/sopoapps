@@ -30,6 +30,10 @@
                 Migrasi Karyawan
             </button>
 
+            <button type="button" class="btn btn-info ml-2" data-toggle="modal" data-target="#jobtitleEmployeeModal">
+                Change Job Title Karyawan
+            </button>
+
             <button type="button" class="btn btn-primary ml-2" data-toggle="modal" data-target="#addEmployeeModal">
                 Tambah Karyawan
             </button>
@@ -152,14 +156,14 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="form-group">
-                              <label class="required_field">Pilih Karyawan yang di migrasikan</label>
-                              <select class="form-control select2" id="source_employee" name="source_employee_id" required>
-                                  <option value="">-- Pilih Karyawan --</option>
-                                  @foreach ($employees as $employee)
-                                      <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                                  @endforeach
-                              </select>
-                              <small class="text-danger">* Karyawan terpilih akan dipindahkan seluruh approval nya ke karyawan terpilih di tujuan migrasi karyawan terpilih</small>
+                                <label class="required_field">Pilih Karyawan yang di migrasikan</label>
+                                <select class="form-control select2" id="source_employee" name="source_employee_id" required>
+                                    <option value="">-- Pilih Karyawan --</option>
+                                    @foreach ($employees as $employee)
+                                        <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-danger">* Karyawan terpilih akan dipindahkan seluruh approval nya ke karyawan terpilih di tujuan migrasi karyawan terpilih</small>
                             </div>
                         </div>
                         <div class="col-12">
@@ -169,6 +173,62 @@
                                   <option value="">-- Pilih Karyawan --</option>
                                   @foreach ($employees as $employee)
                                       <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                                  @endforeach
+                              </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                    <button type="submit" class="btn btn-primary">Pilih</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+{{-- Job Position Migrate --}}
+<div class="modal fade" id="jobtitleEmployeeModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Migrasi Job Position Karyawan</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+            </div>
+            <form action="/jobtitleemployeeconfirmation" method="get">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label class="required_field">Pilih Karyawan</label>
+                                <select class="form-control select2" id="employee_id" name="employee_id" required>
+                                    <option value="">-- Pilih Karyawan --</option>
+                                    @foreach ($employee_pst as $employee_pst)
+                                        <option value="{{ $employee_pst->id }}">{{ $employee_pst->name }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-danger">* Karyawan terpilih akan berubah job position nya sesuai dengan job title yang dipilih</small>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group">
+                              <label class="required_field">Job Title Karyawan Sebelumnya</label>
+                              <input type="text" class="form-control" id="job_title_id_bfr" name="job_title_id_bfr" disabled>
+                              </select>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group">
+                              <label class="required_field">Pilih Job Title Karyawan Baru</label>
+                              <select class="form-control select2" id="job_title_id" name="job_title_id" required>
+                                  <option value="">-- Pilih Job Title --</option>
+                                  @foreach ($employee_positions as $employee_positions)
+                                      <option value="{{ $employee_positions->id }}">{{ $employee_positions->name }}</option>
                                   @endforeach
                               </select>
                             </div>
@@ -406,6 +466,33 @@
                     $(this).trigger('change');
                 }
             }
+        });
+
+        $('#employee_id').change(function () { 
+            let requestdata = {
+                employee_id: $(this).val()
+            }; 
+            
+            $.ajax({
+                type: "get",
+                url: '/getEmployeePosition',
+                data: requestdata,
+                success: function(response) {
+                    let data = response.data;
+                    data.forEach(item => {
+                        $('#job_title_id_bfr').val(item.emp_position)
+                    });
+                    $('.job_title_id_bfr').val("");
+                    $('.job_title_id_bfr').trigger('change');
+                },
+                error: function(response) {
+                    alert('load data failed. Please refresh browser or contact admin');
+                    console.log(response);
+                },
+                complete: function() {
+                    $('.job_title_id_bfr').trigger('change');
+                }
+            });
         });
     })
     function validatepassword(){

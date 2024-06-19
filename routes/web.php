@@ -239,9 +239,12 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/nonactiveemployee', [EmployeeController::class, 'nonactiveEmployee']);
         Route::patch('/activeemployee', [EmployeeController::class, 'activeEmployee']);
         Route::get('/migrateemployeeconfirmation', [EmployeeController::class, 'migrateEmployeeConfirmationView']);
+        Route::get('/jobtitleemployeeconfirmation', [EmployeeController::class, 'jobtitleEmployeeConfirmation']);
         Route::post('/employee/migrate', [EmployeeController::class, 'doMigrateEmployee']);
         Route::post('/resetemployeepassword', [EmployeeController::class, 'resetEmployeePassword']);
         Route::get('/orgcharts', [EmployeeController::class, 'orgChartView']);
+        Route::get('/orgcharts/{nik}', [EmployeeController::class, 'orgChartDetailView']);
+        Route::get('/getEmployeePosition', [EmployeeController::class, 'getEmployeePosition']);
     });
 
     // Sales Point

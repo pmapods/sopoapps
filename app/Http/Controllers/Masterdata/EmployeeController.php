@@ -73,9 +73,57 @@ class EmployeeController extends Controller
     // EMPLOYEE
     public function employeeView()
     {
-        $employees = Employee::where('id', '!=', 1)->get();
-        return view('Masterdata.employee', compact('employees'));
+        $employees = Employee::whereNotIn('id', [1])->get();
+        $employee_pst = Employee::leftJoin('authorization_detail', 'employee.id', '=', 'authorization_detail.employee_id')
+        ->leftJoin('employee_position', 'employee_position.id', '=', 'authorization_detail.employee_position_id')
+        ->where('employee.id', '!=', 1)
+        ->whereNull('employee.deleted_at')
+        ->whereNotNull('authorization_detail.employee_id')
+        ->select('employee.id', 'employee.name', 'authorization_detail.employee_position_id', 'employee_position.name as emp_position', 'employee.code', 'employee.username', 'employee.nik', 'employee.email')
+        ->groupBy('employee.id')
+        ->get();
+        $employee_positions = EmployeePosition::where('employee_position.id', '!=', 1)->get();
+        return view('Masterdata.employee', compact('employees', 'employee_pst', 'employee_positions'));
     }
+
+    public function getEmployeePosition(Request $request)
+    {
+        $employees_pos = Employee::leftJoin('authorization_detail', 'employee.id', '=', 'authorization_detail.employee_id')
+        ->leftJoin('employee_position', 'employee_position.id', '=', 'authorization_detail.employee_position_id')
+        ->where('employee.id', '=', $request->employee_id)
+        ->whereNull('employee.deleted_at')
+        ->whereNotNull('authorization_detail.employee_id')
+        ->select('employee.id', 'employee.name', 'authorization_detail.employee_position_id', 'employee_position.name as emp_position')
+        ->groupBy('employee.id')
+        ->get();
+
+        $employees_pos = $employees_pos->toArray();
+        
+        return response()->json([
+            "data" => array_values($employees_pos),
+        ]);
+    }
+
+    public function jobtitleEmployeeConfirmation(Request $request) {
+        try {
+            $auth_position = AuthorizationDetail::where('employee_id', '=', $request->employee_id)
+                            ->get();
+            foreach ($auth_position as $auth_position) {
+                try {
+                    $old_position                           = $auth_position->employee_position_id;
+                    $auth_position->employee_position_id    = $request->job_title_id;
+                    $auth_position->save();
+
+                } catch (\Throwable $th) {
+                    continue;
+                }
+            }
+            DB::commit();
+            return redirect('/employee')->with('success', 'Berhasil ubah job position.');
+        } catch (\Throwable $th) {
+            return back()->with('error', 'Gagal mengubah jabatan, silahkan coba kembali atau hubungi developer "' . $th->getMessage() . '"');
+        }
+    }   
 
     public function addEmployee(Request $request)
     {
@@ -741,7 +789,93 @@ class EmployeeController extends Controller
     // Organization Chart
     public function orgChartView()
     {
-        // $employees = Employee::where('id', '!=', 1)->get();
-        return view('Masterdata.orgcharts');
+        $rbm_data = Employee::join('authorization_detail as b', 'employee.id', '=', 'b.employee_id')
+                            ->join('employee_position as c', 'b.employee_position_id', '=', 'c.id')
+                            ->join('authorization as d', 'b.authorization_id', '=', 'd.id')
+                            ->join('salespoint as e', 'd.salespoint_id', '=', 'e.id')
+                            ->join('region as f', 'e.region', '=', 'f.region')
+                            ->where('c.id', '=', 49)
+                            ->where('employee.status', '=', 0)
+                            ->where('f.region', '!=', 17)
+                            ->select('employee.id', 'employee.code', 'employee.nik', DB::raw('UCASE(employee.name) AS emp_name'), 'c.name AS job_title', DB::raw("GROUP_CONCAT(DISTINCT f.region_name SEPARATOR ', ') AS reg_name"))
+                            ->groupBy('employee.id')
+                            ->orderBy('employee.name', 'ASC')
+                            ->orderBy('f.region', 'ASC')
+                            ->get();
+
+        return view('Masterdata.orgcharts', compact('rbm_data'));
     }
+
+    public function orgChartDetailView($nik) {
+
+        $orgDataDetail = DB::select
+                ("SELECT rbm.rbm_code, rbm.region, rbm.region_name, bm.slp_id, bm.slp_name, rbm.emp_name AS rbm_name, 
+                        rbm.rbm_job_title, rbm.rbm_email,
+		                bm.bm_code, bm.emp_name AS bm_name, bm.bm_job_title, bm.bm_email,
+		                rom.rom_code, rom.emp_name AS rom_name, rom.rom_job_title, rom.rom_email,
+		                aos.aos_code, aos.emp_name AS aos_name, aos.aos_job_title, aos.aos_email
+	                FROM (
+			                SELECT a.nik AS rbm_code, UCASE(a.name) AS emp_name, c.name AS rbm_job_title, e.id AS slp_id, 
+                                e.name AS slp_name, f.region, f.region_name, a.email AS rbm_email
+			                FROM employee a
+			                INNER JOIN authorization_detail b ON a.id = b.employee_id
+			                INNER JOIN employee_position c ON b.employee_position_id = c.id
+			                INNER JOIN authorization d ON b.authorization_id = d.id
+			                INNER JOIN salespoint e ON d.salespoint_id = e.id
+			                INNER JOIN region f ON e.region = f.region
+			                WHERE c.id = 49
+			                AND a.`status` = 0
+			                GROUP BY f.region, a.id, e.id
+			                ORDER BY f.region
+	                    ) rbm
+	                LEFT JOIN (
+		                    SELECT a.nik AS bm_code, UCASE(a.name) AS emp_name, c.name AS bm_job_title, e.id AS slp_id, 
+                                e.name AS slp_name, f.region, f.region_name, a.email AS bm_email
+		                    FROM employee a
+		                    INNER JOIN authorization_detail b ON a.id = b.employee_id
+		                    INNER JOIN employee_position c ON b.employee_position_id = c.id
+		                    INNER JOIN authorization d ON b.authorization_id = d.id
+		                    INNER JOIN salespoint e ON d.salespoint_id = e.id
+		                    INNER JOIN region f ON e.region = f.region
+		                    WHERE c.id = 47
+		                        AND a.`status` = 0
+		                    GROUP BY f.region, e.id, a.id
+		                    ORDER BY f.region
+	                    ) bm ON rbm.region = bm.region AND rbm.slp_id = bm.slp_id
+	                LEFT JOIN (
+		                    SELECT a.nik AS rom_code, UCASE(a.name) AS emp_name, c.name AS rom_job_title, e.id AS slp_id, 
+                                e.name AS slp_name, f.region, f.region_name, a.email AS rom_email
+		                    FROM employee a
+		                    INNER JOIN authorization_detail b ON a.id = b.employee_id
+		                    INNER JOIN employee_position c ON b.employee_position_id = c.id
+		                    INNER JOIN authorization d ON b.authorization_id = d.id
+		                    INNER JOIN salespoint e ON d.salespoint_id = e.id
+		                    INNER JOIN region f ON e.region = f.region
+		                    WHERE c.id IN (42, 77)
+		                        AND a.`status` = 0
+		                    GROUP BY f.region, a.id, e.id
+		                    ORDER BY f.region
+	                    ) rom ON rbm.region = rom.region AND rbm.slp_id = rom.slp_id
+	                LEFT JOIN (
+		                    SELECT a.nik AS aos_code, UCASE(a.name) AS emp_name, c.name AS aos_job_title, e.id AS slp_id, 
+                                e.name AS slp_name, f.region, f.region_name, a.email AS aos_email
+		                    FROM employee a
+		                    INNER JOIN authorization_detail b ON a.id = b.employee_id
+		                    INNER JOIN employee_position c ON b.employee_position_id = c.id
+		                    INNER JOIN authorization d ON b.authorization_id = d.id
+		                    INNER JOIN salespoint e ON d.salespoint_id = e.id
+		                    INNER JOIN region f ON e.region = f.region
+		                    WHERE c.id = 35
+		                        AND a.`status` = 0
+		                    GROUP BY f.region, e.id, a.id
+		                    ORDER BY f.region
+	                    ) aos ON rom.region = aos.region AND rom.slp_id = aos.slp_id
+                    WHERE rbm.region != 17
+                        AND rbm.rbm_code = $nik
+                    GROUP BY bm.slp_id, rbm.emp_name
+                    ORDER BY rbm.region, bm.slp_id
+                ");
+
+            return view('Masterdata.orgchartsdetail', compact('orgDataDetail', 'nik'));
+    }   
 }
