@@ -6,6 +6,7 @@ use App\Mail\TestMail;
 
 // Auth
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\LoginVendorController;
 
 // Dashboard
 use App\Http\Controllers\Dashboard\DashboardController;
@@ -58,11 +59,21 @@ use App\Http\Controllers\Operational\VendorEvaluationController;
 // Monitoring
 use App\Http\Controllers\Monitoring\MonitoringController;
 
+// Register
+use App\Http\Controllers\Register\RegisterController;
+
 // Reporting
 use App\Http\Controllers\Reporting\AccidentController;
 use App\Http\Controllers\Reporting\ArmadaAccidentController;
 use App\Http\Controllers\Reporting\UploadReportController;
 use App\Http\Controllers\Reporting\DownloadReportController;
+
+// Auction
+use App\Http\Controllers\Auction\AuctionController;
+
+// Approval Management
+use App\Http\Controllers\ApprovalManagement\VendorApprovalController;
+
 
 Route::get('/', function () {
     return redirect('login');
@@ -75,6 +86,22 @@ Route::get('/login', [LoginController::class, 'loginView'])->name('login');
 Route::post('/doLogin', [LoginController::class, 'doLogin']);
 
 // PUBLIC ACCESS
+// Rute untuk Vendor
+Route::prefix('auction')->group(function() {
+    // AuthVendor
+    Route::get('/login', [LoginVendorController::class, 'loginVendorView'])->name('loginVendor');
+    Route::post('/doLoginVendor', [LoginVendorController::class, 'doLoginVendor'])->name('vendor.dologin');
+    // GetVendor
+    Route::get('/register', [RegisterController::class, 'register'])->name('vendor.register');
+    Route::post('/addVendorCompany', [RegisterController::class, 'addVendorCompany'])->name('vendor.company');
+    // Auction
+    Route::get('/auctionTicket', [AuctionController::class, 'AuctionView'])->name('vendor.dashboard');
+    Route::post('/logoutVendor', function () {
+        Auth::guard('vendor')->logout();
+        return redirect()->route('loginVendor'); // Mengarahkan pengguna ke halaman login vendor setelah logout
+    })->name('vendor.logout');
+});
+
 // Bidding
 Route::get('/bidding/printview/{encrypted_bidding_id}', [BiddingController::class, 'biddingPrintView']);
 
@@ -456,6 +483,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Peremajaan Armada
     Route::middleware(['menu_access:operational:128'])->group(function () {
+        Route::get('/vendorRequest', [AuctionController::class, 'AuctionRegisterVendor']);
         Route::get('/renewalarmada', [RenewalArmadaController::class, 'renewalArmadaView']);
         Route::get('/renewalarmada/data', [RenewalArmadaController::class, 'renewalArmadaData']);
         Route::post('/updaterenewalarmada', [RenewalArmadaController::class, 'updateRenewalArmada']);
@@ -584,6 +612,12 @@ Route::middleware(['auth'])->group(function () {
 
         // AJAX
         Route::get('/getActivePO', [POController::class, 'getActivePO']);
+
+        // Approval Management
+        Route::get('/vendor-approve-register', [VendorApprovalController::class, 'vendorApprovalView']);
+        Route::get('/vendor-approve-register-detail', [VendorApprovalController::class, 'vendorApprovalDetail']);
+        Route::post('/vendor-approve-register-approved', [VendorApprovalController::class, 'vendorApprovalApprove']);
+        Route::post('/vendor-approve-register-reject', [VendorApprovalController::class, 'vendorApprovalReject']);
     });
 
     // Bidding

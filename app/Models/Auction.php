@@ -5,18 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
-class Vendor extends Model
+class Auction extends Model
 {
     use SoftDeletes;
-    protected $table = 'vendor';
+    protected $table = 'auction_header';
     protected $primaryKey = 'id';
 
-    public function regency(){
-        return $this->belongsTo(Regency::class,'city_id','id');
-    }
-
-    public function findByCode($code) {
-        return self::where('code', $code)->first();
+    public function salespoint()
+    {
+        return $this->belongsTo(SalesPoint::class);
     }
 
     public function status_name(){
@@ -25,7 +22,7 @@ class Vendor extends Model
                 return 'Aktif';
                 break;
             case '1':
-                return 'Non Aktif';
+                return 'Booked';
                 break;
             default:
                 return 'status_undefined';
