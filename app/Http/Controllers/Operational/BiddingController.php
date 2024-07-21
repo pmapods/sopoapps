@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operational;
 
 use App\Http\Controllers\Controller;
+use App\Models\Auction;
 use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\Ticket;
@@ -42,9 +43,10 @@ class BiddingController extends Controller
             $tickets = Ticket::where('status', 2)
                 ->get()
                 ->sortByDesc('created_at');
+            $is_ready_auction = Auction::where('status', 0)->get()->sortByDesc('created_at');
         }
 
-        return view('Operational.bidding', compact('tickets'));
+        return view('Operational.bidding', compact('tickets', 'is_ready_auction'));
     }
 
     public function biddingDetailView($ticket_code)
@@ -52,11 +54,12 @@ class BiddingController extends Controller
         $ticket = Ticket::where('code', $ticket_code)->first();
         $trashed_ticket_vendors = TicketVendor::where('ticket_id', $ticket->id)->onlyTrashed()->get();
         $isVendorEditAvailable = $this->isVendorEditAvailable($ticket->code);
+        $is_ready_auction = Auction::where('ticket_id', $ticket->id)->first();
         $vendors = Vendor::all();
         if ($ticket->status < 2) {
             return back()->with('error', 'Tiket belum siap untuk dilakukan proses bidding');
         }
-        return view('Operational.biddingdetail', compact('ticket', 'vendors', 'trashed_ticket_vendors', 'isVendorEditAvailable'));
+        return view('Operational.biddingdetail', compact('ticket', 'vendors', 'trashed_ticket_vendors', 'isVendorEditAvailable', 'is_ready_auction'));
     }
 
     public function addVendor(Request $request)

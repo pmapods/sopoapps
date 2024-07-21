@@ -91,15 +91,16 @@ Route::prefix('auction')->group(function() {
     // AuthVendor
     Route::get('/login', [LoginVendorController::class, 'loginVendorView'])->name('loginVendor');
     Route::post('/doLoginVendor', [LoginVendorController::class, 'doLoginVendor'])->name('vendor.dologin');
+    Route::post('/logoutVendor', function () {
+        Auth::guard('vendor')->logout();
+        return redirect()->route('loginVendor'); // Mengarahkan pengguna ke halaman login vendor setelah logout
+    })->name('vendor.logout');
     // GetVendor
     Route::get('/register', [RegisterController::class, 'register'])->name('vendor.register');
     Route::post('/addVendorCompany', [RegisterController::class, 'addVendorCompany'])->name('vendor.company');
     // Auction
     Route::get('/auctionTicket', [AuctionController::class, 'AuctionView'])->name('vendor.dashboard');
-    Route::post('/logoutVendor', function () {
-        Auth::guard('vendor')->logout();
-        return redirect()->route('loginVendor'); // Mengarahkan pengguna ke halaman login vendor setelah logout
-    })->name('vendor.logout');
+    Route::patch('/addAuctionticket', [AuctionController::class, 'addAuctionTicket'])->name('auction.addticket');
 });
 
 // Bidding

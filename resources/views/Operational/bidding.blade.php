@@ -56,6 +56,7 @@
                         </th>
                         <th width="20%">List Item</th>
                         <th width="20%">Status Bidding</th>
+                        <!-- <th width="10%">Action</th> -->
                     </tr>
                 </thead>
                 <tbody>
@@ -177,6 +178,25 @@
                                     @endforeach
                                 @endforeach
                             </td>
+                            <!-- <td>
+                                <center>
+                                    @foreach ($ticket->ticket_item as $titem)
+                                        @if (($titem->ticket_item_file_requirement->where('revised_by')->isNotEmpty() || $titem->ticket_item_attachment->where('revised_by')->isNotEmpty()) && $ticket->ticket_vendor->count() < 3)
+                                            @if ($is_ready_auction->isEmpty())
+                                                <button type="button" class="btn btn-primary mt-3" onclick="addauction()">Lelang Ticket</button> 
+                                            @else
+                                                @foreach ($is_ready_auction as $auction)
+                                                    @if ($auction->ticket_id == $titem->ticket_id) 
+                                                        <button type="button" class="btn btn-secondary mt-3" onclick="addauction() disabled ">Lelang Ticket</button> 
+                                                    @else
+                                                        <button type="button" class="btn btn-primary mt-3" onclick="addauction()">Lelang Ticket</button>  
+                                                    @endif 
+                                                @endforeach
+                                            @endif
+                                        @endif
+                                    @endforeach
+                                </center>
+                            </td> -->
                         </tr>
                     @endforeach
                 </tbody>

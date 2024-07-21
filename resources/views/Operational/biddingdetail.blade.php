@@ -566,6 +566,13 @@
                 <button type="button" class="btn btn-danger mt-3" onclick="terminateticket()">Batalkan
                     Pengadaan</button>
             @endif
+            @if (($item->ticket_item_file_requirement->where('revised_by')->isNotEmpty() || $item->ticket_item_attachment->where('revised_by')->isNotEmpty()) && $ticket->ticket_vendor->count() < 3)
+                @if ($is_ready_auction != null) 
+                    <button type="button" class="btn btn-secondary mt-3" onclick="addauction() disabled ">Lelang Ticket</button> 
+                @else
+                    <button type="button" class="btn btn-primary mt-3" onclick="addauction()">Lelang Ticket</button>  
+                @endif 
+            @endif
         </center>
     </div>
     <form action="/confirmticketfilerequirement" method="post" id="confirmform">
@@ -586,6 +593,12 @@
         <div class="input_list"></div>
     </form>
     <form action="/terminateticket" method="post" id="terminateform">
+        @csrf
+        @method('patch')
+        <input type="hidden" name="ticket_id" value="{{ $ticket->id }}">
+    </form>
+    </form>
+    <form action="/auction/addAuctionticket" method="post" id="addauction">
         @csrf
         @method('patch')
         <input type="hidden" name="ticket_id" value="{{ $ticket->id }}">
@@ -782,6 +795,10 @@
                 $('#terminateform').append('<input type="hidden" name="reason" value="' + reason + '">');
                 $('#terminateform').submit();
             }
+        }
+
+        function addauction() {
+            document.getElementById('addauction').submit();
         }
 
         function reviseCustomBidding(custom_bidding_id) {

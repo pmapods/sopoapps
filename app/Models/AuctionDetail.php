@@ -6,26 +6,25 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Auction extends Model
+class AuctionDetail extends Model
 {
     use SoftDeletes, HasFactory;
 
-    protected $table = 'auction_header';
+    protected $table = 'auction_detail';
     protected $primaryKey = 'id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    public $incrementing = true; // ID adalah integer dan auto increment
+    protected $keyType = 'int';
 
     protected $dates = ['deleted_at', 'created_at', 'updated_at'];
 
     protected $fillable = [
-        'id',
+        'auction_header_id',
         'ticket_id',
-        'ticket_code',
-        'salespoint_id',
-        'type',
-        'notes',
-        'status',
-        'is_booked',
+        'ticket_item_id',
+        'product_name',
+        'salespoint_name',
+        'posted_by',
+        'removed_by',
         'deleted_at',
         'created_at',
         'updated_at'

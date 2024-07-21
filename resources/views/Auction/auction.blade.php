@@ -10,6 +10,14 @@
             background-color: #A01E2A;
             color: white !important;
         }
+
+        .status-open {
+        color: green;
+        }
+
+        .status-close {
+            color: red;
+        }
     </style>
 @endsection
 
@@ -20,19 +28,7 @@
                 <div class="col-sm-6">
                     <h1 class="m-0 text-dark">Auction Ticket</h1>
                 </div>
-                <!-- <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item">Masterdata</li>
-                        <li class="breadcrumb-item active">Auction</li>
-                    </ol>
-                </div> -->
             </div>
-            <!-- <div class="d-flex justify-content-end mt-2">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addAuctionModal"
-                    id="addbutton">
-                    Tambah Auction
-                </button>
-            </div> -->
         </div>
     </div>
     <div class="content-body px-4">
@@ -61,8 +57,9 @@
                                 <th>#</th>
                                 <th>Kode</th>
                                 <th>Area</th>
-                                <th>Keterangan</th>
-                                <th>Status</th>
+                                <th width="30%">Keterangan</th>
+                                <th width="10%">Status</th>
+                                <th width="10%">Qty Vendor Apply</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -73,7 +70,16 @@
                                     <td>{{ $auction->ticket_code }}</td>
                                     <td>{{ $auction->salespoint->name }}</td>
                                     <td>{{ $auction->notes }}</td>
-                                    <td>{{ $auction->status }}</td>
+                                    <td class="{{ $auction->status == 0 ? 'status-open' : ($auction->status == 1 ? 'status-close' : '') }}">
+                                        @if ($auction->status == 0)
+                                            Open
+                                        @elseif ($auction->status == 1)
+                                            Closed
+                                        @else
+                                            Unknown
+                                        @endif
+                                    </td>
+                                    <td> <center>{{$auction->is_booked}}</center></td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -83,12 +89,13 @@
             <div class="tab-pane fade" id="pills-armada" role="tabpanel" aria-labelledby="pills-armada-tab">
                 <table id="auctionArmadaDT" class="table table-bordered table-striped dataTable" role="grid">
                     <thead>
-                        <tr>
+                        <tr role="row">
                             <th>#</th>
                             <th>Kode</th>
                             <th>Area</th>
-                            <th>Keterangan</th>
-                            <th>Status</th>
+                            <th width="30%">Keterangan</th>
+                            <th width="10%">Status</th>
+                            <th width="10%">Qty Vendor Apply</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -99,7 +106,16 @@
                                 <td>{{ $auction->ticket_code }}</td>
                                 <td>{{ $auction->salespoint->name }}</td>
                                 <td>{{ $auction->notes }}</td>
-                                <td>{{ $auction->status }}</td>
+                                <td class="{{ $auction->status == 0 ? 'status-open' : ($auction->status == 1 ? 'status-close' : '') }}">
+                                    @if ($auction->status == 0)
+                                        Open
+                                    @elseif ($auction->status == 1)
+                                        Closed
+                                    @else
+                                        Unknown
+                                    @endif
+                                </td>
+                                <td> <center>{{$auction->is_booked}}</center></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -112,8 +128,9 @@
                             <th>#</th>
                             <th>Kode</th>
                             <th>Area</th>
-                            <th>Keterangan</th>
-                            <th>Status</th>
+                            <th width="30%">Keterangan</th>
+                            <th width="10%">Status</th>
+                            <th width="10%">Qty Vendor Apply</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -124,7 +141,16 @@
                                 <td>{{ $auction->ticket_code }}</td>
                                 <td>{{ $auction->salespoint->name }}</td>
                                 <td>{{ $auction->notes }}</td>
-                                <td>{{ $auction->status }}</td>
+                                <td class="{{ $auction->status == 0 ? 'status-open' : ($auction->status == 1 ? 'status-close' : '') }}">
+                                    @if ($auction->status == 0)
+                                        Open
+                                    @elseif ($auction->status == 1)
+                                        Closed
+                                    @else
+                                        Unknown
+                                    @endif
+                                </td>
+                                <td> <center>{{$auction->is_booked}}</center></td>
                             </tr>
                         @endforeach
                     </tbody>
