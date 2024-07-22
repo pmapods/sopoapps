@@ -73,7 +73,6 @@ class AuctionController extends Controller
             $newAuctionDetail->deleted_at        = null;
             $newAuctionDetail->created_at        = now();
             $newAuctionDetail->updated_at        = now();
-
             $newAuctionDetail->save();
 
             DB::commit();
@@ -86,54 +85,4 @@ class AuctionController extends Controller
             return redirect('/bidding/')->with('error', 'Gagal memasukan ticket ke dalam list lelang. Silahkan coba kembali atau hubungi developer');
         }
     }
-
-
-
-    // public function addAuctionTicket(Request $request)
-    // {
-    //     try {
-    //         // dd($request);
-    //         $ticket = Ticket::where('id', $request->ticket_id)->first();
-    //         $ticket_item = TicketItem::where('ticket_id', $ticket->id)->first();
-    //         $vendor_ticket = TicketVendor::where('ticket_id', $ticket->id)->get();
-    //         $uuid = Uuid::uuid4();
-
-    //         DB::beginTransaction();
-    //         $newAuction = new Auction;
-    //         // $newAuction->id             = $uuid->toString();
-    //         $newAuction->ticket_id      = $request->ticket_id;
-    //         $newAuction->ticket_code    = $ticket->code;
-    //         $newAuction->salespoint_id  = $ticket->salespoint_id;
-    //         $newAuction->type           = 'barangjasa';
-    //         $newAuction->notes          = $ticket_item->name . ' ' . $ticket_item->brand . ' ' . $ticket_item->type;
-    //         $newAuction->status         = 0;
-    //         $newAuction->is_booked      = $vendor_ticket->count();
-    //         $newAuction->deleted_at     = null;
-    //         $newAuction->created_at     = now();
-    //         $newAuction->updated_at     = now();
-    //         $newAuction->save();
-
-    //         $newAuctionDetail                    = new AuctionDetail;
-    //         $newAuctionDetail->auction_header_id = $newAuction->id;
-    //         $newAuctionDetail->ticket_id         = $request->ticket_id;
-    //         $newAuctionDetail->ticket_item_id    = $ticket_item->id;
-    //         $newAuctionDetail->ticket_vendor_id  = $vendor_ticket->id;
-    //         $newAuctionDetail->product_name      = $ticket_item->name;
-    //         $newAuctionDetail->salespoint_name   = $ticket->salespoint->name;
-    //         $newAuctionDetail->posted_by         = Auth::user()->id;
-    //         $newAuctionDetail->removed_by        = null;
-    //         $newAuctionDetail->deleted_at     = null;
-    //         $newAuctionDetail->created_at     = now();
-    //         $newAuctionDetail->updated_at     = now();
-    //         dd($newAuction);
-    //         $newAuctionDetail->save();
-    //         DB::commit();
-            
-    //         return redirect('/bidding/' . $ticket->code . '/' . $request->ticket_id)->with('success', 'Berhasil dimasukan ke dalam list lelang.');
-    //     } catch (\Exception $ex) {
-    //         DB::rollback();
-    //         return redirect('/bidding/' . $ticket->code)->with('error', 'Gagal memasukan ticket ke dalam list lelang. Silahkan coba kembali atau hubungi developer');
-    //     }
-    // }
-
 }
