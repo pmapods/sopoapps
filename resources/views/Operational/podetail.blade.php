@@ -472,7 +472,10 @@
                                     <a class="uploaded_file text-primary" style="cursor:pointer"
                                         onclick='window.open("/storage/{{ $po->internal_signed_filepath }}")'>Tampilkan
                                         dokumen Internal Signed</a>
-                                    <small><b>status</b> :
+                                    <a class="uploaded_file text-primary" style="cursor:pointer"
+                                        onclick='window.open("/storage/{{ $po->additional_po_filepath }}")'>Tampilkan
+                                        dokumen Additional attachment</a>
+                                    <small><b>Status</b> :
                                         {{ $po->po_upload_request->isOpened == false ? 'Link Upload File belum dibuka oleh Vendor' : 'Link Upload File sudah dibuka oleh Vendor' }}</small>
                                     <small><b>Last Mail Send to</b> : {{ $po->last_mail_send_to }}</small>
                                     <small><b>Last Mail CC to</b> : {{ $po->last_mail_cc_to }}</small>
@@ -495,6 +498,13 @@
                                         <a class="uploaded_file text-primary font-weight-bold" style="cursor: pointer;"
                                             onclick='window.open("/storage/{{ $po->internal_signed_filepath }}")'>Dokumen
                                             PO dengan Tanda Tangan
+                                        </a>
+                                    @else
+                                    @endif
+
+                                    @if ($po->additional_po_filepath)
+                                        <a class="uploaded_file text-primary font-weight-bold" style="cursor: pointer;"
+                                            onclick='window.open("/storage/{{ $po->additional_po_filepath }}")'>Dokumen Additional attachment
                                         </a>
                                     @else
                                     @endif
@@ -550,6 +560,12 @@
                                     <label class="required_field">Pilih File PO yang sudah di Tanda tangan Internal</label>
                                     <input type="file" class="form-control-file validatefilesize"
                                         name="internal_signed_file" accept="image/*,application/pdf" required>
+                                    <small class="text-danger">*jpg, jpeg, pdf (MAX 5MB)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pilih Additional attachment (Optional)</label>
+                                    <input type="file" class="form-control-file validatefilesize"
+                                        name="additional_po_file" accept="image/*,application/pdf">
                                     <small class="text-danger">*jpg, jpeg, pdf (MAX 5MB)</small>
                                 </div>
                                 <div class="form-check">

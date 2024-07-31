@@ -1179,6 +1179,7 @@ class POController extends Controller
     public function submitPO(Request $request)
     {
         try {
+            // dd($request);
             DB::beginTransaction();
             $po = Po::findOrFail($request->po_id);
             if ($po->status != -1) {
@@ -1362,6 +1363,7 @@ class POController extends Controller
 
     public function uploadInternalSignedFile(Request $request)
     {
+        // dd($request->file('internal_signed_file'), $request->file('additional_po_file'));
         $emailflag = true;
         $emailmessage = "";
         try {
@@ -1380,12 +1382,31 @@ class POController extends Controller
                 $type = 'security';
             }
             $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
+            // Internal File Signed
             $ext = pathinfo($request->file('internal_signed_file')->getClientOriginalName(), PATHINFO_EXTENSION);
             $name = $po->no_po_sap . "_INTERNAL_SIGNED_" . $salespointname . '.' . $ext;
             $path = "/attachments/ticketing/" . $type . "/" . $ticket->code . '/po/' . $name;
             $file = pathinfo($path);
             $path = $request->file('internal_signed_file')->storeAs($file['dirname'], $file['basename'], 'public');
             $po->internal_signed_filepath = $path;
+
+            // Additional File PO
+            if (!$request->file('additional_po_file')) {
+                $po->additional_po_filepath = null;
+                $po->upload_additional_po_signed_by = null;
+                $po->upload_additional_po_signed_at = null;
+            }
+            else {
+                $ext = pathinfo($request->file('additional_po_file')->getClientOriginalName(), PATHINFO_EXTENSION);
+                $name = $po->no_po_sap . "_ADDITIONAL_FILE_PO_" . $salespointname . '.' . $ext;
+                $path = "/attachments/ticketing/" . $type . "/" . $ticket->code . '/po/' . $name;
+                $file = pathinfo($path);
+                $path = $request->file('additional_po_file')->storeAs($file['dirname'], $file['basename'], 'public');
+                $po->additional_po_filepath = $path;
+                $po->upload_additional_po_signed_by = Auth::user()->id;
+                $po->upload_additional_po_signed_at = now();
+            }
+
             $po->save();
 
             if ($request->needVendorConfirmation) {
@@ -1447,7 +1468,12 @@ class POController extends Controller
                 $monitor->ticket_id      = $po->ticket->id;
                 $monitor->employee_id    = Auth::user()->id;
                 $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Upload Internal Signed PO ' . $po->no_po_sap;
+                if ($po->additional_po_filepath = null) {
+                    $monitor->message        = 'Upload Internal Signed PO ' . $po->no_po_sap;
+                }
+                else {
+                    $monitor->message        = 'Upload Internal Signed PO & Addtional File PO ' . $po->no_po_sap;
+                }
                 $monitor->save();
             }
             if ($po->armada_ticket_id != null) {
@@ -1455,7 +1481,12 @@ class POController extends Controller
                 $monitor->armada_ticket_id      = $po->armada_ticket->id;
                 $monitor->employee_id           = Auth::user()->id;
                 $monitor->employee_name         = Auth::user()->name;
-                $monitor->message               = 'Upload Internal Signed PO ' . $po->no_po_sap;
+                if ($po->additional_po_filepath = null) {
+                    $monitor->message        = 'Upload Internal Signed PO ' . $po->no_po_sap;
+                }
+                else {
+                    $monitor->message        = 'Upload Internal Signed PO & Addtional File PO ' . $po->no_po_sap;
+                }
                 $monitor->save();
             }
             if ($po->security_ticket_id != null) {
@@ -1463,7 +1494,12 @@ class POController extends Controller
                 $monitor->security_ticket_id      = $po->security_ticket->id;
                 $monitor->employee_id             = Auth::user()->id;
                 $monitor->employee_name           = Auth::user()->name;
-                $monitor->message                 = 'Upload Internal Signed PO ' . $po->no_po_sap;
+                if ($po->additional_po_filepath = null) {
+                    $monitor->message        = 'Upload Internal Signed PO ' . $po->no_po_sap;
+                }
+                else {
+                    $monitor->message        = 'Upload Internal Signed PO & Addtional File PO ' . $po->no_po_sap;
+                }
                 $monitor->save();
             }
 
