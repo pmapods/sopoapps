@@ -399,17 +399,19 @@ class RenewalArmadaController extends Controller
             $open_request->save();
 
             // cek armada tiket PO status selain -1 dan 6
-            $po_armada_tickets = ArmadaTicket::whereNotIn('status', [-1, 6])
-            ->where('salespoint_id', '==', $open_request->last_salespoint_id)
-            ->where('armada_type_id', '==', $open_request->armada_type_id)
-            ->where('armada_id', '==', $open_request->armada_id)
-            ->whereNull('deleted_at')
-            ->orderBy('created_at', 'desc')
-            ->first();
+            $po_armada_tickets = ArmadaTicket::where('status', '!=', -1)
+                        ->where('salespoint_id', '==', $open_request->last_salespoint_id)
+                        ->where('armada_type_id', '==', $open_request->armada_type_id)
+                        ->where('armada_id', '==', $open_request->armada_id)
+                        ->whereNull('deleted_at')
+                        ->orderBy('created_at', 'desc')
+                        ->first();
 
             if ($po_armada_tickets != null) {
-                $po_normals = Po::where('no_po_sap', $po_armada_ticket->po_reference_number)->first();
-            }else{
+                $po_normals = Po::where('no_po_sap', $po_armada_ticket->po_reference_number)
+                            ->whereNotIn('status', [-1, 4])
+                            ->first();
+            } else {
                 // cek armada tiket PO dengan status 6
                 $po_armada_tickets = ArmadaTicket::where('status', 6)
                     ->where('salespoint_id', $open_request->last_salespoint_id)
@@ -420,23 +422,25 @@ class RenewalArmadaController extends Controller
                     ->first();
 
                 if ($po_armada_tickets != null) {
-                    $po_normals = Po::where('no_po_sap', $po_armada_tickets->po_number)->first();
+                    $po_normals = Po::where('no_po_sap', $po_armada_tickets->po_number)
+                                ->whereNotIn('status', [-1, 4])
+                                ->first();
                 }
-
             }
 
             $searchPlate = $open_request->old_plate;
 
             if ($po_normals) {
+                // Cek di Tiket Armada
                 $update_armada_ticket = ArmadaTicket::where('code', $po_armada_tickets->code)->first();
                 $update_armada_ticket->gt_plate  = $open_request->new_plate;
                 $update_armada_ticket->save();
-                $msg = 'dan PO';
-            }else{
+                $msg = 'PO ' . $po_normals->no_po_sap;
+            } else {
                 // cek Po Manual dengan transaksi aktif
                 $po_manuals = PoManual::where('salespoint_id', $open_request->last_salespoint_id)
                 ->where('armada_type_id', $open_request->armada_type_id)
-                ->where('status', 3)
+                ->whereNotIn('status', [-1, 4])
                 ->where(function ($query) use ($searchPlate) {
                     $query->where('gs_plate', $searchPlate)
                         ->orWhere('gt_plate', $searchPlate);
@@ -447,9 +451,10 @@ class RenewalArmadaController extends Controller
                         $update_po_manual            = PoManual::where($po_manual['po_number']);
                         $update_po_manual->gt_plate  = $open_request->new_plate;
                         $update_po_manual->save();
+
+                        $msg = 'PO Manual ' . $update_po_manual->po_number;
                     }
 
-                    $msg = 'dan PO Manual';
                 }
             }
 

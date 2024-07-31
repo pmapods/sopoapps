@@ -557,7 +557,7 @@ class EmployeeController extends Controller
                 $newAuth->salespoint = $vendor_evaluation->salespoint->name;
                 $newAuth->code = $vendor_evaluation->code;
                 $newAuth->created_at = $vendor_evaluation->created_at->translatedFormat('d F Y (H:i)');
-                $newAuth->created_by = $vendor_evaluation->authorizations->where('as', 'Pengaju')->first()->employee_name ?? '';
+                $newAuth->created_by = $vendor_evaluation->authorizations->where('as', 'Menilai')->first()->employee_name ?? '';
                 $newAuth->transaction_type = 'Vendor Evaluation';
                 $newAuth->status = $vendor_evaluation->status();
                 array_push($data, $newAuth);

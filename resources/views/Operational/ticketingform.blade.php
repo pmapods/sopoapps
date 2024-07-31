@@ -709,7 +709,8 @@
         $ticket->ticket_item = $item;
     @endphp
 
-    @if ($ticket->status != 7 && $item->file_missing_filepath == null && $item->file_missing_status != 1)
+    @if ($ticket->status != 7 && $item->file_missing_filepath == null && $item->file_missing_status != 1
+        && !str_contains($ticket->reason, 'End Kontrak PEST Control'))
         <div class="form-group">
             <form action="/uploadmissingfile/{{ $item->id }}" method="post" enctype="multipart/form-data">
                 @csrf

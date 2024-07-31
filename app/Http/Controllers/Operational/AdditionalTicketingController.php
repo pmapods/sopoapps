@@ -307,26 +307,37 @@ class AdditionalTicketingController extends Controller
                 return redirect('/ticketing')->with('success', 'Berhasil menambah pengadaan perpanjangan. Silahkan melakukan otorisasi');
             } else if ($request->request_type == 4 || $request->request_type == 6) {
                 // END KONTRAK ubah ticket ke status selesai dan ubah status po menjadi closed
-
-                if ($request->request_type == 4) {
-                    $ticket->reason = "End Kontrak PO " . $request->po_number;
-                } else {
-                    $ticket->reason = "Perpanjangan End Kontrak PO " . $request->po_number;
+                $authorizations = Authorization::find($request->authorization_id);
+                foreach ($authorizations->authorization_detail as $detail) {
+                    $newTicketAuthorization                     = new TicketAuthorization;
+                    $newTicketAuthorization->ticket_id          = $ticket->id;
+                    $newTicketAuthorization->employee_id        = $detail->employee_id;
+                    $newTicketAuthorization->employee_name      = $detail->employee->name;
+                    $newTicketAuthorization->as                 = $detail->sign_as;
+                    $newTicketAuthorization->employee_position  = $detail->employee_position->name;
+                    $newTicketAuthorization->level              = $detail->level;
+                    $newTicketAuthorization->save();
                 }
 
-                $ticket->status = 7;
+                if ($request->request_type == 4) {
+                    $ticket->reason = "End Kontrak PEST Control PO " . $request->po_number;
+                } else {
+                    $ticket->reason = "Perpanjangan End Kontrak PEST Control PO " . $request->po_number;
+                }
+
+                $ticket->status = 1;
                 $ticket->save();
 
                 $po = $ticket->po_reference;
                 $pomanual = PoManual::where('po_number', $ticket->po_reference_number)->first();
-                if ($po) {
-                    $po->status = 4;
-                    $po->save();
-                } else if ($pomanual) {
-                    $pomanual->status = 4;
-                    $pomanual->save();
-                } else {
-                }
+                // if ($po) {
+                //     $po->status = 4;
+                //     $po->save();
+                // } else if ($pomanual) {
+                //     $pomanual->status = 4;
+                //     $pomanual->save();
+                // } else {
+                // }
 
                 $newTicketVendor = new TicketVendor;
                 $newTicketVendor->ticket_id         = $ticket->id;
@@ -336,8 +347,9 @@ class AdditionalTicketingController extends Controller
                 $newTicketVendor->phone             = "";
                 $newTicketVendor->type              = 0;
                 $newTicketVendor->save();
+
                 DB::commit();
-                return redirect('/ticketing')->with('success', 'Berhasil melakukan End Kontrak. Status PO ' . $request->po_number . ' menjadi closed. Pengadaan Selesai');
+                return redirect('/ticketing')->with('success', 'Berhasil melakukan End Kontrak ' . $ticket->code .'. Silahkan Melakukan Otorisasi');
             }
         } catch (\Exception $ex) {
             DB::rollback();

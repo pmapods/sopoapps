@@ -66,6 +66,7 @@ class MonitoringController extends Controller
 
     public function armadaMonitoringView(Request $request)
     {
+        set_time_limit(0);
         $salespoint_ids = Auth::user()->location_access->pluck('salespoint_id')->toArray();
         $tickets = ArmadaTicket::whereNotIn('status', [-1])
             ->whereIn('salespoint_id', $salespoint_ids)
