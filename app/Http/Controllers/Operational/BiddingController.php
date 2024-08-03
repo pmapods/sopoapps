@@ -71,7 +71,6 @@ class BiddingController extends Controller
                 DB::beginTransaction();
                 $newTicketVendor = new TicketVendor;
                 $newTicketVendor->ticket_id = $ticket->id;
-                // dd($request);
                 if ($request->vendor_type == 0) {
                     $vendor = Vendor::findOrFail($request->vendor_id);
                     $newTicketVendor->vendor_id     = $vendor->id;

@@ -15,6 +15,10 @@ class Vendor extends Model
         return $this->belongsTo(Regency::class,'city_id','id');
     }
 
+    public function findByCode($code) {
+        return self::where('code', $code)->first();
+    }
+
     public function status_name(){
         switch ($this->status){
             case '0':
