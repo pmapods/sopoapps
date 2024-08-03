@@ -3,20 +3,17 @@
 namespace App\Http\Controllers\Auction;
 
 use App\Http\Controllers\Controller;
+use App\Models\TicketVendor;
 use App\Models\VendorLogin;
 use Illuminate\Http\Request;
-
-use Ramsey\Uuid\Uuid;
 use App\Models\SalesPoint;
 use App\Models\Auction;
 use App\Models\AuctionDetail;
-use App\Models\Ticket;
-use App\Models\TicketItem;
-use App\Models\TicketVendor;
+use App\Models\AuctionVendorBidding;
+use App\Models\VendorCompany;
+use App\Models\Vendor;
 
-use DB;
 use Auth;
-use Log;
 
 class AuctionController extends Controller
 {
@@ -28,61 +25,51 @@ class AuctionController extends Controller
         return view('Auction.auction', compact('available_salespoints', 'auctions'), ['title' => 'Auction Ticket']);
     }
 
+    public function AuctionDetailView($code)
+    {
+        $tickets = Auction::where('ticket_code', $code)->first();
+        $auction_details = AuctionDetail::where('auction_header_id', $tickets->id)->first();
+
+        return view('Auction.auctiondetail', compact('tickets', 'auction_details'), ['title' => 'Auction Ticket Detail']);
+    }
+
     public function AuctionRegisterVendor()
     {
         $available_salespoints = SalesPoint::all();
         $available_salespoints = $available_salespoints->groupBy('region');
-        $vendors = VendorLogin::where('status',0)->all();
+        $vendors = VendorLogin::where('status', 0)->all();
         return view('Auction.register', compact('vendors'), ['title' => 'Vendor Request List']);
     }
 
-    public function addAuctionTicket(Request $request)
+    public function RequestAuctionBidding(Request $request)
     {
         try {
+            $company_code = Auth::guard('vendor')->user()->vendor_code_ref;
+            $auction_header = Auction::where('ticket_code', $request->ticket_code)->first();
+            $auction_details = AuctionDetail::where('auction_header_id', $auction_header->id)->first();
+            $vendor = Vendor::where('code', $company_code)->first();
+            $vendor_company = VendorCompany::where('code', $company_code)->first();
 
-            // Cari tiket
-            $ticket = Ticket::where('id', $request->ticket_id)->firstOrFail();
-            $ticket_item = TicketItem::where('ticket_id', $request->ticket_id)->firstOrFail();
-            $vendor_ticket = TicketVendor::where('ticket_id', $request->ticket_id)->get();
-            $uuid = Uuid::uuid4();
+            $newAuctionVendorBidding = new AuctionVendorBidding;
+            $newAuctionVendorBidding->ticket_id = $auction_details->ticket_id;
+            $newAuctionVendorBidding->vendor_id = $vendor->id;
+            $newAuctionVendorBidding->name = $vendor_company->company_name;
+            $newAuctionVendorBidding->salesperson = $vendor_company->pic_name;
+            $newAuctionVendorBidding->phone = $vendor_company->pic_phone;
+            $newAuctionVendorBidding->type = 2;
+            $newAuctionVendorBidding->added_on = 'bidding auction';
+            $newAuctionVendorBidding->created_at = now();
+            $newAuctionVendorBidding->updated_at = now();
+            $newAuctionVendorBidding->save();
 
-            DB::beginTransaction();
+            //update qty vendor bidding table auction header
+            $auction_header->is_booked = $auction_header->is_booked + 1;
+            $auction_header->update();
 
-            $newAuction = new Auction;
-            $newAuction->id             = $uuid->toString();
-            $newAuction->ticket_id      = $request->ticket_id;
-            $newAuction->ticket_code    = $ticket->code;
-            $newAuction->salespoint_id  = $ticket->salespoint_id;
-            $newAuction->type           = 'barangjasa';
-            $newAuction->notes          = $ticket_item->name . ' ' . $ticket_item->brand . ' ' . $ticket_item->type;
-            $newAuction->status         = 0;
-            $newAuction->is_booked      = $vendor_ticket->count();
-            $newAuction->deleted_at     = null;
-            $newAuction->created_at     = now();
-            $newAuction->updated_at     = now();
-            $newAuction->save();
-
-            $newAuctionDetail = new AuctionDetail;
-            $newAuctionDetail->auction_header_id = $newAuction->id;
-            $newAuctionDetail->ticket_id         = $request->ticket_id;
-            $newAuctionDetail->ticket_item_id    = $ticket_item->id;
-            $newAuctionDetail->product_name      = $ticket_item->name;
-            $newAuctionDetail->salespoint_name   = $ticket_item->name . ' ' . $ticket_item->brand . ' ' . $ticket_item->type;
-            $newAuctionDetail->posted_by         = Auth::user()->id;
-            $newAuctionDetail->removed_by        = null;
-            $newAuctionDetail->deleted_at        = null;
-            $newAuctionDetail->created_at        = now();
-            $newAuctionDetail->updated_at        = now();
-            $newAuctionDetail->save();
-
-            DB::commit();
-
-            return redirect('/bidding/')->with('success', 'Berhasil dimasukan ke dalam list lelang.');
+            return back()->with('success', 'Berhasil request bidding untuk ticket ' . $request->ticket_code . '. Anda akan mendapatkan notifikasi email jika anda terpilih sebagai vendor kami, Terima kasih');
         } catch (\Exception $ex) {
-            DB::rollback();
-            // Tambahkan logging untuk menangkap pesan error
-            Log::error('Error adding auction ticket: ' . $ex->getMessage(), ['exception' => $ex]);
-            return redirect('/bidding/')->with('error', 'Gagal memasukan ticket ke dalam list lelang. Silahkan coba kembali atau hubungi developer');
+            return back()->with('error', 'Gagal request bidding "' . $ex->getMessage() . '"');
         }
     }
+
 }

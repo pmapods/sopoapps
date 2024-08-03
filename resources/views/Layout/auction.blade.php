@@ -62,7 +62,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
             </style>
             <ul class="navbar-nav ml-auto">
                 <marquee scrolldelay="60" vspace="0">
-                    <span>PMA-Purchase Order Digital System</span>
+                    <span>PMA-PODS Auction</span>
                 </marquee>
             </ul>
             @if (Auth::guard('vendor')->check())
@@ -86,9 +86,12 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                     <span class="text-danger">{{ Auth::guard('vendor')->user()->email }}</span>
                                 </span>
                             </a>
-                            <a href="/auction/profile" class="dropdown-item bg-light">
-                                <center><i class="fad fa-address-card mr-2"></i>My Profile</center>
+                            <!-- <a href="/auction/userProfile" class="dropdown-item bg-light">
+                                <center><i class="fad fa-address-card mr-2"></i>User Profile</center>
                             </a>
+                            <a href="/auction/companyProfile" class="dropdown-item bg-light">
+                                <center><i class="fad fa-address-card mr-2"></i>Company Profile</center>
+                            </a> -->
 
                             <!-- Form logout -->
                             <form id="logout-form" action="{{ route('vendor.logout') }}" method="POST" style="display: none;">
@@ -120,7 +123,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
             <!-- Brand Logo -->
             <a href="/dashboard" class="brand-link elevation-4" style="background-color: #FFF">
                 <img src="/assets/logo.png" alt="PMA Logo" class="brand-image" style="opacity: .8">
-                <span class="brand-text font-weight-bold">PMA-PODS</span>
+                <span class="brand-text font-weight-bold">PMA-PODS Auction</span>
             </a>
 
             <!-- Sidebar -->

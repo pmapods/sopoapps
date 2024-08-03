@@ -65,7 +65,9 @@
         $('#vendorregisterDT').DataTable(datatable_settings);
         $('#vendorregisterDT tbody').on('click', 'tr', function () {
             const id = $(this).data("id");
-            window.location.href = '/vendor-approve-register-detail?id='+id;
+            if(id){
+                window.location.href = '/vendor-approve-register-detail?id='+id;
+            }
         });
     })
 </script>

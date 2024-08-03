@@ -225,7 +225,9 @@ class ArmadaTicket extends Model
                 return $string_text;
 
                 break;
-
+            case '8':
+                return 'Sedang di Lelang';
+                break;
             case '-1':
                 $string = 'Batal';
                 if (isset($this->termination_reason)) {
@@ -250,13 +252,29 @@ class ArmadaTicket extends Model
         // 4 Otorisasi Selesai
     }
 
-    public function authorization_type() {
+    public function authorization_type()
+    {
         switch ($this->authorization_type) {
             case 0:
                 return 'PR Manual';
                 break;
             case 1:
                 return 'Form Fasilitas';
+                break;
+        }
+    }
+
+    public function auction_status()
+    {
+        switch ($this->auction_status) {
+            case 0:
+                return 'Ticket Tidak di Lelang';
+                break;
+            case 1:
+                return 'Ticket Sedang di Lelang';
+                break;
+            default:
+                return 'Ticket Tidak di Lelang';
                 break;
         }
     }

@@ -8,6 +8,7 @@
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Ionicons -->
     <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
     <!-- icheck bootstrap -->
@@ -83,6 +84,7 @@
             <div class="col">
               <button type="submit" class="btn btn-danger btn-block">Masuk</button>
               <small class="d-block text-center mt-3" style="color: #000000">Belum punya akun? <a href="/auction/register" style="color: #9A0707">Register</a></small>
+              <small class="d-block text-center mt-3"> <a href="/auction/auctionTicket" style="color: #9A0707"> <i class="fa-solid fa-house"></i> Home</a> </small>
             </div>
             <!-- /.col -->
           </div>

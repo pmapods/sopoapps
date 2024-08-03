@@ -398,8 +398,8 @@ class RenewalArmadaController extends Controller
             $open_request->updated_at    = now()->format('Y-m-d');
             $open_request->save();
 
-            // cek armada tiket PO status selain -1 dan 6
-            $po_armada_tickets = ArmadaTicket::whereNotIn('status', [-1, 6])
+            // cek armada tiket PO status 4 / belum cls PO
+            $po_armada_tickets = ArmadaTicket::whereNotIn('status', [4])
             ->where('salespoint_id', '==', $open_request->last_salespoint_id)
             ->where('armada_type_id', '==', $open_request->armada_type_id)
             ->where('armada_id', '==', $open_request->armada_id)
@@ -408,7 +408,7 @@ class RenewalArmadaController extends Controller
             ->first();
 
             if ($po_armada_tickets != null) {
-                $po_normals = Po::where('no_po_sap', $po_armada_ticket->po_reference_number)->first();
+                $po_normals = Po::where('no_po_sap', $po_armada_tickets->po_reference_number)->first();
             }else{
                 // cek armada tiket PO dengan status 6
                 $po_armada_tickets = ArmadaTicket::where('status', 6)

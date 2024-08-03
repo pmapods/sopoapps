@@ -19,22 +19,32 @@
             <img src="{{ asset('assets/logo.png') }}" alt=""/>
             <h3 style="color: #000000">PMA - PODS</h3>
             <small class="d-block text-center mt-3" style="color: #000000">Sudah Registrasi? <a href="/auction/login" style="color: #FFFFFF">Login</a></small>
+            <small class="d-block text-center mt-3"> <a href="/auction/auctionTicket" style="color: #FFFFFF"> <i class="fa-solid fa-house"></i> Home</a> </small>
         </div>
         <div class="col-md-9 register-right">
             <div class="tab-content" id="myTabContent">
                 <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
-                    <form action="/auction/addVendorCompany" method="post">
+                    <form action="/auction/addVendorCompany" method="post" enctype="multipart/form-data">
                         @csrf
                         <h3 class="register-heading">Informasi Perusahaan</h3>
                         <div class="row register-form">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <select class="form-control select2" name="vendor_ref">
-                                        <option value="">-- Pilih Jika sudah pernah menjadi vendor PMA --</option>
-                                        @foreach ($vendors as $vendor)
-                                            <option value="{{ $vendor->code }}">{{ $vendor->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    <label>
+                                        <input type="radio" name="vendor_type" value="existing_vendor" id="existing_vendor"> Sudah Pernah Jadi Vendor PMA
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="vendor_type" value="new_vendor" id="new_vendor" checked> Vendor Baru
+                                    </label>
+                                    
+                                    <div id="vendor-select-container" class="form-group vendor-select" style="display: none;">
+                                        <select class="form-control select2" name="vendor_ref">
+                                            <option value="">-- Pilih Vendor --</option>
+                                            @foreach ($vendors as $vendor)
+                                                <option value="{{ $vendor->code }}">{{ $vendor->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <input type="text" class="form-control" id="company_name" name="company_name" placeholder="Nama Perusahaan *" value="" required autofocus/>
@@ -116,40 +126,33 @@
                                                 Security
                                             </label>
                                         </div>
-                                        <!-- <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="business_type" id="jasa_lainnya" value="" >
-                                            <label class="form-check-label" for="jasa_lainnya">
-                                                <input type="text" class="form-control mt-1" name="jasa_lainnya_text" id="jasa_lainnya_text" placeholder="Lainnya" >
-                                            </label>
-                                        </div> -->
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <!-- <div class="form-group"> -->
                                     <small class="form-text text-muted">Upload profil perusahaan *</small>
-                                    <input type="file" class="form-control" id="company_profile" name="company_profile" value="" required/>
-                                <!-- </div> -->
+                                    <input type="file" class="form-control" id="company_profile" name="company_profile" accept="image/*,application/pdf" required/>
                                 <div class="form-group">
                                     <small class="form-text text-muted">Upload legalitas : Akta Pendirian *</small>
-                                    <input type="file" class="form-control" id="legal_docs" name="legal_docs" value="" required/>
+                                    <input type="file" class="form-control" id="legal_docs" name="legal_docs" accept="image/*,application/pdf" required/>
                                 </div>
                                 <div class="form-group">
                                     <small class="form-text text-muted">Upload legalitas : Domisili / Izin Lokasi *</small>
-                                    <input type="file" class="form-control" id="location_permission" name="location_permission" value="" required/>
+                                    <input type="file" class="form-control" id="location_permission" name="location_permission" accept="image/*,application/pdf" required/>
                                 </div>
                                 <div class="form-group">
                                     <small class="form-text text-muted">Upload legalitas : SIUP / Izin Usaha *</small>
-                                    <input type="file" class="form-control" id="siup" name="siup" value="" required/>
+                                    <input type="file" class="form-control" id="siup" name="siup" accept="image/*,application/pdf" required/>
                                 </div>
                                 <div class="form-group">
                                     <small class="form-text text-muted">Upload legalitas : TDP (Tanda Daftar Perusahaan) / NIB*</small>
-                                    <input type="file" class="form-control" id="tdp_nib" name="tdp_nib" value="" required/>
+                                    <input type="file" class="form-control" id="tdp_nib" name="tdp_nib" accept="image/*,application/pdf" required/>
                                 </div>
                                 <div class="form-group">
                                     <small class="form-text text-muted">Upload legalitas : NPWP *</small>
-                                    <input type="file" class="form-control" id="company_npwp" name="company_npwp" value="" required/>
+                                    <input type="file" class="form-control" id="company_npwp" name="company_npwp" accept="image/*,application/pdf" required/>
                                 </div>
+                                <small class="text-danger">*jpg, jpeg, pdf (MAX 5MB)</small>
                             </div>
                         </div>
                         <h3 class="register-heading-2">PIC Perusahaan</h3>
@@ -185,4 +188,25 @@
         </div>
     </div>
 </div>
+@endsection
+@section('local-js')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const existingVendorRadio = document.getElementById('existing_vendor');
+            const vendorSelectContainer = document.getElementById('vendor-select-container');
+
+            existingVendorRadio.addEventListener('change', function () {
+                if (this.checked) {
+                    vendorSelectContainer.style.display = 'block';
+                }
+            });
+
+            const newVendorRadio = document.getElementById('new_vendor');
+            newVendorRadio.addEventListener('change', function () {
+                if (this.checked) {
+                    vendorSelectContainer.style.display = 'none';
+                }
+            });
+        });
+    </script>
 @endsection

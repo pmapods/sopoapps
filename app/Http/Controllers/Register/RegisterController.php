@@ -37,7 +37,13 @@ class RegisterController extends Controller
         try {
             $checkVendorLogin = VendorLogin::where('username', $request->username)->first();
             if ($checkVendorLogin) {
-                return back()->with('error', 'Username sudah terdaftar sebelum untuk karyawan dengan nama ' . $checkVendorLogin->company_name);
+                return back()->with('error', 'Username sudah terdaftar sebelumnya untuk perusahaan dengan nama ' . $checkVendorLogin->name);
+            }
+
+            // Periksa apakah email sudah ada
+            $existingVendorByEmail = VendorLogin::where('email', $request->pic_email)->first();
+            if ($existingVendorByEmail) {
+                return back()->with('error', 'Email sudah terdaftar sebelumnya untuk perusahaan dengan nama ' . $existingVendorByEmail->name);
             }
 
             $checkVendor = null;
@@ -93,13 +99,51 @@ class RegisterController extends Controller
             $newVendorCompany->legal_form = $request->legal_form;
             $newVendorCompany->ownership_status = $request->ownership;
             $newVendorCompany->company_type = $request->business_type;
-            $newVendorCompany->company_profile = $request->company_profile;
+
+            $company_name = str_replace(' ', '_', strtoupper($request->company_name));
+            $ext = pathinfo($request->file('company_profile')->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name = "COMPANY_PROFILE_" . $company_name . '.' . $ext;
+            $path = "/attachments/vendor/company/" . $newVendorCompany->code . '/' . $name;
+            $file = pathinfo($path);
+            $path_company_profile = $request->file('company_profile')->storeAs($file['dirname'], $file['basename'], 'public');
+            $newVendorCompany->company_profile = $path_company_profile;
+
             //doi (deed of incorporation)
-            $newVendorCompany->company_doi = $request->legal_docs;
-            $newVendorCompany->location_permission = $request->location_permission;
-            $newVendorCompany->siup = $request->siup;
-            $newVendorCompany->tdp_nib = $request->tdp_nib;
-            $newVendorCompany->company_npwp = $request->company_npwp;
+            $ext = pathinfo($request->file('legal_docs')->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name = "LEGAL_DOC_" . $company_name . '.' . $ext;
+            $path = "/attachments/vendor/company/" . $newVendorCompany->code . '/' . $name;
+            $file = pathinfo($path);
+            $path_legal_doc = $request->file('legal_docs')->storeAs($file['dirname'], $file['basename'], 'public');
+            $newVendorCompany->company_doi = $path_legal_doc;
+
+            $ext = pathinfo($request->file('location_permission')->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name = "IZIN_LOKASI_" . $company_name . '.' . $ext;
+            $path = "/attachments/vendor/company/" . $newVendorCompany->code . '/' . $name;
+            $file = pathinfo($path);
+            $path_local_permission = $request->file('location_permission')->storeAs($file['dirname'], $file['basename'], 'public');
+            $newVendorCompany->location_permission = $path_local_permission;
+            
+            $ext = pathinfo($request->file('siup')->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name = "SIUP_" . $company_name . '.' . $ext;
+            $path = "/attachments/vendor/company/" . $newVendorCompany->code . '/' . $name;
+            $file = pathinfo($path);
+            $path_siup = $request->file('siup')->storeAs($file['dirname'], $file['basename'], 'public');
+            $newVendorCompany->siup = $path_siup;
+
+            $ext = pathinfo($request->file('tdp_nib')->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name = "TDP_NIB_" . $company_name . '.' . $ext;
+            $path = "/attachments/vendor/company/" . $newVendorCompany->code . '/' . $name;
+            $file = pathinfo($path);
+            $path_tdp_nib = $request->file('tdp_nib')->storeAs($file['dirname'], $file['basename'], 'public');
+            $newVendorCompany->tdp_nib = $path_tdp_nib;
+
+            $ext = pathinfo($request->file('company_npwp')->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name = "NPWP_" . $company_name . '.' . $ext;
+            $path = "/attachments/vendor/company/" . $newVendorCompany->code . '/' . $name;
+            $file = pathinfo($path);
+            $path_npwp = $request->file('company_npwp')->storeAs($file['dirname'], $file['basename'], 'public');
+            $newVendorCompany->company_npwp = $path_npwp;
+
             $newVendorCompany->pic_name = strtolower($request->pic_name);
             $newVendorCompany->pic_phone = $request->pic_phone;
             $newVendorCompany->pic_email = $request->pic_email;
@@ -125,7 +169,7 @@ class RegisterController extends Controller
             $newVendorLogin->created_at = now();
             $newVendorLogin->save();
 
-            return back()->with('success', 'Berhasil menambahkan perusahaan vendor ' . $request->company_name);
+            return back()->with('success', 'Terima kasih ' . strtoupper($request->company_name) . ' sudah mendaftar sebagai Vendor kami, kami akan mengevaluasi perusahaan anda dan menghubungi anda secepat mungkin');
         } catch (\Exception $ex) {
             return back()->with('error', 'Gagal menambahkan perusahaan vendor, silahkan coba kembali atau hubungi developer "' . $ex->getMessage() . '"');
         }

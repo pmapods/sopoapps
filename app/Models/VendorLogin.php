@@ -12,6 +12,17 @@ class VendorLogin extends Authenticatable
     use SoftDeletes;
     protected $table = 'vendor_login';
     protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    
+    // Attributes yang dapat diisi
+    protected $fillable = [
+        'code', 'email', 'username', 'password', 'name', 'type', 'vendor_code_ref'
+    ];
+
+    protected $hidden = [
+        'password',
+    ];
 
     // public function menu_access(){
     //     return $this->hasOne(EmployeeMenuAccess::class);

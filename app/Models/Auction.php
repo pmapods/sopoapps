@@ -69,9 +69,32 @@ class Auction extends Model
         }
     }
 
+    public function auctionDetails()
+    {
+        return $this->hasMany(AuctionDetail::class, 'auction_header_id', 'id');
+    }
+    public function AuctionVendorBiddong()
+    {
+        return $this->hasMany(AuctionVendorBidding::class, 'auction_header_id', 'id');
+    }
+
     public function emails()
     {
         $emails = json_decode($this->email);
         return $emails;
+    }
+
+    public function auction_status() {
+        switch ($this->status) {
+            case 0:
+                return 'Ticket Tidak di Lelang';
+                break;
+            case 1:
+                return 'Ticket Sedang di Lelang';
+                break;
+            default : 
+                return 'Ticket Tidak di Lelang';
+                break;
+        }
     }
 }

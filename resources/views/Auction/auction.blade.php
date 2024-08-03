@@ -166,6 +166,17 @@
             var armadatable = $('#auctionArmadaDT').DataTable(datatable_settings);
             var securitytable = $('#auctionSecurityDT').DataTable(datatable_settings);
             $('#auctionDT,#auctionArmadaDT,#auctionSecurityDT tbody').on('click', 'tr', function() {
+                var id = $(this).find('td:eq(1)').text().trim();
+
+                @if (Auth::guard('vendor')->check())
+                    if(id){
+                        window.location.href = '/auction/auctionTicketDetail/'+id;
+                    }
+                @else
+                    alert('Anda harus login terlebih dahulu untuk melihat detail dan ikut lelang');
+                    // window.location.href = '/auction/login';
+                @endif
+
                 let data = $(this).data('auction_header');
                 modal.find('input[name="id"]').val(data['id']);
                 modal.find('input[name="ticket_code"]').val(data['ticket_code']);

@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ApprovalManagement\AuctionbeapprovalController;
+use App\Http\Controllers\ApprovalManagement\AuctionbeController as ApprovalManagementAuctionbeController;
 
 use App\Mail\TestMail;
 
@@ -73,6 +75,7 @@ use App\Http\Controllers\Auction\AuctionController;
 
 // Approval Management
 use App\Http\Controllers\ApprovalManagement\VendorApprovalController;
+use App\Http\Controllers\Auction\AuctionbeController;
 
 
 Route::get('/', function () {
@@ -100,8 +103,10 @@ Route::prefix('auction')->group(function() {
     Route::post('/addVendorCompany', [RegisterController::class, 'addVendorCompany'])->name('vendor.company');
     // Auction
     Route::get('/auctionTicket', [AuctionController::class, 'AuctionView'])->name('vendor.dashboard');
-    Route::patch('/addAuctionticket', [AuctionController::class, 'addAuctionTicket'])->name('auction.addticket');
+    Route::get('/auctionTicketDetail/{code}', [AuctionController::class, 'AuctionDetailView'])->name('vendor.auctiondetail');
+    Route::post('/vendor-request-auction', [AuctionController::class, 'RequestAuctionBidding']);
 });
+
 
 // Bidding
 Route::get('/bidding/printview/{encrypted_bidding_id}', [BiddingController::class, 'biddingPrintView']);
@@ -619,6 +624,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/vendor-approve-register-detail', [VendorApprovalController::class, 'vendorApprovalDetail']);
         Route::post('/vendor-approve-register-approved', [VendorApprovalController::class, 'vendorApprovalApprove']);
         Route::post('/vendor-approve-register-reject', [VendorApprovalController::class, 'vendorApprovalReject']);
+        Route::get('/approve-auction-be', [AuctionbeapprovalController::class, 'auctionView']);
+        Route::get('/approve-auction-be/{type}/{auction_id}', [AuctionbeapprovalController::class, 'auctionDetailView']);
+        Route::post('/approve-auction-be/approve', [AuctionbeapprovalController::class, 'approveAuction']);
+        Route::post('/approve-auction-be/reject', [AuctionbeapprovalController::class, 'rejectAuction']);
     });
 
     // Bidding
@@ -651,6 +660,10 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['menu_access:operational:4'])->group(function () {
         Route::get('/pr', [PRController::class, 'prView']);
         Route::get('/pr/{ticket_code}', [PRController::class, 'prDetailView']);
+        Route::get('/auctionbe', [AuctionbeController::class, 'auctionView']);
+        Route::get('/auctionbe/{type}/{ticket_code}', [AuctionbeController::class, 'auctionDetailView']);
+        Route::post('/auctionbe/publish', [AuctionbeController::class, 'publishAuction']);
+        Route::post('/auctionbe/unpublish', [AuctionbeController::class, 'unpublishAuction']);
 
         Route::middleware(['superadmin'])->group(function () {
             // superadmin only
