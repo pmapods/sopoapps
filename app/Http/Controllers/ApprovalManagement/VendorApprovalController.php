@@ -35,12 +35,12 @@ class VendorApprovalController extends Controller
         $salespoint_ids = Auth::user()->location_access->pluck('salespoint_id');
         // ambil form2 yang sesuai akses salespoint dan status armada ticket nya sudah ready buat PO (4)
 
-        $data = Vendor::select('vendor.id', 'vendor.code', 'company_types.name as type', 'vendor.name', 'regencies.name as nama_city', 'vendor_company.ownership_status', 'vendor_company.legal_form', 'vendor_company.company_status')
+        $data = Vendor::select('vendor.id', 'company_types.name as type', 'vendor.name', 'regencies.name as nama_city', 'vendor_company.ownership_status', 'vendor_company.legal_form', 'vendor_company.company_status')
             ->leftjoin('vendor_company', 'vendor_company.code', '=', 'vendor.code')
             ->join('regencies', 'regencies.id', '=', 'vendor.city_id')
             ->join('company_types', 'company_types.type', '=', 'vendor.type')
-            ->where('vendor.status', '=', 1)
-            ->whereNull('vendor.deleted_at')
+            ->where('vendor_company.status', '=', 1)
+            ->whereNull('vendor_company.deleted_at')
             ->get();
         // dd($data);
         return view('ApprovalManagement.vendorregister', compact('data'));
@@ -58,7 +58,6 @@ class VendorApprovalController extends Controller
             ->join('company_types', 'company_types.type', '=', 'vendor_company.company_type')
             ->where('vendor_company.code', $vendor->code)
             ->first();
-        // dd($request, $vendorCompany);
         return view('ApprovalManagement.vendorregisterdetail', compact('vendor', 'vendorCompany'));
     }
 

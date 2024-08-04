@@ -96,7 +96,7 @@ class AuctionbeapprovalController extends Controller
                         $inTicVendor->salesperson = $dataAuctionVendor->salesperson;
                         $inTicVendor->phone = $dataAuctionVendor->phone;
                         $inTicVendor->type = $dataAuctionVendor->type;
-                        $inTicVendor->added_on = $dataAuctionVendor->added_on;
+                        $inTicVendor->added_on = "bidding";
                         $inTicVendor->created_at = now();
                         $inTicVendor->updated_at = now();
                         $inTicVendor->save();
