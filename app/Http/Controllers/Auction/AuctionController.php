@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Auction;
 
 use App\Http\Controllers\Controller;
 use App\Models\TicketVendor;
+use App\Models\Ticket;
+use App\Models\ArmadaTicket;
+use App\Models\SecurityTicket;
 use App\Models\VendorLogin;
 use Illuminate\Http\Request;
 use App\Models\SalesPoint;
@@ -27,10 +30,20 @@ class AuctionController extends Controller
 
     public function AuctionDetailView($code)
     {
-        $tickets = Auction::where('ticket_code', $code)->first();
-        $auction_details = AuctionDetail::where('auction_header_id', $tickets->id)->first();
 
-        return view('Auction.auctiondetail', compact('tickets', 'auction_details'), ['title' => 'Auction Ticket Detail']);
+        $auctionHeader = Auction::where('ticket_code', $code)->first();
+        $auctionDetail = array();
+        if ($auctionHeader->type == 'barangjasa') {
+            $ticket = Ticket::where('code', $auctionHeader->ticket_code)->first();
+            $auctionDetail = AuctionDetail::where('auction_header_id', $auctionHeader->id)->firstOrFail();
+
+        } else if ($auctionHeader->type == 'armada') {
+            $ticket = ArmadaTicket::where('code', $auctionHeader->ticket_code)->first();
+        } else if ($auctionHeader->type == 'security') {
+            $ticket = SecurityTicket::where('code', $auctionHeader->ticket_code)->first();
+        }
+
+        return view('Auction.auctiondetail', compact('ticket', 'auctionHeader', 'auctionDetail'), ['title' => 'Auction Ticket Detail']);
     }
 
     public function AuctionRegisterVendor()
