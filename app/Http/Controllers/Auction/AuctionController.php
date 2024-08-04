@@ -51,6 +51,7 @@ class AuctionController extends Controller
             $vendor_company = VendorCompany::where('code', $company_code)->first();
 
             $newAuctionVendorBidding = new AuctionVendorBidding;
+            $newAuctionVendorBidding->auction_header_id = $auction_header->id;
             $newAuctionVendorBidding->ticket_id = $auction_details->ticket_id;
             $newAuctionVendorBidding->vendor_id = $vendor->id;
             $newAuctionVendorBidding->name = $vendor_company->company_name;

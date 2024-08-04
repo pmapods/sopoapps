@@ -118,18 +118,16 @@
             <input type="hidden" name="is_booked" value="{{ $tickets->is_booked }}">
             <input type="file" class="form-control-file validatefilesize" id="offering_file" name="offering_file"
                 accept="image/*,application/pdf" required>
-            <button type="button" id="remove_file" style="display: none;">&times;</button>
             <small class="text-danger">*jpg, jpeg, pdf (MAX 5MB)</small>
             <br><br>
             <center class="button-group">
                 <button type="submit" class="btn btn-success">Request Auctions</button>
             </center>
         </form>
+        <center class="button-group">
+            <button type="button" class="btn btn-secondary" onclick="window.location.href='{{ url('/auction/auctionTicket') }}'">Kembali</button>
+        </center>
     </div>
-
-    <center class="button-group">
-        <button type="button" class="btn btn-secondary" onclick="history.back()">Kembali</button>
-    </center>
 </div>
 @endsection
 
@@ -138,12 +136,6 @@
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('auction_form');
         const fileInput = document.getElementById('offering_file');
-        const removeFileButton = document.getElementById('remove_file');
-
-        removeFileButton.addEventListener('click', function () {
-            fileInput.value = ''; 
-            removeFileButton.style.display = 'none';
-        });
 
         form.addEventListener('submit', function (event) {
             if (!fileInput.files.length) {
