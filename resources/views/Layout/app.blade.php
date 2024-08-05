@@ -536,6 +536,14 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                             </a>
                                         </li>
                                     @endif
+                                    @if (((Auth::user()->menu_access->operational ?? 0) & 1) != 0)
+                                        <li class="nav-item">
+                                            <a href="/auctionbe" class="nav-link">
+                                                <i class="fad fa-file-check nav-icon"></i>
+                                                <p>Auction Ticket</p>
+                                            </a>
+                                        </li>
+                                    @endif
                                     @if (((Auth::user()->menu_access->operational ?? 0) & 32) != 0)
                                         <li class="nav-item">
                                             <a href="/form-validation" class="nav-link">
@@ -559,6 +567,22 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                             <a href="/vendor-evaluation" class="nav-link">
                                                 <i class="fad fa-file-check nav-icon"></i>
                                                 <p>Vendor Evaluation</p>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if (((Auth::user()->menu_access->operational ?? 0) & 1) != 0)
+                                        <li class="nav-item">
+                                            <a href="/vendor-approve-register" class="nav-link">
+                                                <i class="fad fa-file-check nav-icon"></i>
+                                                <p>Approval Vendor Register</p>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if (((Auth::user()->menu_access->operational ?? 0) & 1) != 0)
+                                        <li class="nav-item">
+                                            <a href="/approve-auction-be" class="nav-link">
+                                                <i class="fad fa-file-check nav-icon"></i>
+                                                <p>Approval Auction Bidding</p>
                                             </a>
                                         </li>
                                     @endif

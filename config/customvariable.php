@@ -34,7 +34,10 @@ return [
         'Purchase Order (Process)',
         'Form Validation',
         'Vendor Evaluation',
-        'Peremajaan Armada'
+        'Peremajaan Armada',
+        'Auction Ticket',
+        'Approval Vendor Register',
+        'Approval Auction Bidding'
     ],
 
     'monitoring_accesses' => [

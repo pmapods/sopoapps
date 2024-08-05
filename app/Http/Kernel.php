@@ -64,6 +64,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'superadmin' => \App\Http\Middleware\isSuperAdmin::class,
         'menu_access' => \App\Http\Middleware\hasMenuAccess::class,
+        'redirect.auction.tickets' => \App\Http\Middleware\RedirectAuctionTicketRoute::class,
         'simple_token' => \App\Http\Middleware\SimpleToken::class
     ];
 }
