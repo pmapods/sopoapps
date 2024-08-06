@@ -43,6 +43,11 @@ class Ticket extends Model
         return $this->hasMany(TicketAuthorization::class);
     }
 
+    public function cancel_authorization()
+    {
+        return $this->hasMany(CancelAuthorization::class);
+    }
+
     public function ticket_additional_attachment()
     {
         return $this->hasMany(TicketAdditionalAttachment::class);
@@ -150,8 +155,14 @@ class Ticket extends Model
                 break;
 
             case '1':
-                $current_authorization = $this->current_authorization();
-                return 'Menunggu Otorisasi Pengadaan Oleh ' . $current_authorization->employee_name;
+                if ($this->is_cancel_end == 1) {
+                    $current_cancel_authorization = $this->current_cancel_authorization();
+                    return 'Menunggu Otorisasi Pengadaan Oleh ' . $current_cancel_authorization->employee_name;
+                }
+                else {
+                    $current_authorization = $this->current_authorization();
+                    return 'Menunggu Otorisasi Pengadaan Oleh ' . $current_authorization->employee_name;
+                }
                 break;
 
             case '2':
@@ -279,6 +290,20 @@ class Ticket extends Model
                 return $string;
                 break;
 
+            case '-2':
+                $string = 'Cancel End Kontrak';
+                if (isset($this->cancel_end_reason)) {
+                    $string .= "\n" . 'Alasan : ' . $this->cancel_end_reason;
+                }
+                if (isset($this->cancel_end_by_employee)) {
+                    $string .= "\n" . 'Dibatalkan oleh : ' . $this->cancel_end_by_employee->name;
+                }
+                if (isset($this->cancel_end_at)) {
+                    $string .= "\n" . 'Tanggal : ' . $this->cancel_end_at;
+                }
+                return $string;
+                break;
+
             default:
                 return 'status_undefined';
                 break;
@@ -308,6 +333,17 @@ class Ticket extends Model
         }
     }
 
+    public function current_cancel_authorization()
+    {
+        $queue = $this->cancel_authorization->where('status', 0)->sortBy('level');
+        $current = $queue->first();
+        if ($this->status != 1) {
+            return null;
+        } else {
+            return $current;
+        }
+    }
+
     public function last_authorization()
     {
         $queue = $this->ticket_authorization->where('status', 1)->sortByDesc('level');
@@ -324,6 +360,11 @@ class Ticket extends Model
     public function terminated_by_employee()
     {
         return $this->belongsTo(Employee::class, 'terminated_by', 'id')->withTrashed();
+    }
+
+    public function cancel_end_by_employee()
+    {
+        return $this->belongsTo(Employee::class, 'cancel_end_by', 'id')->withTrashed();
     }
 
     public function revise_by_employee()

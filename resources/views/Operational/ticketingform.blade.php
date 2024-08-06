@@ -1713,35 +1713,65 @@
         <h5 class="font-weight-bold text-center">Approval Pengadaan</h5>
     @endif
 
-    <div class="d-flex align-items-center justify-content-center text-center">
-        @foreach ($ticket->ticket_authorization as $key => $authorization)
-            <div class="mr-3">
-                <br>
-                <span class="font-weight-bold">{{ $authorization->employee_name }} --
-                    {{ $authorization->employee_position }}</span><br>
-                @if ($authorization->status == 1)
-                    <span class="text-success">Approved</span><br>
-                    <span
-                        class="text-success">{{ $authorization->updated_at->translatedFormat('d F Y (H:i)') }}</span><br>
+    @if ($ticket->is_cancel_end == 1)
+        <div class="d-flex align-items-center justify-content-center text-center">
+            @foreach ($ticket->cancel_authorization as $key => $authorization)
+                <div class="mr-3">
+                    <br>
+                    <span class="font-weight-bold">{{ $authorization->employee_name }} --
+                        {{ $authorization->employee_position }}</span><br>
+                    @if ($authorization->status == 1)
+                        <span class="text-success">Approved</span><br>
+                        <span
+                            class="text-success">{{ $authorization->updated_at->translatedFormat('d F Y (H:i)') }}</span><br>
+                    @endif
+                    @if (($ticket->current_cancel_authorization()->id ?? -1) == $authorization->id)
+                        <span class="text-warning">Menunggu Approval</span><br>
+                    @endif
+                    <span>{{ $authorization->as }}</span>
+                </div>
+
+                @if ($key != $ticket->cancel_authorization->count() - 1)
+                    <i class="fa fa-chevron-right mr-3" aria-hidden="true"></i>
                 @endif
-                @if (($ticket->current_authorization()->id ?? -1) == $authorization->id)
-                    <span class="text-warning">Menunggu Approval</span><br>
+
+                @if ($ticket->is_over_budget == 1)
+                    @if ($loop->iteration > 2)
+                        @break
+                    @endif
                 @endif
-                <span>{{ $authorization->as }}</span>
-            </div>
+            @endforeach
+        </div>
+    @else
+        <div class="d-flex align-items-center justify-content-center text-center">
+            @foreach ($ticket->ticket_authorization as $key => $authorization)
+                <div class="mr-3">
+                    <br>
+                    <span class="font-weight-bold">{{ $authorization->employee_name }} --
+                        {{ $authorization->employee_position }}</span><br>
+                    @if ($authorization->status == 1)
+                        <span class="text-success">Approved</span><br>
+                        <span
+                            class="text-success">{{ $authorization->updated_at->translatedFormat('d F Y (H:i)') }}</span><br>
+                    @endif
+                    @if (($ticket->current_authorization()->id ?? -1) == $authorization->id)
+                        <span class="text-warning">Menunggu Approval</span><br>
+                    @endif
+                    <span>{{ $authorization->as }}</span>
+                </div>
 
-            @if ($key != $ticket->ticket_authorization->count() - 1)
-                <i class="fa fa-chevron-right mr-3" aria-hidden="true"></i>
-            @endif
+                @if ($key != $ticket->ticket_authorization->count() - 1)
+                    <i class="fa fa-chevron-right mr-3" aria-hidden="true"></i>
+                @endif
 
-            @if ($ticket->is_over_budget == 1)
-                @if ($loop->iteration > 2)
-                @break
-            @endif
-
-        @endif
-    @endforeach
-</div>
+                @if ($ticket->is_over_budget == 1)
+                    @if ($loop->iteration > 2)
+                        @break
+                    @endif
+                @endif
+            @endforeach
+        </div>
+    @endif
 
 @if ($ticket->is_over_budget == 1)
     <br>
@@ -1775,16 +1805,33 @@
 
 <div class="d-flex justify-content-center mt-3 bottom_action">
     @if ($ticket->status == 1)
-        @if ($ticket->current_authorization())
-            @if (Auth::user()->id == $ticket->current_authorization()->employee->id)
-                <button type="button" class="btn btn-danger mr-2" onclick="reject()"
-                    id="rejectbutton">Reject</button>
-                <button type="button" class="btn btn-success" onclick="approve()"
-                    id="approvebutton">Approve</button>
+        @if ($ticket->is_cancel_end == 1)
+            @if ($ticket->current_cancel_authorization())
+                @if (Auth::user()->id == $ticket->current_cancel_authorization()->employee->id)
+                    <button type="button" class="btn btn-danger mr-2" onclick="reject()"
+                        id="rejectbutton">Reject</button>
+                    <button type="button" class="btn btn-success" onclick="approve()"
+                        id="approvebutton">Approve</button>
+                @endif
+            @endif
+        @else
+            @if ($ticket->current_authorization())
+                @if (Auth::user()->id == $ticket->current_authorization()->employee->id)
+                    <button type="button" class="btn btn-danger mr-2" onclick="reject()"
+                        id="rejectbutton">Reject</button>
+                    <button type="button" class="btn btn-success" onclick="approve()"
+                        id="approvebutton">Approve</button>
+                @endif
             @endif
         @endif
     @endif
 </div>
+@if (str_contains($ticket->reason, 'End Kontrak PEST Control') && $ticket->is_cancel_end == 0)
+    <center class="mt-2">
+        <button type="button" class="btn btn-danger mr-2"
+            onclick="cancelEndKontrak('{{ $ticket->salespoint_id }}', '17', 'Cancel End Kontrak')">Batalkan End Kontrak</button>
+    </center>
+@endif
 @if (
     (Auth::user()->id == 1 && $ticket->status != -1 && $ticket->status != 7) ||
         (Auth::user()->id == 115 && $ticket->status != -1 && $ticket->status != 7) ||
@@ -1844,6 +1891,51 @@
     <input type="hidden" name="id" value="{{ $ticket->id }}">
     <input type="hidden" name="updated_at" value="{{ $ticket->updated_at }}">
 </form>
+<form method="post" id="submitform">
+    @csrf
+    <div></div>
+</form>
+
+<div class="modal fade" id="cancelEndKontrakModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancel End Kontrak Pest Control</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="/cancelEndKontrakPEST/{{ $ticket->id }}" method="post">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label class="required_field">Masukan Alasan Cancel: (Wajib)</label>
+                                <input type="text-area" class="form-control" name="reason" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label>Pilih Matriks Approval</label>
+                                <select class="form-control" id="authorization_cancel" name="authorization_id" disabled required>
+                                    <option value="">-- Pilih Matriks Approval --</option>
+                                </select>
+                                <small class="text-danger">*Matriks Approval hanya muncul berdasarkan salespoint masing-masing user</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                    <button type="submit" class="btn btn-warning">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="issuePOmodal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -2193,6 +2285,41 @@
 
     function rejectOverPlafon() {
         $('#rejectOverPlafonModal').modal('show');
+    }
+
+    function cancelEndKontrak(salespoint_id, form_type, notes) {
+        $('#cancelEndKontrakModal').modal('show');
+        $('#authorization_cancel').prop('disabled', true);
+        $.ajax({
+                type: "get",
+                url: '/getAuthorization?salespoint_id=' + salespoint_id + '&form_type=' + form_type + '&notes=' +
+                    notes,
+                success: function(response) {
+                    let data = response.data;
+                    console.log(data);
+                    if (data.length == 0) {
+                        alert(
+                            'Matriks Approval Cancel End Kontrak tidak tersedia untuk salespoint user berikut, silahkan mengajukan Matriks Approval ke admin'
+                        );
+                        return;
+                    }
+                    data.forEach(item => {
+                        let namelist = item.list.map(a => a.employee_name);
+                        let option_text = '<option value="' + item.id + '">' + namelist.join(" -> ") +
+                            '</option>';
+                        $('#authorization_cancel').append(option_text);
+                    });
+                    $('#authorization_cancel').prop('disabled', false);
+                },
+                error: function(response) {
+                    alert('load data failed. Please refresh browser or contact admin');
+                    $('#authorization_cancel').prop('disabled', true);
+                },
+                complete: function() {
+                    $('#authorization_cancel').val("");
+                    $('#authorization_cancel').trigger('change');
+                }
+        });
     }
 
     function rejectAgreementCOP() {

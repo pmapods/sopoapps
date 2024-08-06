@@ -882,6 +882,15 @@
             @endif
         @endif
 
+        @if ($armadaticket->type() == 'End Kontrak' ||
+                $armadaticket->perpanjangan_form->form_type == 'stopsewa' &&
+                $armadaticket->perpanjangan_form->stopsewa_reason == 'end')
+            <center class="mt-2">
+                <button type="button" class="btn btn-danger mr-2"
+                    onclick="cancelEndKontrak('{{ $armadaticket->id }}')">Batalkan End Kontrak</button>
+            </center>
+        @endif
+
         @if (
             (Auth::user()->id == 1 && $armadaticket->status != -1 && $armadaticket->status != 6) ||
                 (Auth::user()->id == 115 && $armadaticket->status != -1 && $armadaticket->status != 6) ||
@@ -1013,6 +1022,22 @@
                 $('#submitform').find('div').append('<input type="hidden" name="armada_ticket_id" value="' +
                     armada_ticket_id + '">');
                 $('#submitform').find('div').append('<input type="hidden" name="reject_notes" value="' + reason + '">');
+                $('#submitform').prop('method', 'POST');
+                $('#submitform').submit();
+            }
+        }
+
+        function cancelEndKontrak (armada_ticket_id) { 
+            var reason = prompt("Masukan alasan cancel end kontrak");
+            if (reason != null) {
+                if (reason.trim() == '') {
+                    alert("Alasan Harus diisi");
+                    return;
+                }
+                $('#submitform').prop('action', '/cancelEndKontrakArmada');
+                $('#submitform').find('div').append('<input type="hidden" name="armada_ticket_id" value="' +
+                    armada_ticket_id + '">');
+                $('#submitform').find('div').append('<input type="hidden" name="cancel_notes" value="' + reason + '">');
                 $('#submitform').prop('method', 'POST');
                 $('#submitform').submit();
             }

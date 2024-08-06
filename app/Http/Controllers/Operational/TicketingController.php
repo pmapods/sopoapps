@@ -141,13 +141,13 @@ class TicketingController extends Controller
 
             $ticketing = $ticketing->filter(function ($item) use ($request) {
                 if ($request->status == -1) {
-                    if (in_array($item->status, [-1, 7])) {
+                    if (in_array($item->status, [-1, 7, -2])) {
                         return true;
                     } else {
                         return false;
                     }
                 } else {
-                    if (!in_array($item->status, [-1, 7])) {
+                    if (!in_array($item->status, [-1, 7, -2])) {
                         return true;
                     } else {
                         return false;
@@ -1489,7 +1489,12 @@ class TicketingController extends Controller
             $ticket = Ticket::findOrFail($request->id);
             $updated_at = new Carbon($request->updated_at);
             if ($updated_at == $ticket->updated_at) {
-                $authorization = $ticket->current_authorization();
+                if ($ticket->is_cancel_end == 1) {
+                    $authorization = $ticket->current_cancel_authorization();
+                }
+                else {
+                    $authorization = $ticket->current_authorization();
+                }
                 if ($authorization->employee_id == Auth::user()->id) {
                     // set status jadi approve
                     $authorization->status = 1;
@@ -1500,7 +1505,12 @@ class TicketingController extends Controller
                     $monitor->ticket_id      = $ticket->id;
                     $monitor->employee_id    = Auth::user()->id;
                     $monitor->employee_name  = Auth::user()->name;
-                    $monitor->message        = 'Approval Ticket Pengadaan';
+                    if ($ticket->is_cancel_end == 1) {
+                        $monitor->message        = 'Approval Cancel ' . $ticket->reason;
+                    }
+                    else {
+                        $monitor->message        = 'Approval Ticket Pengadaan';
+                    }
                     $monitor->save();
 
                     // jika item IT approve di form fri juga
@@ -1520,9 +1530,9 @@ class TicketingController extends Controller
                     }
 
                     // mail ke otorisasi selanjutnya
-                    if ($ticket->current_authorization() != null) {
-                        $mail_to = $ticket->current_authorization()->employee->email;
-                        $name_to = $ticket->current_authorization()->employee->name;
+                    if ($authorization != null) {
+                        $mail_to = $authorization->employee->email;
+                        $name_to = $authorization->employee->name;
                         $data = array(
                             'original_emails' => [$mail_to],
                             'transaction_type' => 'Pengadaan',
@@ -1547,12 +1557,32 @@ class TicketingController extends Controller
                     }
                     $this->checkTicketApproval($ticket->id);
                     $ticket->refresh();
-                    $current_authorization = $ticket->current_authorization();
+                    
+                    if ($ticket->is_cancel_end == 1) {
+                        $current_authorization = $ticket->current_cancel_authorization();
+                    }
+                    else {
+                        $current_authorization = $ticket->current_authorization();
+                    }
+
                     if ($current_authorization) {
                         $returnmessage = 'Berhasil melakukan approve ticket Otorisasi selanjutnya oleh ' . $current_authorization->employee_name;
-                    } else {
-                        $returnmessage = 'Approval terkait ticketing dengan kode ticket ' . $ticket->code . ' sudah full approval. (Status tiket saat ini : ' . $ticket->status() . ' & Status PO '.$ticket->po_reference_number .' Closed)';
+                    } 
+                    elseif (str_contains($ticket->reason, 'End Kontrak PEST Control')) {
+                        $returnmessage = 'Approval terkait ticketing dengan kode ticket ' . $ticket->code . ' sudah full approval. (Status tiket saat ini : ' . $ticket->status();
+                        
+                        if ($ticket->is_cancel_end == 1) {
+                            $returnmessage .= ' & Status PO '.$ticket->po_reference_number .' Open)';
+                        }
+                        else {
+                            $returnmessage .= ' & Status PO '.$ticket->po_reference_number .' Closed)';
+                        }
                     }
+                    else {
+                        $returnmessage = 'Approval terkait ticketing dengan kode ticket ' . $ticket->code . ' sudah full approval. (Status tiket saat ini : ' . $ticket->status() . ')';
+                    }
+
+
                     DB::commit();
                     if ($return_data_type == 'api') {
                         return response()->json([
@@ -1600,12 +1630,23 @@ class TicketingController extends Controller
         try {
             $ticket = Ticket::findOrFail($ticket_id);
             $flag = true;
-            foreach ($ticket->ticket_authorization as $authorization) {
-                if ($authorization->status != 1) {
-                    $flag = false;
-                    break;
+            if ($ticket->is_cancel_end == 1) {
+                foreach ($ticket->cancel_authorization as $cancelauthorization) {
+                    if ($cancelauthorization->status != 1) {
+                        $flag = false;
+                        break;
+                    }
                 }
             }
+            else {
+                foreach ($ticket->ticket_authorization as $authorization) {
+                    if ($authorization->status != 1) {
+                        $flag = false;
+                        break;
+                    }
+                }
+            }
+            
             if ($flag) {
                 if ($ticket->custom_settings != null) {
                     $custom_settings = json_decode($ticket->custom_settings);
@@ -1626,20 +1667,35 @@ class TicketingController extends Controller
                         // perpanjangan (ubah status ke pr / po sap / skip bidding dan pr manual)
                         $ticket->status = 6;
                     } else if ($ticket->request_type == 4) {
-                        // end kontrak (ubah status selesai)
-                        $ticket->status = 7;
-
                         if (str_contains($ticket->reason, 'End Kontrak PEST Control')) {
-                            // end kontrak (ubah status jadi closed)
-                            $po = Po::where('no_po_sap', $ticket->po_reference_number)->first();
-                            $pomanual = PoManual::where('po_number', $ticket->po_reference_number)->first();
-                            if ($po) {
-                                $po->status = 4;
-                                $po->save();
+                            if ($ticket->is_cancel_end == 1) {
+                                // end kontrak (ubah status selesai)
+                                $ticket->status = -2;
+                                $po = Po::where('no_po_sap', $ticket->po_reference_number)->first();
+                                $pomanual = PoManual::where('po_number', $ticket->po_reference_number)->first();
+                                if ($po) {
+                                    $po->status = 3;
+                                    $po->save();
+                                }
+                                else if ($pomanual) {
+                                    $pomanual->status = 3;
+                                    $pomanual->save();
+                                }
                             }
-                            else if ($pomanual) {
-                                $pomanual->status = 4;
-                                $pomanual->save();
+                            else {
+                                // end kontrak (ubah status selesai)
+                                $ticket->status = 7;    
+                                // end kontrak (ubah status jadi closed)
+                                $po = Po::where('no_po_sap', $ticket->po_reference_number)->first();
+                                $pomanual = PoManual::where('po_number', $ticket->po_reference_number)->first();
+                                if ($po) {
+                                    $po->status = 4;
+                                    $po->save();
+                                }
+                                else if ($pomanual) {
+                                    $pomanual->status = 4;
+                                    $pomanual->save();
+                                }
                             }
                         }
                     } else {
@@ -1649,13 +1705,12 @@ class TicketingController extends Controller
                 }
                 $ticket->save();
                 $ticket->refresh();
-                // dd($ticket);
 
                 // Hapus approver kedua akhir form fri dari ticket (level 4,5)
                 if ($ticket->fri_forms->count()) {
                     $take_count = $ticket->ticket_authorization->count() - 3;
                     foreach ($ticket->ticket_authorization->sortByDesc('level')->take($take_count) as $author) {
-                        $author->delete();
+                            $author->delete();
                     }
                 }
 

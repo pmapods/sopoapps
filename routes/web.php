@@ -526,6 +526,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/ticketing/uploadrevisionlpbcop/{id}', [TicketingController::class, 'uploadRevisionLpbCop']);
         Route::post('/ticketing/uploadlpbcop/{id}', [TicketingController::class, 'uploadLpbCop']);
         Route::post('/ticketing/showlpbcop/{id}', [TicketingController::class, 'showLpbCop']);
+        
 
         // Armada
         Route::post('/createarmadaticket', [ArmadaTicketingController::class, 'createArmadaticket']);
@@ -581,6 +582,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/additionalticketing/create', [AdditionalTicketingController::class, 'createAdditionalTicket']);
         Route::get('/additionalticketing/{code}', [AdditionalTicketingController::class, 'additionalTicketDetail']);
         Route::get('/getAuthorization', [AdditionalTicketingController::class, 'getAuthorization']);
+        Route::post('/cancelEndKontrakPEST/{id}', [AdditionalTicketingController::class, 'cancelEndKontrakPEST']);
 
         // AJAX
         Route::get('/getActivePO', [POController::class, 'getActivePO']);

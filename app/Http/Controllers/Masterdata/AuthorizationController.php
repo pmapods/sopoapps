@@ -138,6 +138,9 @@ class AuthorizationController extends Controller
         if (str_contains(strtolower("form Peremajaan Armada"), strtolower($search_value))) {
             array_push($formtype_found_array, 16);
         }
+        if (str_contains(strtolower("Cancel End Kontrak (Pest Control, Armada, Security)"), strtolower($search_value))) {
+            array_push($formtype_found_array, 17);
+        }
 
         // dd($search_value,$region_found_array,$formtype_found_array);
         $employee_access = Auth::user()->location_access_list();
@@ -279,6 +282,11 @@ class AuthorizationController extends Controller
                     // 16 form peremajaan armada
                     $detail_counts = [1];
                     $errMessage = "Form Over Budget HO membutuhkan 1 pilihan otorisasi";
+                    break;
+                case '17':
+                    // 17 cancel end kontrak (pest control, armada, security)
+                    $detail_counts = [4];
+                    $errMessage = "Form Cancel End Kontrak membutuhkan 4 pilihan otorisasi";
                     break;
             }
             if ($detail_counts != -1) {

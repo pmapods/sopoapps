@@ -16,6 +16,7 @@ use App\Models\TicketAuthorization;
 use App\Models\PoManual;
 use App\Models\Vendor;
 use App\Models\BudgetUpload;
+use App\Models\CancelAuthorization;
 
 use Auth;
 use DB;
@@ -377,5 +378,42 @@ class AdditionalTicketingController extends Controller
         return response()->json([
             'data' => $authorizations,
         ]);
+    }
+
+    public function cancelEndKontrakPEST(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::find($id);
+
+            // Get authorization end kontrak
+            $authorizations = Authorization::find($request->authorization_id);
+                foreach ($authorizations->authorization_detail as $detail) {
+                    $newCancelAuthorization                     = new CancelAuthorization;
+                    $newCancelAuthorization->ticket_id          = $ticket->id;
+                    $newCancelAuthorization->employee_id        = $detail->employee_id;
+                    $newCancelAuthorization->employee_name      = $detail->employee->name;
+                    $newCancelAuthorization->as                 = $detail->sign_as;
+                    $newCancelAuthorization->employee_position  = $detail->employee_position->name;
+                    $newCancelAuthorization->level              = $detail->level;
+                    $newCancelAuthorization->save();
+                }
+                
+            $ticket->is_cancel_end = 1;
+            $ticket->cancel_end_reason = $request->reason;
+            $ticket->cancel_end_by = Auth::user()->id;
+            $ticket->cancel_end_at = now();
+            $ticket->cancel_end_reason = $request->reason;
+            $ticket->status = 1;
+
+            $ticket->save();
+
+            DB::commit();
+            return redirect('/ticketing')->with('success', 'Berhasil melakukan Cancel ' . $ticket->reason . ' Dengan nomor tiket ' . $ticket->code . '. Silahkan Melakukan Otorisasi');
+        } catch (\Exception $ex) {
+            DB::rollback();
+            return back()->with('error', 'Gagal cancel end kontrak. Harap mencoba kembali.' . ' "' . $ex->getMessage() . '"');
+        }     
+
     }
 }

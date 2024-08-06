@@ -112,6 +112,7 @@
                                     <option value="14">Form Over Budget (Area)</option>
                                     <option value="15">Form Over Budget (HO)</option>
                                     <option value="16">Form Peremajaan Armada</option>
+                                    <option value="17">Cancel End Kontrak (Pest Control, Armada, Security)</option>
                                 </select>
                             </div>
                         </div>
@@ -290,6 +291,7 @@
                                     <option value="14">Form Over Budget (Area)</option>
                                     <option value="15">Form Over Budget (HO)</option>
                                     <option value="16">Form Peremajaan Armada</option>
+                                    <option value="17">Cancel End Kontrak (Pest Control, Armada, Security)</option>
                                 </select>
                             </div>
                         </div>
@@ -509,6 +511,7 @@
         let formoverbudgetarea = ['Diperiksa Oleh', 'Disetujui Oleh', 'Disetujui Oleh'];
         let formoverbudgetho = ['Disetujui Oleh', 'Disetujui Oleh'];
         let formperemajaanarmada = ['Disetujui Oleh'];
+        let formcancelendkontrak = ['Diperiksa Oleh', 'Disetujui Oleh', 'Disetujui Oleh', 'Disetujui Oleh'];
 
         $(document).ready(function() {
             // var table = $('#authorDT').DataTable(datatable_settings);
@@ -653,6 +656,9 @@
                         break;
                     case "16":
                         value_array = formperemajaanarmada;
+                        break;
+                    case "17":
+                        value_array = formcancelendkontrak;
                         break;
                     default:
                         return;

@@ -87,6 +87,9 @@ class Authorization extends Model
             case 16:
                 return 'Form Peremajaan Armada';
                 break;
+            case 17:
+                return 'Cancel End Kontrak (Pest Control, Armada, Security)';
+                break;
             default:
                 return 'form_type_undefined';
                 break;
