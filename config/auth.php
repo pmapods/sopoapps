@@ -40,6 +40,10 @@ return [
             'driver' => 'session',
             'provider' => 'employee',
         ],
+        'vendor' => [
+            'driver' => 'session',
+            'provider' => 'vendors',
+        ],
         // 'web' => [
         //     'driver' => 'session',
         //     'provider' => 'users',
@@ -74,6 +78,11 @@ return [
             'driver' => 'eloquent',
             'model' => App\Models\Employee::class,
         ],
+
+        'vendors' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\VendorLogin::class,
+    ],
 
         // 'users' => [
         //     'driver' => 'eloquent',

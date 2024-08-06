@@ -35,6 +35,9 @@ class TicketVendor extends Model
             case '1':
                 return 'One Time Vendor';
                 break;
+            case '2':
+                return 'Vendor Auction';
+                break;
             default:
                 return 'undefined vendor type';
                 break;
