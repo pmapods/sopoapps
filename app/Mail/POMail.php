@@ -40,11 +40,15 @@ class POMail extends Mailable
             if(!$mail_subject){
                 $mail_subject = $default_subject;
             }
-            return $this->subject($mail_subject)
-                        ->view('mail.posignedrequest',compact('original_emails','original_ccs'))
-                        ->attachFromStorageDisk('public',$this->data['po']->internal_signed_filepath)
-                        ->attachFromStorageDisk('public',$this->data['po']->additional_po_filepath);
-                    }
+            $return_mail = $this->subject($mail_subject)
+                            ->view('mail.posignedrequest',compact('original_emails','original_ccs'))
+                            ->attachFromStorageDisk('public',$this->data['po']->internal_signed_filepath);
+            if ($this->data['po']->additional_po_filepath) {
+                $return_mail = $return_mail->attachFromStorageDisk('public',$this->data['po']->additional_po_filepath);
+            }
+
+            return $return_mail;
+        }
         if($this->type == 'posignedreject'){
             return $this->subject('Penolakan Signed PO')
                         ->view('mail.posignedreject',compact('original_emails','original_ccs'));

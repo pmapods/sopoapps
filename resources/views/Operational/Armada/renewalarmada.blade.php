@@ -170,7 +170,7 @@
                                     </select>
 
                                     <label class="required_field">SalesPoint Akhir</label>
-                                    <select class="form-control new_salespoint" name="new_salespoint_id">
+                                    <select class="form-control select2 new_salespoint" name="new_salespoint_id">
                                         <option value="">-- Pilih SalesPoint --</option>
                                         @foreach ($salespoints as $salespoint)
                                             <option value="{{ $salespoint->id }}">{{ $salespoint->name }}</option>
@@ -554,10 +554,10 @@
                 $.ajax({
                     type: "get",
                     url: '/getarmadabysalespoint/' + salespointId,
-                    success: function(response) {
+                    success: function(response) {                        
                         let data = response.data;
                         if (data && data.length > 0) {
-                            data.forEach(item => {
+                            data.forEach(item => {                                
                                 $.ajax({
                                     type: "get",
                                     url: '/getarmadatype/' + item
@@ -565,11 +565,13 @@
                                     success: function(response) {
                                         let dataType = response.data;
                                         dataType.forEach(type => {
+                                            let plates = item.plate;
+
                                             let optionText =
                                                 '<option value="' +
-                                                item.plate +
+                                                plates +
                                                 '">' +
-                                                item.plate +
+                                                plates +
                                                 '-' +
                                                 type.name +
                                                 '(' +
@@ -628,11 +630,11 @@
                             let dataType = response.data;
                             if (dataType && dataType.length > 0) {
                                 dataType.forEach(item => {
-                                    let yearPart = item.vehicle_year.substring(0,
-                                        4);
+                                    let vec_years = item.vehicle_year;
+                                    let plates = item.plate;
 
-                                    plateInput.val(item.plate);
-                                    vehicleYearInput.val(yearPart);
+                                    plateInput.val(plates);
+                                    vehicleYearInput.val(vec_years);
 
                                 })
 

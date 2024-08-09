@@ -164,8 +164,6 @@ class RenewalArmadaController extends Controller
                 $created_by = $renewals->created_by;
             }
 
-            // dd($renewals);
-
             array_push($array, $count); 
             array_push($array, $codeRenewal); 
             array_push($array, $last_salespoint);
@@ -218,7 +216,6 @@ class RenewalArmadaController extends Controller
             $salespointname = str_replace(' ', '_', $get_salespoint->name);
             $initialsalespoint = strtoupper($get_salespoint->initial);
 
-
             $countRenewal = RenewalArmada::whereBetween('created_at', [
                                 Carbon::now()->startOfMonth(),
                                 Carbon::now()->endOfMonth(),
@@ -232,19 +229,28 @@ class RenewalArmadaController extends Controller
                 $checkRenewal = RenewalArmada::where('code', $codeRenewal)->first();
                 ($checkRenewal != null) ? $flag = false : $flag = true;
             } while (!$flag);
-
+            
             $ext = pathinfo($request->file('bastk_file')->getClientOriginalName(), PATHINFO_EXTENSION);
             $name = "BASTK_" . $salespointname . '.' . $ext;
-            $path = "/attachments/renewal/armada/" . $armadaData->data[0]->id . '/' . $name;
+            $path = "/attachments/renewal/armada/" . $armadaData->data[0]->plate . '/' . $name;
             $file = pathinfo($path);
             $path = $request->file('bastk_file')->storeAs($file['dirname'], $file['basename'], 'public');
 
+            $armadaOld                             = new Armada;
+            $armadaOld->salespoint_id              = $request->last_salespoint_id;
+            $armadaOld->armada_type_id             = $armadaData->data[0]->armada_type_id;
+            $armadaOld->plate                      = $armadaData->data[0]->plate;
+            $armadaOld->status                     = 0;
+            $armadaOld->vehicle_year               = $request->old_vehicle_year.'-01-01';
+            $armadaOld->save();
+
+            $getArmadaId                           = Armada::where('plate', $armadaData->data[0]->plate)->first();
             $newRenewalArmada                      = new RenewalArmada;
             $newRenewalArmada->code                = $codeRenewal;
-            $newRenewalArmada->armada_id           = $armadaData->data[0]->id;
+            $newRenewalArmada->armada_id           = $getArmadaId->id;
             $newRenewalArmada->last_salespoint_id  = ($request->last_salespoint_id ?? null);
             $newRenewalArmada->new_salespoint_id   = ($request->new_salespoint_id ?? null);
-            $newRenewalArmada->armada_type_id      = $armadaData->data[0]->armada_type_id;
+            $newRenewalArmada->armada_type_id      = $getArmadaId->armada_type_id;
             $newRenewalArmada->old_plate           = str_replace(' ', '', strtoupper($request->old_plate));
             $newRenewalArmada->new_plate           = str_replace(' ', '', strtoupper($request->new_plate));
             $newRenewalArmada->new_vehicle_year    = $request->new_vehicle_year.'-01-01';
@@ -287,10 +293,35 @@ class RenewalArmadaController extends Controller
     }
 
     public function getArmadabySalespoint($salespoint_id){
-        $armadas = Armada::where('salespoint_id',$salespoint_id)->get();
-                return response()->json([
-                    'data' => $armadas
-                ]);
+        $armadas = DB::select
+            ("SELECT z.plate, z.armada_type_id, z.salespoint_id
+                FROM
+                (
+                    SELECT 
+                        a.plate, a.armada_type_id, a.salespoint_id
+                    FROM armada a
+                    WHERE a.salespoint_id = $salespoint_id
+                    UNION ALL
+                    SELECT x.plate, x.armada_type_id, x.salespoint_id
+                        FROM
+                            (
+                                SELECT 
+                                    b.gt_plate AS plate, b.armada_type_id, b.salespoint_id 
+                                FROM po_manual b
+                                WHERE b.salespoint_id = $salespoint_id
+                                    UNION ALL
+                                SELECT 
+                                    b.gs_plate AS plate, b.armada_type_id, b.salespoint_id 
+                                FROM po_manual b
+                                WHERE b.salespoint_id = $salespoint_id
+                            ) x
+                    WHERE x.plate IS NOT NULL AND x.plate != ''
+                ) z
+            GROUP BY z.plate, z.armada_type_id, z.salespoint_id");
+        
+        return response()->json([
+            'data' => $armadas
+        ]);
     }
 
     public function getArmadaTypebyID($armada_type_id){
@@ -313,15 +344,38 @@ class RenewalArmadaController extends Controller
                         ->where('plate', $plate_number)
                         ->get();
 
-
         return response()->json([
             'data' => $armadas
         ]);
     }
 
     public function getArmadaByPlate($plate){
-        $armadas = Armada::where('plate', $plate)
-                        ->get();
+        $armadas = DB::select
+            ("SELECT z.plate, z.armada_type_id, z.salespoint_id, z.vehicle_year
+                FROM
+                (
+                    SELECT 
+                        a.plate, a.armada_type_id, a.salespoint_id, LEFT(a.vehicle_year, 4) AS vehicle_year
+                    FROM armada a
+                    -- WHERE a.salespoint_id = 383
+                    UNION ALL
+                    SELECT x.plate, x.armada_type_id, x.salespoint_id, x.vehicle_year
+                        FROM
+                            (
+                                SELECT 
+                                    b.gt_plate AS plate, b.armada_type_id, b.salespoint_id, 2024 AS vehicle_year
+                                FROM po_manual b
+                                -- WHERE b.salespoint_id = 383
+                                    UNION ALL
+                                SELECT 
+                                    b.gs_plate AS plate, b.armada_type_id, b.salespoint_id, 2024 AS vehicle_year
+                                FROM po_manual b
+                                -- WHERE b.salespoint_id = 383
+                            ) x
+                    WHERE x.plate IS NOT NULL AND x.plate != ''
+                ) z
+            WHERE z.plate = '$plate'
+            GROUP BY z.plate, z.armada_type_id, z.salespoint_id, z.vehicle_year");
 
         return response()->json([
             'data' => $armadas
@@ -371,7 +425,6 @@ class RenewalArmadaController extends Controller
 
     public function confirmRenewal(Request $request)
     {
-
         // Superadmin Only
         if (
             Auth::user()->id != 1 &&
@@ -397,7 +450,7 @@ class RenewalArmadaController extends Controller
             $open_request->finished_date = now()->format('Y-m-d');
             $open_request->updated_at    = now()->format('Y-m-d');
             $open_request->save();
-
+            
             // cek armada tiket PO status 4 / belum cls PO
             $po_armada_tickets = ArmadaTicket::whereNotIn('status', [4])
             ->where('salespoint_id', '==', $open_request->last_salespoint_id)
@@ -409,7 +462,7 @@ class RenewalArmadaController extends Controller
 
             if ($po_armada_tickets != null) {
                 $po_normals = Po::where('no_po_sap', $po_armada_tickets->po_reference_number)->first();
-            }else{
+            } else {
                 // cek armada tiket PO dengan status 6
                 $po_armada_tickets = ArmadaTicket::where('status', 6)
                     ->where('salespoint_id', $open_request->last_salespoint_id)
@@ -417,7 +470,7 @@ class RenewalArmadaController extends Controller
                     ->where('armada_id', $open_request->armada_id)
                     ->whereNull('deleted_at')
                     ->orderBy('created_at', 'desc')
-                    ->first();
+                    ->first();            
 
                 if ($po_armada_tickets != null) {
                     $po_normals = Po::where('no_po_sap', $po_armada_tickets->po_number)
@@ -428,7 +481,7 @@ class RenewalArmadaController extends Controller
 
             $searchPlate = $open_request->old_plate;
 
-            if ($po_normals) {
+            if ($po_normals != null) {
                 // Cek di Tiket Armada
                 $update_armada_ticket = ArmadaTicket::where('code', $po_armada_tickets->code)->first();
                 $update_armada_ticket->gt_plate  = $open_request->new_plate;
@@ -442,17 +495,16 @@ class RenewalArmadaController extends Controller
                 ->where(function ($query) use ($searchPlate) {
                     $query->where('gs_plate', $searchPlate)
                         ->orWhere('gt_plate', $searchPlate);
-                })->get();
+                })->first();
 
-                if($po_manuals) {
-                    foreach($po_manuals as $po_manual){
-                        $update_po_manual            = PoManual::where($po_manual['po_number']);
-                        $update_po_manual->gt_plate  = $open_request->new_plate;
-                        $update_po_manual->save();
+                
 
-                        $msg = 'PO Manual ' . $update_po_manual->po_number;
-                    }
-
+                if($po_manuals != null) {                    
+                    $po_manuals->gt_plate  = $open_request->new_plate;
+                    $po_manuals->gs_plate  = null;
+                    $po_manuals->save();
+                    
+                    $msg = 'PO Manual ' . $po_manuals->po_number;
                 }
             }
 
@@ -461,9 +513,15 @@ class RenewalArmadaController extends Controller
                 return back()->with('error', 'Gagal Konfirmasi Renewal Armada data PO tidak ditemukan');
             }
 
-
             // update master armada
             $get_armada                = Armada::find($open_request->armada_id);
+            if ($get_armada == null) {
+                $get_armada            = new Armada;
+
+                if ($po_manuals != null) {
+                    $get_armada->armada_type_id = $po_manuals->armada_type_id;
+                }
+            }
             $get_armada->salespoint_id = $open_request->new_salespoint_id;
             $get_armada->plate         = $open_request->new_plate;
             $get_armada->vehicle_year  = $open_request->new_vehicle_year;

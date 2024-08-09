@@ -472,9 +472,11 @@
                                     <a class="uploaded_file text-primary" style="cursor:pointer"
                                         onclick='window.open("/storage/{{ $po->internal_signed_filepath }}")'>Tampilkan
                                         dokumen Internal Signed</a>
-                                    <a class="uploaded_file text-primary" style="cursor:pointer"
-                                        onclick='window.open("/storage/{{ $po->additional_po_filepath }}")'>Tampilkan
-                                        dokumen Additional attachment</a>
+                                    @if ($po->additional_po_filepath)
+                                        <a class="uploaded_file text-primary" style="cursor:pointer"
+                                            onclick='window.open("/storage/{{ $po->additional_po_filepath }}")'>Tampilkan
+                                            dokumen Additional attachment</a>
+                                    @endif
                                     <small><b>Status</b> :
                                         {{ $po->po_upload_request->isOpened == false ? 'Link Upload File belum dibuka oleh Vendor' : 'Link Upload File sudah dibuka oleh Vendor' }}</small>
                                     <small><b>Last Mail Send to</b> : {{ $po->last_mail_send_to }}</small>
@@ -625,7 +627,7 @@
                                             data-to="{{ $po->last_mail_send_to }}" data-cc="{{ $po->last_mail_cc_to }}"
                                             data-text="{{ $po->last_mail_text }}"
                                             data-subject="{{ $po->last_mail_subject }}"
-                                            onclick="send_email({{ $po->id }},'{{ $po->no_po_sap }}',this)">KirimUlang
+                                            onclick="send_email({{ $po->id }},'{{ $po->no_po_sap }}',this)">Kirim Ulang
                                             Email</button>
                                     @endif
 
