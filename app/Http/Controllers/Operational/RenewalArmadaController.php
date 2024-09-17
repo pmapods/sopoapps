@@ -236,15 +236,18 @@ class RenewalArmadaController extends Controller
             $file = pathinfo($path);
             $path = $request->file('bastk_file')->storeAs($file['dirname'], $file['basename'], 'public');
 
-            $armadaOld                             = new Armada;
-            $armadaOld->salespoint_id              = $request->last_salespoint_id;
-            $armadaOld->armada_type_id             = $armadaData->data[0]->armada_type_id;
-            $armadaOld->plate                      = $armadaData->data[0]->plate;
-            $armadaOld->status                     = 0;
-            $armadaOld->vehicle_year               = $request->old_vehicle_year.'-01-01';
-            $armadaOld->save();
-
             $getArmadaId                           = Armada::where('plate', $armadaData->data[0]->plate)->first();
+
+            if (!$getArmadaId) {
+                $armadaOld                             = new Armada;
+                $armadaOld->salespoint_id              = $request->last_salespoint_id;
+                $armadaOld->armada_type_id             = $armadaData->data[0]->armada_type_id;
+                $armadaOld->plate                      = $armadaData->data[0]->plate;
+                $armadaOld->status                     = 0;
+                $armadaOld->vehicle_year               = $request->old_vehicle_year.'-01-01';
+                $armadaOld->save();
+            }
+            
             $newRenewalArmada                      = new RenewalArmada;
             $newRenewalArmada->code                = $codeRenewal;
             $newRenewalArmada->armada_id           = $getArmadaId->id;
