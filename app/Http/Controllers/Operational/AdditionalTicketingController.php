@@ -365,7 +365,11 @@ class AdditionalTicketingController extends Controller
         $notes = $request->notes;
         $authorizations = Authorization::where('salespoint_id', $salespoint_id)
             ->where('form_type', $form_type)
-            ->where('notes', 'LIKE', '%' . $notes . '%')
+            ->where(function($query) use ($notes) {
+                    $query->where('notes', 'LIKE', '%' . $notes . '%')
+                        ->orWhereNull('notes');
+                }
+            )
             ->get();
 
         foreach ($authorizations as $authorization) {

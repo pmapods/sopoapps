@@ -1248,7 +1248,7 @@ class PRController extends Controller
                     break;
                 case 'development':
                     //  QAS
-                    $api_url = "http://192.168.35.163:8585/ticket/post";
+                    $api_url = "http://aset.pinusmerahabadi.co.id:8585/ticket/post";
                     break;
                 case 'production':
                     // Production

@@ -203,7 +203,7 @@ class POController extends Controller
                         ->orWhereIn('armada_ticket.ticketing_type', $ticketing_type_array);
                 })
                 ->where('armada_ticket.status', '>=', 4)
-                ->where('perpanjangan_form.stopsewa_reason', '!=', 'end')
+                // ->where('perpanjangan_form.stopsewa_reason', '!=', 'end')
                 ->select('armada_ticket.*')
                 ->distinct('armada_ticket.id')
                 ->get();
