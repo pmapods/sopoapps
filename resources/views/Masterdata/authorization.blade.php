@@ -116,10 +116,20 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-12 notes_field basic_notes">
+                        <div class="col-md-12 notes_field basic_notes note_field1">
                             <div class="form-group">
                                 <label class="optional_field">Notes</label>
                                 <input class="form-control" name="notes">
+                            </div>
+                        </div>
+                        <div class="col-md-12 notes_field basic_notes note_field2" style="display: none">
+                            <div class="form-group">
+                                <label class="required_field">Notes</label>
+                                <select class="form-control notes_select" name="notes_select" required>
+                                    <option value="">-- Pilih Notes --</option>
+                                    <option value="Pengadaan Security">Pengadaan Security</option>
+                                    <option value="Pengadaan Lembur">Pengadaan Lembur</option>
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-12 notes_field niaga_notes d-none">
@@ -299,6 +309,15 @@
                             <div class="form-group">
                                 <label class="optional_field">Notes</label>
                                 <input class="form-control" name="notes">
+                            </div>
+                        </div>
+                        <div class="col-md-12 notes_field notes_select d-none">
+                            <div class="form-group">
+                                <label class="required_field">Notes</label>
+                                <select class="form-control" name="notes">
+                                    <option value="Pengadaan Security">Pengadaan Security</option>
+                                    <option value="Pengadaan Lembur">Pengadaan Lembur</option>
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-12 notes_field niaga_notes d-none">
@@ -492,6 +511,7 @@
     <script>
         let niaga_notes_array = [5, 6];
         let budget_notes_array = [2];
+        let note_select_array = [8];
 
         let formpengadaan = ['Pengaju', 'Atasan Langsung', 'Atasan Tidak Langsung'];
         let formbidding = ['Diajukan Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
@@ -552,6 +572,10 @@
                     // case PR
                     notes = modal.find('.budget_notes select');
                     modal.find('.budget_notes').removeClass('d-none');
+                } else if (note_select_array.includes(parseInt(data['form_type']))) {
+                    // case pengadaan security/pengadaan lembur
+                    notes = modal.find('.notes_select select');
+                    modal.find('.notes_select').removeClass('d-none');
                 } else {
                     modal.find('.basic_notes').removeClass('d-none');
                 }
@@ -589,6 +613,13 @@
                 let value_array = [];
                 let default_array = [];
                 closestmodal.find('.table_default_level tbody').empty();
+
+                $('.notes_select').val("");
+                $('.notes_select').trigger('change');
+
+                $('.note_field2').css('display', 'none');
+                $('.note_field1').css('display', 'block');
+
                 switch ($(this).val()) {
                     case "0":
                         value_array = formpengadaan;
@@ -632,6 +663,9 @@
                         break;
                     case "8":
                         value_array = formpengadaansecurity;
+                        $('.note_field2').css('display', 'block');
+                        $('.note_field1').css('display', 'none');
+                        $('.notes_select').prop('required', true);
                         break;
                     case "9":
                         value_array = formevaluasi;
@@ -940,6 +974,7 @@
             let modal = $('#addAuthorModal');
             let salespoint = modal.find('select[name="salespoint"]').val();
             let form_type = modal.find('select[name="form_type"]').val();
+            let notes_select = modal.find('select[name="notes_select"]').val();
             let notes = modal.find('.basic_notes input').val();
             // case perpanjangan/mutasi
             if (niaga_notes_array.includes(parseInt(form_type))) {
@@ -984,6 +1019,7 @@
             inputfield.append('<input type="hidden" name="salespoint" value="' + salespoint + '">');
             inputfield.append('<input type="hidden" name="form_type" value="' + form_type + '">');
             inputfield.append('<input type="hidden" name="notes" value="' + notes + '">');
+            inputfield.append('<input type="hidden" name="notes_select" value="' + notes_select + '">');
             authorizationlist.forEach((item, index) => {
                 inputfield.append('<input type="hidden" name="authorization[' + index + '][id]" value="' + item.id +
                     '">');

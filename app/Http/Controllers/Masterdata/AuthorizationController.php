@@ -197,6 +197,7 @@ class AuthorizationController extends Controller
     {
         try {
             DB::beginTransaction();
+            // dd($request);
             switch ($request->form_type) {
                 case '0':
                     // 0 form pengadaan barang jasa
@@ -302,7 +303,12 @@ class AuthorizationController extends Controller
             $newAuthorization                 = new Authorization;
             $newAuthorization->salespoint_id  = $request->salespoint;
             $newAuthorization->form_type      = $request->form_type;
-            $newAuthorization->notes          = $request->notes;
+            if ($request->notes != null) {
+                $newAuthorization->notes          = $request->notes;
+            }
+            else {
+                $newAuthorization->notes          = $request->notes_select;
+            }
             $newAuthorization->save();
 
             $level_over_budget = 4;

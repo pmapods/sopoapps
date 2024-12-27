@@ -303,22 +303,25 @@ class RenewalArmadaController extends Controller
                     SELECT 
                         a.plate, a.armada_type_id, a.salespoint_id
                     FROM armada a
-                    WHERE a.salespoint_id = $salespoint_id
-                    UNION ALL
-                    SELECT x.plate, x.armada_type_id, x.salespoint_id
-                        FROM
-                            (
-                                SELECT 
-                                    b.gt_plate AS plate, b.armada_type_id, b.salespoint_id 
-                                FROM po_manual b
-                                WHERE b.salespoint_id = $salespoint_id
-                                    UNION ALL
-                                SELECT 
-                                    b.gs_plate AS plate, b.armada_type_id, b.salespoint_id 
-                                FROM po_manual b
-                                WHERE b.salespoint_id = $salespoint_id
-                            ) x
-                    WHERE x.plate IS NOT NULL AND x.plate != ''
+                    LEFT JOIN
+	                  (  
+							  SELECT x.plate, x.armada_type_id, x.salespoint_id
+	                        FROM
+	                            (
+	                                SELECT 
+	                                		CASE
+	                                			WHEN b.gt_plate IS NOT NULL THEN b.gt_plate
+	                                			WHEN b.gt_plate IS NULL THEN b.gs_plate
+	                                			ELSE ''
+	                                		END AS plate,
+													b.armada_type_id, b.salespoint_id 
+	                                FROM po_manual b
+	                                WHERE b.salespoint_id = $salespoint_id
+	                            ) x
+	                    WHERE x.plate IS NOT NULL AND x.plate != ''
+	                  ) m
+	               ON a.plate = m.plate AND a.salespoint_id = m.salespoint_id
+	               WHERE a.salespoint_id = $salespoint_id AND a.deleted_at IS NULL
                 ) z
             GROUP BY z.plate, z.armada_type_id, z.salespoint_id");
         
@@ -585,7 +588,7 @@ class RenewalArmadaController extends Controller
         }
         try {
             DB::beginTransaction();
-            $open_request                    = RenewalArmada::findOrFail($request->id);
+            $open_request                    = RenewalArmada::where($request->id);
             $open_request->rejected_by       = Auth::user()->id;
             $open_request->status            = 2;
             $open_request->reject_reason     = $request->reason;

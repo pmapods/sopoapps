@@ -484,7 +484,7 @@ class BiddingController extends Controller
             return redirect('/bidding/' . $ticket->code . '/' . $request->ticket_item_id)->with('success', 'Berhasil membuat form bidding. Menunggu proses otorisasi oleh ' . $newBidding->current_authorization()->employee_name . $emailmessage);
         } catch (\Exception $ex) {
             DB::rollback();
-            return redirect('/bidding/' . $ticket->code)->with('error', 'Gagal membuat form bidding. Silahkan coba kembali atau hubungi developer');
+            return redirect('/bidding/' . $ticket->code)->with('error', 'Gagal membuat form bidding. Silahkan coba kembali atau hubungi developer (' . $ex->getMessage() . ')');
         }
     }
 

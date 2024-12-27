@@ -1387,6 +1387,9 @@ class POController extends Controller
             $name = $po->no_po_sap . "_INTERNAL_SIGNED_" . $salespointname . '.' . $ext;
             $path = "/attachments/ticketing/" . $type . "/" . $ticket->code . '/po/' . $name;
             $file = pathinfo($path);
+            if (Storage::exists($path)) {
+                Storage::delete($path);
+            }
             $path = $request->file('internal_signed_file')->storeAs($file['dirname'], $file['basename'], 'public');
             $po->internal_signed_filepath = $path;
 
