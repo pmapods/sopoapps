@@ -33,7 +33,7 @@ class hasMenuAccess
         }
         
         if($access[0] == 'budget'){
-            $emp_access = intval(Auth::user()->menu_access->budget ?? 0);
+            $emp_access = intval(Auth::user()->menu_access->sales ?? 0);
             foreach($menu_acceses as $key=>$menu_access){
                 if(($emp_access & $menu_access) != 0){
                     return $next($request);

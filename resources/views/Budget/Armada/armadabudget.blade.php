@@ -30,7 +30,7 @@
                 @if (request()->get('status') == -1)
                     <a href="/armadabudget" class="btn btn-success">Budget Aktif</a>
                 @else
-                    @if (((Auth::user()->menu_access->budget ?? 0) & 16) != 0)
+                    @if (((Auth::user()->menu_access->sales ?? 0) & 16) != 0)
                         <a href="/armadabudget/monitoring" class="btn btn-warning">Monitoring</a>
                     @endif
                     <a href="/armadabudget?status=-1" class="btn btn-info ml-2">History (Budget Non Aktif)</a>

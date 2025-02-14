@@ -100,25 +100,10 @@ class SalesPoint extends Model
     {
         switch ($this->status) {
             case 0:
-                return 'DEPO';
+                return 'INACTIVE';
                 break;
             case 1:
-                return 'CABANG';
-                break;
-            case 2:
-                return 'CELLPOINT';
-                break;
-            case 3:
-                return 'SUBDIST';
-                break;
-            case 4:
-                return 'NATIONAL';
-                break;
-            case 5:
-                return 'HEAD OFFICE';
-                break;
-            case 6:
-                return 'CELLPOINT+';
+                return 'ACTIVE';
                 break;
             default:
                 return 'status_undefined';

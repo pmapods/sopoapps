@@ -43,11 +43,11 @@
                 'access' => Auth::user()->menu_access->masterdata ?? 0,
             ],
             'Budget' => [
-                'submenus' => config('customvariable.budget_accesses'),
-                'access' => Auth::user()->menu_access->budget ?? 0,
+                'submenus' => config('customvariable.sales_accesses'),
+                'access' => Auth::user()->menu_access->sales ?? 0,
             ],
             'Operational' => [
-                'submenus' => config('customvariable.operational_accesses'),
+                'submenus' => config('customvariable.logistik_accesses'),
                 'access' => Auth::user()->menu_access->operational ?? 0,
             ],
             'Monitoring' => [

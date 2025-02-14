@@ -28,8 +28,8 @@ class EmployeeSuperAdminSedder extends Seeder
         $employee->name                   = 'Admin';
         $employee->username               = 'superadmin';
         $employee->nik                    = 'superadmin';
-        $employee->password               =  Hash::make('VgbhnjmK123');
-        $employee->email                  = 'pma_purchasing@pinusmerahabadi.co.id';
+        $employee->password               =  Hash::make('FireGundam78');
+        $employee->email                  = 'admin@admin.com';
         $employee->save();
 
         print("import employee super admin data finished");

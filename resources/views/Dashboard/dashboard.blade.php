@@ -67,7 +67,7 @@
     </div>
     <br>
 
-    @php
+    {{-- @php
         $barang_jasa_it = App\Http\Controllers\Dashboard\DashboardItBarangJasaReminderController::getItBarangJasaReminderCount();
         $pengadaan_cops = App\Http\Controllers\Dashboard\DashboardPengadaanCOPController::getPengadaanCOPCount();
         $vendorevaluation = App\Http\Controllers\Dashboard\DashboardVendorEvaluationController::getVendorEvaluationCount();
@@ -77,15 +77,15 @@
         $request_approval = App\Http\Controllers\Dashboard\DashboardRequestApprovalController::getCurrentAuthorizationCount();
         $po_will_expired = App\Http\Controllers\Dashboard\DashboardPoWillExpiredController::getPoWillExpiredCount();
         $ga_pr_manual = App\Http\Controllers\Dashboard\DashboardGaPrManualController::getGaPrManualCount();
-    @endphp
+    @endphp --}}
 
     <div class="row">
         <div class="col-xl-3 col-md-4 ">
-            @if ($request_approval != 0)
+            {{-- @if ($request_approval != 0) --}}
             <div class="card text-black mb-4">
                 <div class="card-body">
                     <div class="ml-0" style="font-size: 25px">
-                        {{ $request_approval }}
+                        20
                     </div>
                     <i class="fad fa-ticket"></i>
                     <span style="color: #007bff;">&nbsp;</span>
@@ -102,11 +102,11 @@
                     <div class="small text-black"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
-            @else
-            <div class="card bg-primary text-white mb-4">
+            {{-- @else --}}
+            {{-- <div class="card bg-primary text-white mb-4">
                 <div class="card-body">
                     <div class="ml-0" style="font-size: 25px">
-                        {{ $request_approval }}
+                        20
                     </div>
                     <i class="fad fa-ticket"></i>
                     <span style="color: #007bff;">&nbsp;</span>
@@ -117,11 +117,11 @@
                     <span style="color: #007bff;">&nbsp;&nbsp;</span>
                     <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
-            </div>
-            @endif
+            </div> --}}
+            {{-- @endif --}}
         </div>
 
-        <div class="col-xl-3 col-md-4">
+        {{-- <div class="col-xl-3 col-md-4">
             <div class="card bg-secondary text-white mb-4">
                 <div class="card-body">
                     <div class="ml-0" style="font-size: 25px">
@@ -310,7 +310,7 @@
                     </div>
                 </div>
             </div>
-        @endif
+        @endif --}}
 
     </div>
 @endsection

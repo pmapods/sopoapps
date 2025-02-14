@@ -19,19 +19,9 @@
             </div>
         </div>
         <div class="d-flex justify-content-end mt-4">
-
-            <a href="/orgcharts" class="btn btn-success ml-2">Organization Chart</a>
             
             <button type="button" class="btn btn-info ml-2" data-toggle="modal" data-target="#resetPasswordModal">
                 Reset Password
-            </button>
-
-            <button type="button" class="btn btn-info ml-2" data-toggle="modal" data-target="#migrateEmployeeModal">
-                Migrasi Karyawan
-            </button>
-
-            <button type="button" class="btn btn-info ml-2" data-toggle="modal" data-target="#jobtitleEmployeeModal">
-                Change Job Title Karyawan
             </button>
 
             <button type="button" class="btn btn-primary ml-2" data-toggle="modal" data-target="#addEmployeeModal">
@@ -48,20 +38,21 @@
                     <th>#</th>
                     <th>Kode</th>
                     <th>Nama</th>
-                    <th>NIK</th>
                     <th>Username</th>
+                    <th>Job Title</th>
                     <th>Email</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach ($employees as $key => $employee)
+                @foreach ($employee_pst as $key => $employee)
+                {{-- @dd($employee) --}}
                     <tr data-employee="{{$employee}}">
                         <td>{{$key+1}}</td>
                         <td>{{$employee->code}}</td>
                         <td>{{$employee->name}}</td>
-                        <td>{{$employee->nik}}</td>
                         <td>{{$employee->username}}</td>
+                        <td>{{$employee->emp_position}}</td>
                         <td>{{$employee->email}}</td>
                         <td>{{$employee->statusName()}}</td>
                     </tr> 
@@ -98,16 +89,20 @@
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                              <label class="required_field">NIK</label>
-                              <input type="text" class="form-control" name="nik" placeholder="Masukkan NIK" required>
-                              <small class="text-info">NIK bersifat unik dan dapat digunakan untuk melakukan login.</small>
+                              <label class="required_field">username</label>
+                              <input type="text" class="form-control" name="username" placeholder="Masukkan username (ex: userhobandung1)" required>
+                              <small class="text-info">Username bersifat unik</small>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                              <label class="required_field">username</label>
-                              <input type="text" class="form-control" name="username" placeholder="Masukkan username (ex: userhobandung1)" required>
-                              <small class="text-info">Username bersifat unik</small>
+                              <label class="required_field">Job Title</label>
+                              <select class="form-control select2" id="job_title_id" name="job_title_id" required>
+                                    <option value="">-- Pilih Job Title --</option>
+                                    @foreach ($employee_positions as $employee_positions)
+                                        <option value="{{ $employee_positions->id }}">{{ $employee_positions->name }}</option>
+                                    @endforeach
+                              </select>
                             </div>
                         </div>
                         <div class="col-12">
@@ -126,7 +121,7 @@
                         <div class="col-12">
                             <div class="form-group">
                               <label class="required_field">Konfirmasi Kata Sandi</label>
-                              <input type="password" class="form-control" oninput="validatepassword()" value="12345678" id="confirmpassword" name="conf_password" placeholder="Konfirmasi Kata sandi" required>
+                              <input type="password" class="form-control" oninput="validatepassword()" value="pma123" id="confirmpassword" name="conf_password" placeholder="Konfirmasi Kata sandi" required>
                               <small class="text-danger d-none" id="confpassworderror">konfirmasi kata sandi tidak sesuai</small>
                             </div>
                         </div>
@@ -138,109 +133,6 @@
                 </div>
             </div>
         </form>
-    </div>
-</div>
-
-<div class="modal fade" id="migrateEmployeeModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Migrasi Karyawan</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-            </div>
-            <form action="/migrateemployeeconfirmation" method="get">
-                @csrf
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="form-group">
-                                <label class="required_field">Pilih Karyawan yang di migrasikan</label>
-                                <select class="form-control select2" id="source_employee" name="source_employee_id" required>
-                                    <option value="">-- Pilih Karyawan --</option>
-                                    @foreach ($employees as $employee)
-                                        <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                                    @endforeach
-                                </select>
-                                <small class="text-danger">* Karyawan terpilih akan dipindahkan seluruh approval nya ke karyawan terpilih di tujuan migrasi karyawan terpilih</small>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group">
-                              <label class="required_field">Pilih Tujuan Karyawan</label>
-                              <select class="form-control select2" id="target_employee" name="target_employee_id" required>
-                                  <option value="">-- Pilih Karyawan --</option>
-                                  @foreach ($employees as $employee)
-                                      <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                                  @endforeach
-                              </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-primary">Pilih</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-
-{{-- Job Position Migrate --}}
-<div class="modal fade" id="jobtitleEmployeeModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Migrasi Job Position Karyawan</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-            </div>
-            <form action="/jobtitleemployeeconfirmation" method="get">
-                @csrf
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="form-group">
-                                <label class="required_field">Pilih Karyawan</label>
-                                <select class="form-control select2" id="employee_id" name="employee_id" required>
-                                    <option value="">-- Pilih Karyawan --</option>
-                                    @foreach ($employee_pst as $employee_pst)
-                                        <option value="{{ $employee_pst->id }}">{{ $employee_pst->name }}</option>
-                                    @endforeach
-                                </select>
-                                <small class="text-danger">* Karyawan terpilih akan berubah job position nya sesuai dengan job title yang dipilih</small>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group">
-                              <label class="required_field">Job Title Karyawan Sebelumnya</label>
-                              <input type="text" class="form-control" id="job_title_id_bfr" name="job_title_id_bfr" disabled>
-                              </select>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group">
-                              <label class="required_field">Pilih Job Title Karyawan Baru</label>
-                              <select class="form-control select2" id="job_title_id" name="job_title_id" required>
-                                  <option value="">-- Pilih Job Title --</option>
-                                  @foreach ($employee_positions as $employee_positions)
-                                      <option value="{{ $employee_positions->id }}">{{ $employee_positions->name }}</option>
-                                  @endforeach
-                              </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-primary">Pilih</button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
 
@@ -262,8 +154,8 @@
                               <label class="required_field">Pilih Karyawan yang di dilakukan reset password</label>
                               <select class="form-control select2" name="employee_id" required>
                                   <option value="">-- Pilih Karyawan --</option>
-                                  @foreach ($employees as $employee)
-                                      <option value="{{ $employee->id }}">{{ $employee->name }} || {{ $employee->nik}}</option>
+                                  @foreach ($employee_pst as $employee)
+                                      <option value="{{ $employee->id }}">{{ $employee->name }} || {{ $employee->code }} || {{ $employee->emp_position }}</option>
                                   @endforeach
                               </select>
                               <small class="text-danger">* Password karyawan secara otomatis akan menjadi password default "pma123"</small>
@@ -298,6 +190,12 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="form-group">
+                              <label class="required_field">Code</label>
+                              <input type="text" class="form-control" name="code" readonly>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group">
                               <label class="required_field">Nama Karyawan</label>
                               <input type="text" class="form-control" name="name" placeholder="Masukkan nama karyawan">
                             </div>
@@ -310,14 +208,14 @@
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                              <label class="required_field">NIK</label>
-                              <input type="text" class="form-control" name="nik" placeholder="Masukkan NIK" readonly>
+                              <label class="required_field">Job Title</label>
+                              <input type="text" class="form-control" name="job_title_id_bfr" readonly>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
                               <label class="required_field">username</label>
-                              <input type="text" class="form-control" name="username" placeholder="Masukkan username (ex: userhobandung1)" required>
+                              <input type="text" class="form-control" name="username" readonly>
                             </div>
                         </div>
                         <div class="col-12">
@@ -325,13 +223,6 @@
                               <label class="required_field">Email Karyawan</label>
                               <input type="email" class="form-control" name="email" placeholder="Masukkan nama karyawan">
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group">
-                              <label class="optional_field">Signature Image</label>
-                              <div class="signature_image">Tidak ada Signature</div>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -433,21 +324,17 @@
         $('#employeeDT tbody').on('click', 'tr', function () {
             let modal = $("#editEmployeeModal");
             let data = $(this).data('employee');
+            console.log(data);
             modal.find('input[name="employee_id"]').val(data['id']);
             modal.find('input[name="updated_at"]').val(data['updated_at']);
             modal.find('input[name="name"]').val(data['name']);
-            modal.find('select[name="position"]').val(data['employee_position_id']);
+            modal.find('input[name="job_title_id_bfr"]').val(data['emp_position']);
+            modal.find('select[name="position"]').val(data['position_id']);
             modal.find('select[name="position"]').trigger('change');
             modal.find('input[name="phone"]').val(data['phone']);
-            modal.find('input[name="nik"]').val(data['nik']);
+            modal.find('input[name="code"]').val(data['code']);
             modal.find('input[name="username"]').val(data['username']);
             modal.find('input[name="email"]').val(data['email']);
-            modal.find('.signature_image').empty();
-            if(data['signature_filepath']){
-                modal.find('.signature_image').append("<img class='img-fluid' src='/storage"+data['signature_filepath']+"'>");
-            }else{
-                modal.find('.signature_image').append("Tidak ada Signature");
-            }
             if(data['status'] == 0){
                 modal.find('.active-button').hide();
                 modal.find('.nonactive-button').show();

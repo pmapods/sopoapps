@@ -17,6 +17,7 @@ class EmployeeAccessController extends Controller
 {
     public function employeeAccessView(){
         $employees = Employee::whereNotIn('id',[1,Auth::user()->id])->get();
+        // $employees = Employee::all();
         return view('Masterdata.employeeaccess',compact('employees'));
     }
 
@@ -51,8 +52,8 @@ class EmployeeAccessController extends Controller
                 $old_menu_access->employee_id = $request->employee_id;
             }
             $old_menu_access->masterdata = array_sum($request->masterdata ?? []);
-            $old_menu_access->budget = array_sum($request->budget ?? []);
-            $old_menu_access->operational = array_sum($request->operational ?? []);
+            $old_menu_access->sales = array_sum($request->sales ?? []);
+            $old_menu_access->logistik = array_sum($request->logistik ?? []);
             $old_menu_access->monitoring = array_sum($request->monitoring ?? []);
 
             // reporting access validation

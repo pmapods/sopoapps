@@ -60,8 +60,8 @@ class RefreshAdminAccess extends Command
             $admin_menu_access->delete();
     
             $masterdata_accesses = config('customvariable.masterdata_accesses');
-            $budget_accesses = config('customvariable.budget_accesses');
-            $operational_accesses = config('customvariable.operational_accesses');
+            $sales_accesses = config('customvariable.sales_accesses');
+            $logistik_accesses = config('customvariable.logistik_accesses');
             $monitoring_accesses = config('customvariable.monitoring_accesses');
             $reporting_accesses = config('customvariable.reporting_accesses');
             $feature_accesses = config('customvariable.feature_accesses');
@@ -69,8 +69,8 @@ class RefreshAdminAccess extends Command
             $access = new EmployeeMenuAccess;
             $access->employee_id = 1;
             $access->masterdata  = $this->sumArrayGeometry($masterdata_accesses);
-            $access->budget      = $this->sumArrayGeometry($budget_accesses);
-            $access->operational = $this->sumArrayGeometry($operational_accesses);
+            $access->sales      = $this->sumArrayGeometry($sales_accesses);
+            $access->logistik = $this->sumArrayGeometry($logistik_accesses);
             $access->monitoring  = $this->sumArrayGeometry($monitoring_accesses);
             $access->reporting   = $this->sumArrayGeometry($reporting_accesses);
             $access->feature   = $this->sumArrayGeometry($feature_accesses);

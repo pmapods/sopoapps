@@ -75,11 +75,10 @@ class EmployeeController extends Controller
     {
         $employees = Employee::whereNotIn('id', [1])->get();
         $employee_pst = Employee::leftJoin('authorization_detail', 'employee.id', '=', 'authorization_detail.employee_id')
-        ->leftJoin('employee_position', 'employee_position.id', '=', 'authorization_detail.employee_position_id')
+        ->leftJoin('employee_position', 'employee_position.id', '=', 'employee.position_id')
         ->where('employee.id', '!=', 1)
         ->whereNull('employee.deleted_at')
-        ->whereNotNull('authorization_detail.employee_id')
-        ->select('employee.id', 'employee.name', 'authorization_detail.employee_position_id', 'employee_position.name as emp_position', 'employee.code', 'employee.username', 'employee.nik', 'employee.email')
+        ->select('employee.id', 'employee.name', 'employee_position.name as emp_position', 'employee.code', 'employee.username', 'employee.email', 'employee.status', 'employee.phone', 'employee.position_id')
         ->groupBy('employee.id')
         ->get();
         $employee_positions = EmployeePosition::where('employee_position.id', '!=', 1)->get();
@@ -135,20 +134,16 @@ class EmployeeController extends Controller
             if ($checkEmployee) {
                 return back()->with('error', 'Username sudah terdaftar sebelum untuk karyawan dengan nama ' . $checkEmployee->name);
             }
-            $checkEmployee = Employee::where('nik', $request->nik)->first();
-            if ($checkEmployee) {
-                return back()->with('error', 'NIK sudah terdaftar sebelum untuk karyawan dengan nama ' . $checkEmployee->name);
+            $checkEmployee = Employee::where('email',$request->email)->first();
+            if($checkEmployee){
+                return back()->with('error','Email sudah terdaftar sebelum untuk karyawan dengan nama '.$checkEmployee->name);
             }
-            // $checkEmployee = Employee::where('email',$request->email)->first();
-            // if($checkEmployee){
-            //     return back()->with('error','Email sudah terdaftar sebelum untuk karyawan dengan nama '.$checkEmployee->name);
-            // }
 
             $newEmployee                         = new Employee;
             $newEmployee->code                   = $code;
             $newEmployee->name                   = $request->name;
             $newEmployee->username               = $request->username;
-            $newEmployee->nik                    = $request->nik;
+            $newEmployee->position_id            = $request->job_title_id;
             $newEmployee->email                  = $request->email;
             $newEmployee->password               = Hash::make($request->password);
             $newEmployee->phone                  = $request->phone;
@@ -185,7 +180,7 @@ class EmployeeController extends Controller
 
             $employee->phone                = $request->phone;
             $employee->name                 = $request->name;
-            $employee->username             = $request->username;
+            // $employee->username             = $request->username;
             $employee->email                = $request->email;
             $employee->save();
             return back()->with('success', 'Berhasil memperbarui data karyawan ' . $request->name);

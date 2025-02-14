@@ -32,7 +32,7 @@ class LoginController extends Controller
         // validator
         // check via nik
         $employee = null;
-        $employee_by_nik = Employee::where('nik',$request->nik)->first();
+        $employee_by_nik = Employee::where('username',$request->nik)->first();
         if($employee_by_nik) $employee = $employee_by_nik;
         if(config('app.env') != 'production'){
             // selain production bisa login pake username
@@ -71,6 +71,7 @@ class LoginController extends Controller
     }
 
     public function updatePassword(Request $request){
+        // dd($request);
         $employee = Auth::user();
         $employee->password =Hash::make($request->newpassword);
         $employee->is_password_changed = true;

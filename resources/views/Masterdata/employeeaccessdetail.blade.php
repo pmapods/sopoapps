@@ -86,7 +86,7 @@
             @endif
 
             @php
-                $budget_accesses = config('customvariable.budget_accesses');
+                $sales_accesses = config('customvariable.sales_accesses');
             @endphp
             <div class="col-6 col-md-4 mb-3 group_check">
                 <div class="form-check form-check-inline mb-2">
@@ -94,32 +94,32 @@
                         <span class="h4 mr-2">Budget</span> <input class="form-check-input head_check" type="checkbox">
                     </label>
                 </div>
-                @foreach ($budget_accesses as $key=>$access)
+                @foreach ($sales_accesses as $key=>$access)
                     <div class="form-check">
                         <label class="form-check-label">
                             <input type="checkbox" class="form-check-input child_check" name="budget[]"
                             value="{{pow(2,$key)}}"
-                            @if((($employee->menu_access->budget ?? 0) & pow(2,$key)) != 0) checked @endif>{{$access}}
+                            @if((($employee->menu_access->sales ?? 0) & pow(2,$key)) != 0) checked @endif>{{$access}}
                         </label>
                     </div>
                 @endforeach
             </div>
 
             @php
-                $operational_accesses = config('customvariable.operational_accesses');
+                $logistik_accesses = config('customvariable.logistik_accesses');
             @endphp
             <div class="col-6 col-md-4 mb-3 group_check">
                 <div class="form-check form-check-inline mb-2">
                     <label class="form-check-label">
-                        <span class="h4 mr-2">Operational</span> <input class="form-check-input head_check" type="checkbox">
+                        <span class="h4 mr-2">Logistik</span> <input class="form-check-input head_check" type="checkbox">
                     </label>
                 </div>
-                @foreach ($operational_accesses as $key=>$access)
+                @foreach ($logistik_accesses as $key=>$access)
                     <div class="form-check">
                         <label class="form-check-label">
                             <input type="checkbox" class="form-check-input child_check" name="operational[]"
                             value="{{pow(2,$key)}}"
-                            @if((($employee->menu_access->operational ?? 0) & pow(2,$key)) != 0) checked @endif>{{$access}}
+                            @if((($employee->menu_access->logistik ?? 0) & pow(2,$key)) != 0) checked @endif>{{$access}}
                         </label>
                     </div>
                 @endforeach
@@ -165,7 +165,7 @@
                 @endforeach
             </div>
 
-            @php
+            {{-- @php
                 $feature_accesses = config('customvariable.feature_accesses');
             @endphp
             <div class="col-6 col-md-4 mb-3 group_check">
@@ -183,7 +183,7 @@
                         </label>
                     </div>
                 @endforeach
-            </div>
+            </div> --}}
         </div>
 
         <div class="text-center mt-3">

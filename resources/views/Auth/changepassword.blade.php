@@ -1,7 +1,7 @@
 <html><head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Pinus Merah Abadi</title>
+    <title>SNEL</title>
     <!-- Tell the browser to be responsive to screen width -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -18,7 +18,7 @@
 
     <style>
         .login-page{
-            background: url('/assets/login-wallpaper.jpg');
+            background-color: white;
             background-size: cover;
             background-position: center;
             /* background-color: aqua */
@@ -30,7 +30,7 @@
     </style>
   </head>
   <body class="login-page">
-  <div class="login-box p-5" style="background-color: #2b090a6b">
+  <div class="login-box p-5" style="background-color: silver">
     
     @if(Session::has('success'))
         <div class="m-1 alert alert-success alert-dismissible fade show" role="alert">
@@ -50,11 +50,10 @@
     @endif
     <div class="login-logout">
         <div class="d-flex flex-row">
-            <img src="assets/logo.png" width="100" alt="">
+            <img src="assets/Logo-snel.png" width="150" alt="">
             <div class="d-flex flex-column justify-content-center text-light">
-                <span class="h2">Pinus Merah Abadi</span>
-                <span class="h3">(Purchasing)</span>
-            </div>
+              <span class="display-4">SNEL</span>
+          </div>
         </div>
     </div>
     <!-- /.login-logo -->
@@ -83,7 +82,7 @@
           <div class="row">
             <!-- /.col -->
             <div class="col">
-              <button type="submit" class="btn btn-danger btn-block">Ubah Password</button>
+              <button type="submit" class="btn btn-primary btn-block">Ubah Password</button>
             </div>
             <small class="text-danger">* Penggantian kata sandi hanya dilakukan pertama kali melakukan login</small>
             <!-- /.col -->

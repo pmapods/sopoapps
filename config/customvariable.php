@@ -1,59 +1,46 @@
 <?php
 return [
     'masterdata_accesses' => [
-        'Jabatan',
         'Karyawan',
-        'SalesPoint',
         'Akses Karyawan',
-        'Matriks Approval',
-        'Vendor',
-        'Budget Pricing',
-        'Kelengkapan Berkas',
-        'Master Armada',
-        'Additional Email',
-        'Notification Email',
-        'Custom Ticketing',
-        'Ticketing Block',
-        'Email CC',
-        'Upload PO Manual'
-    ],
-
-    'budget_accesses' => [
-        'Inventory',
+        'Jabatan',
+        'Cabang',
+        'Supplier',
+        'Customer',
         'Armada',
-        'Assumption',
-        'HO',
-        'Monitoring Feature'
+        'Notification Email',
+        'Matriks Approval',
+        'Produk',
+        'Bahan Baku'
     ],
 
-    'operational_accesses' => [
-        'Pengadaan',
-        'Bidding',
-        'Purchase Requisition',
-        'Purchase Order (Setup)',
-        'Purchase Order (Process)',
-        'Form Validation',
-        'Vendor Evaluation',
-        'Peremajaan Armada',
-        'Auction Ticket',
-        'Approval Vendor Register',
-        'Approval Auction Bidding'
+    'sales_accesses' => [
+        'POQuotation',
+        'Sales Order',
+        'Delivery Order',
+        'Pengiriman',
+        'Pelunasan',
+        'Invoice',
+        'Undelivery'
+    ],
+
+    'logistik_accesses' => [
+        'Stock Realtime',
+        'Mutasi',
+        'Stock Opname',
+        'Disposal'
     ],
 
     'monitoring_accesses' => [
-        'Monitor Pengadaan',
-        'Monitor Security',
-        'Monitor Armada',
-        'Monitor CIT',
-        'Monitor PEST',
-        'Monitor Merchandiser'
+        'Monitor PO Penjualan',
+        'Monitor PO Sewa',
+        'Monitor PO Custom'
     ],
 
     'reporting_accesses' => [
-        'Armada Accident (view, add, update)',
-        'Armada Accident (update status open & close)',
-        'Upload Report',
-        'Download Report'
+        'Report Penjualan',
+        'Report Sewa',
+        'Report Omset'
     ],
 
     'feature_accesses' => [

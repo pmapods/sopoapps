@@ -12,15 +12,15 @@ use App\Http\Controllers\Auth\LoginVendorController;
 
 // Dashboard
 use App\Http\Controllers\Dashboard\DashboardController;
-use App\Http\Controllers\Dashboard\DashboardVendorEvaluationController;
-use App\Http\Controllers\Dashboard\DashboardRequestApprovalController;
-use App\Http\Controllers\Dashboard\DashboardGaPrManualController;
-use App\Http\Controllers\Dashboard\DashboardItBarangJasaReminderController;
-use App\Http\Controllers\Dashboard\DashboardBaVerificationController;
-use App\Http\Controllers\Dashboard\DashboardPengadaanCOPController;
-use App\Http\Controllers\Dashboard\DashboardPrManualAssetController;
-use App\Http\Controllers\Dashboard\DashboardPoWillExpiredController;
-use App\Http\Controllers\Dashboard\DashboardRequestTypePendingController;
+// use App\Http\Controllers\Dashboard\DashboardVendorEvaluationController;
+// use App\Http\Controllers\Dashboard\DashboardRequestApprovalController;
+// use App\Http\Controllers\Dashboard\DashboardGaPrManualController;
+// use App\Http\Controllers\Dashboard\DashboardItBarangJasaReminderController;
+// use App\Http\Controllers\Dashboard\DashboardBaVerificationController;
+// use App\Http\Controllers\Dashboard\DashboardPengadaanCOPController;
+// use App\Http\Controllers\Dashboard\DashboardPrManualAssetController;
+// use App\Http\Controllers\Dashboard\DashboardPoWillExpiredController;
+// use App\Http\Controllers\Dashboard\DashboardRequestTypePendingController;
 
 // Masterdata
 use App\Http\Controllers\Masterdata\EmployeeController;
@@ -212,47 +212,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboardView']);
 
     // Dashboard Request Approval
-    Route::get('/dashboardRequestApproval', [DashboardRequestApprovalController::class, 'dashboardRequestApprovalView']);
-    Route::post('/quickapproval', [DashboardRequestApprovalController::class, 'quickApproval']);
-    Route::get('/getCurrentAuthorization/{approval_type}', [DashboardRequestApprovalController::class, 'getCurrentAuthorizationwithType']);
-    Route::get('/getCurrentAuthorization', [DashboardRequestApprovalController::class, 'getCurrentAuthorization']);
-
-    Route::middleware(['menu_access:feature:1'])->group(function () {
-        Route::post('/multiapprove', [DashboardRequestApprovalController::class, 'multiApprove']);
-    });
-
-    // Dashboard Request PR SAP (GA)
-    Route::get('/dashboardGaPrManual', [DashboardGaPrManualController::class, 'dashboardGaPrManualView']);
-    Route::get('/getgaprmanual', [DashboardGaPrManualController::class, 'getGaPrManual']);
-
-    // Dashboard Reminder Perpanjangan Barang Jasa Jenis IT
-    Route::get('/dashboarditbarangjasareminder', [DashboardItBarangJasaReminderController::class, 'dashboardItBarangJasaReminderView']);
-    Route::get('/itbarangjasareminder', [DashboardItBarangJasaReminderController::class, 'getItBarangJasaReminder']);
-
-    // Dashboard Vendor Evaluation
-    Route::get('/dashboardVendorEvaluation', [DashboardVendorEvaluationController::class, 'dashboardVendorEvaluationView']);
-    Route::get('/getVendorEvaluation', [DashboardVendorEvaluationController::class, 'getVendorEvaluation']);
-
-    // Dashboard Ba Verification
-    Route::get('/dashboardBaVerification', [DashboardBaVerificationController::class, 'dashboardBaVerificationView']);
-    Route::get('/getBAverification', [DashboardBaVerificationController::class, 'getBAverification']);
-
-    // Dashboard Pengadaan COP
-    Route::get('/dashboardPengadaanCOP', [DashboardPengadaanCOPController::class, 'dashboardPengadaanCOPView']);
-    Route::get('/getPengadaanCOP', [DashboardPengadaanCOPController::class, 'getPengadaanCOP']);
-
-    // Dashboard PR Manual Asset
-    Route::get('/dashboardPrManualAsset', [DashboardPrManualAssetController::class, 'dashboardPrManualAssetView']);
-    Route::get('/getprmanualasset', [DashboardPrManualAssetController::class, 'getPrManualAsset']);
-
-    // Dashboard PO Will Expired
-    Route::get('/dashboardPoWillExpired', [DashboardPoWillExpiredController::class, 'dashboardPoWillExpiredView']);
-    Route::get('/getPoWillExpired', [DashboardPoWillExpiredController::class, 'getPoWillExpired']);
-
-    // Dashboard Request Type Pending
-    Route::get('/dashboardRequestTypePending', [DashboardRequestTypePendingController::class, 'dashboardRequestTypePendingView']);
-    Route::get('/getRequestTypePending', [DashboardRequestTypePendingController::class, 'getRequestTypePending']);
-
+    // Route::get('/dashboardRequestApproval', [DashboardRequestApprovalController::class, 'dashboardRequestApprovalView']);
+    // Route::post('/quickapproval', [DashboardRequestApprovalController::class, 'quickApproval']);
+    // Route::get('/getCurrentAuthorization/{approval_type}', [DashboardRequestApprovalController::class, 'getCurrentAuthorizationwithType']);
+    // Route::get('/getCurrentAuthorization', [DashboardRequestApprovalController::class, 'getCurrentAuthorization']);
 
     // MASTERDATA
     // Employee Postion
@@ -263,7 +226,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/deletePosition', [EmployeeController::class, 'deleteEmployeePosition']);
     });
 
-    // Employee
+    // Employee/User
     Route::middleware(['menu_access:masterdata:2'])->group(function () {
         Route::get('/employee', [EmployeeController::class, 'employeeView']);
         Route::post('/addEmployee', [EmployeeController::class, 'addEmployee']);

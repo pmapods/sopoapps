@@ -1,10 +1,10 @@
 <html><head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Pinus Merah Abadi</title>
+    <title>SNEL</title>
     <!-- Tell the browser to be responsive to screen width -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="/assets/logo.png" type="image/x-icon">
+    <link rel="icon" href="/assets/Logo-snel.png" type="image/x-icon">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="fontawesome/css/all.min.css">
@@ -19,7 +19,7 @@
 
     <style>
         .login-page{
-            background: url('/assets/login-wallpaper.jpg');
+            background-color: white;
             background-size: cover;
             background-position: center;
             /* background-color: aqua */
@@ -31,7 +31,7 @@
     </style>
   </head>
   <body class="login-page">
-  <div class="login-box p-5" style="background-color: #2b090a6b">
+  <div class="login-box p-5" style="background-color: silver">
     
     @if(Session::has('success'))
         <div class="m-1 alert alert-success alert-dismissible fade show" role="alert">
@@ -50,10 +50,10 @@
         </div>
     @endif
     <div class="login-logout">
-        <div class="d-flex flex-row">
-            <img src="assets/logo.png" width="100" alt="">
+        <div class="d-flex flex-row justify-content-center">
+            <img src="assets/Logo-snel.png" width="150" alt="">
             <div class="d-flex flex-column justify-content-center text-light">
-                <span class="display-4">PMA-PODS</span>
+                <span class="display-4">SNEL</span>
             </div>
         </div>
     </div>
@@ -81,7 +81,7 @@
           <div class="row">
             <!-- /.col -->
             <div class="col">
-              <button type="submit" class="btn btn-danger btn-block">Masuk</button>
+              <button type="submit" class="btn btn-primary btn-block">Masuk</button>
             </div>
             <!-- /.col -->
           </div>
