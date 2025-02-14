@@ -218,16 +218,8 @@ Route::middleware(['auth'])->group(function () {
     // Route::get('/getCurrentAuthorization', [DashboardRequestApprovalController::class, 'getCurrentAuthorization']);
 
     // MASTERDATA
-    // Employee Postion
+    // Karyawan
     Route::middleware(['menu_access:masterdata:1'])->group(function () {
-        Route::get('/employeeposition', [EmployeeController::class, 'employeepostitionView']);
-        Route::post('/addPosition', [EmployeeController::class, 'addEmployeePosition']);
-        Route::patch('/updatePosition', [EmployeeController::class, 'updateEmployeePosition']);
-        Route::delete('/deletePosition', [EmployeeController::class, 'deleteEmployeePosition']);
-    });
-
-    // Employee/User
-    Route::middleware(['menu_access:masterdata:2'])->group(function () {
         Route::get('/employee', [EmployeeController::class, 'employeeView']);
         Route::post('/addEmployee', [EmployeeController::class, 'addEmployee']);
         Route::patch('/updateEmployee', [EmployeeController::class, 'updateEmployee']);
@@ -242,25 +234,66 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/orgcharts/{nik}', [EmployeeController::class, 'orgChartDetailView']);
         Route::get('/getEmployeePosition', [EmployeeController::class, 'getEmployeePosition']);
     });
-
-    // Sales Point
-    Route::middleware(['menu_access:masterdata:4'])->group(function () {
-        Route::get('/salespoint', [SalesPointController::class, 'salespointView']);
-        Route::post('/addsalespoint', [SalesPointController::class, 'addSalesPoint']);
-        Route::patch('/updatesalespoint', [SalesPointController::class, 'updateSalesPoint']);
-        Route::delete('/deletesalespoint', [SalesPointController::class, 'deleteSalesPoint']);
-    });
-
-    // Employee Access
-    Route::middleware(['menu_access:masterdata:8'])->group(function () {
+    
+    // Akses Karyawan
+    Route::middleware(['menu_access:masterdata:2'])->group(function () {
         Route::get('/employeeaccess', [EmployeeAccessController::class, 'employeeaccessView']);
         Route::get('/employeeaccess/{employee_code}', [EmployeeAccessController::class, 'employeeaccessdetailView']);
         Route::patch('/updateemployeeaccessdetail', [EmployeeAccessController::class, 'updateemployeeaccessdetail']);
     });
     Route::get('/myaccess', [EmployeeAccessController::class, 'myAccessView']);
 
-    // Authorization
+    // Jabatan
+    Route::middleware(['menu_access:masterdata:4'])->group(function () {
+        Route::get('/employeeposition', [EmployeeController::class, 'employeepostitionView']);
+        Route::post('/addPosition', [EmployeeController::class, 'addEmployeePosition']);
+        Route::patch('/updatePosition', [EmployeeController::class, 'updateEmployeePosition']);
+        Route::delete('/deletePosition', [EmployeeController::class, 'deleteEmployeePosition']);
+    });
+
+    // Cabang
+    Route::middleware(['menu_access:masterdata:8'])->group(function () {
+        Route::get('/salespoint', [SalesPointController::class, 'salespointView']);
+        Route::post('/addsalespoint', [SalesPointController::class, 'addSalesPoint']);
+        Route::patch('/updatesalespoint', [SalesPointController::class, 'updateSalesPoint']);
+        Route::delete('/deletesalespoint', [SalesPointController::class, 'deleteSalesPoint']);
+    });
+
+    // Supplier
     Route::middleware(['menu_access:masterdata:16'])->group(function () {
+        Route::get('/vendor', [VendorController::class, 'vendorView']);
+        Route::post('/addvendor', [VendorController::class, 'addVendor']);
+        Route::patch('/updatevendor', [VendorController::class, 'updateVendor']);
+        Route::delete('/deletevendor', [VendorController::class, 'deleteVendor']);
+    });
+
+    // Customer
+    Route::middleware(['menu_access:masterdata:32'])->group(function () {
+        Route::get('/customer', [CustomerController::class, 'customerView']);
+    });
+
+    // Armada
+    Route::middleware(['menu_access:masterdata:64'])->group(function () {
+        Route::get('/armada', [ArmadaController::class, 'armadaView']);
+        Route::post('/addarmada', [ArmadaController::class, 'addArmada']);
+        Route::post('/addarmadatype', [ArmadaController::class, 'addArmadaType']);
+        Route::post('/deletearmadatype', [ArmadaController::class, 'deleteArmadaType']);
+        Route::patch('/updatearmada', [ArmadaController::class, 'updateArmada']);
+        Route::delete('/deletearmada', [ArmadaController::class, 'deleteArmada']);
+    });
+
+    // Notification Email
+    Route::middleware(['menu_access:masterdata:128'])->group(function () {
+        Route::get('/notificationemail', [MailingController::class, 'notificationEmailView']);
+        Route::post('/notificationemail/create', [MailingController::class, 'createNotification']);
+        Route::post('/notificationemail/update', [MailingController::class, 'updateNotification']);
+        Route::post('/notificationemail/delete', [MailingController::class, 'deleteNotification']);
+        Route::get('/notificationemail/getdetails', [MailingController::class, 'getNotificationDetails']);
+        Route::post('/notificationemail/multireplace', [MailingController::class, 'multiReplace']);
+    });
+
+    // Authorization
+    Route::middleware(['menu_access:masterdata:256'])->group(function () {
         Route::get('/authorization', [AuthorizationController::class, 'authorizationView']);
         Route::get('/authorization/data', [AuthorizationController::class, 'authorizationData']);
         Route::get('/getauthorizedemployeebysalesPoint/{salespoint_id}', [AuthorizationController::class, 'AuthorizedEmployeeBySalesPoint']);
@@ -271,99 +304,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/authorization/multireplace', [AuthorizationController::class, 'multiReplace']);
     });
 
-    // VENDOR
-    Route::middleware(['menu_access:masterdata:32'])->group(function () {
-        Route::get('/vendor', [VendorController::class, 'vendorView']);
-        Route::post('/addvendor', [VendorController::class, 'addVendor']);
-        Route::patch('/updatevendor', [VendorController::class, 'updateVendor']);
-        Route::delete('/deletevendor', [VendorController::class, 'deleteVendor']);
-    });
-
-    // Budget Pricing
-    Route::middleware(['menu_access:masterdata:64'])->group(function () {
-        Route::get('/budgetpricing', [BudgetPricingController::class, 'budgetpricingView']);
-        Route::get('/budgetpricing/updateall/template', [BudgetPricingController::class, 'updateAllTemplate']);
-        Route::post('/budgetpricing/updateall/update', [BudgetPricingController::class, 'updateAllUpdate']);
-        Route::post('/budgetpricing/updateall/readtemplate', [BudgetPricingController::class, 'updateAllReadTemplate']);
-        Route::post('/addbudget', [BudgetPricingController::class, 'addBudget']);
-        Route::patch('/updatebudget', [BudgetPricingController::class, 'updateBudget']);
-        Route::delete('/deletebudget', [BudgetPricingController::class, 'deleteBudget']);
-
-        // maintenance budget
-        Route::get('/maintenancebudget', [MaintenanceBudgetController::class, 'view']);
-        Route::post('/maintenancebudget/add', [MaintenanceBudgetController::class, 'addBudget']);
-        Route::post('/maintenancebudget/update', [MaintenanceBudgetController::class, 'updateBudget']);
-        Route::post('/maintenancebudget/delete', [MaintenanceBudgetController::class, 'deleteBudget']);
-
-        // ho budget
-        Route::get('/hobudget', [HOBudgetController::class, 'view']);
-        Route::post('/hobudget/add', [HOBudgetController::class, 'addBudget']);
-        Route::post('/hobudget/update', [HOBudgetController::class, 'updateBudget']);
-        Route::post('/hobudget/delete', [HOBudgetController::class, 'deleteBudget']);
-    });
-
-    // Kelengkapan berkas
-    Route::middleware(['menu_access:masterdata:128'])->group(function () {
-        Route::get('/filecompletement', [FileCompletementController::class, 'fileCompletementView']);
-    });
-
-    // Armada
-    Route::middleware(['menu_access:masterdata:256'])->group(function () {
-        Route::get('/armada', [ArmadaController::class, 'armadaView']);
-        Route::post('/addarmada', [ArmadaController::class, 'addArmada']);
-        Route::post('/addarmadatype', [ArmadaController::class, 'addArmadaType']);
-        Route::post('/deletearmadatype', [ArmadaController::class, 'deleteArmadaType']);
-        Route::patch('/updatearmada', [ArmadaController::class, 'updateArmada']);
-        Route::delete('/deletearmada', [ArmadaController::class, 'deleteArmada']);
-    });
-
-    // Additional Email
+    // Produk
     Route::middleware(['menu_access:masterdata:512'])->group(function () {
-        Route::get('/additionalemail', [MailingController::class, 'additionalEmailView']);
-        Route::get('/additionalemail/purchasing', [MailingController::class, 'purchasingEmailView']);
-        Route::get('/additionalemail/ga', [MailingController::class, 'GAEmailView']);
-        Route::post('/additionalemail/update', [MailingController::class, 'updateAdditionalEmail']);
+        Route::get('/customer', [CustomerController::class, 'customerView']);
     });
 
-    // Notification Email
+    // Bahan Baku
     Route::middleware(['menu_access:masterdata:1024'])->group(function () {
-        Route::get('/notificationemail', [MailingController::class, 'notificationEmailView']);
-        Route::post('/notificationemail/create', [MailingController::class, 'createNotification']);
-        Route::post('/notificationemail/update', [MailingController::class, 'updateNotification']);
-        Route::post('/notificationemail/delete', [MailingController::class, 'deleteNotification']);
-        Route::get('/notificationemail/getdetails', [MailingController::class, 'getNotificationDetails']);
-        Route::post('/notificationemail/multireplace', [MailingController::class, 'multiReplace']);
+        Route::get('/customer', [CustomerController::class, 'customerView']);
     });
 
-    // Custom Ticketing
-    Route::middleware(['menu_access:masterdata:2048'])->group(function () {
-        Route::get('/customticketing', [CustomTicketingController::class, 'customTicketingView']);
-        Route::post('/customticketing/create', [CustomTicketingController::class, 'createCustomTicket']);
-        Route::post('/customticketing/update', [CustomTicketingController::class, 'updateCustomTicket']);
-        Route::post('/customticketing/delete', [CustomTicketingController::class, 'deleteCustomTicket']);
-        // Route::post('/customticketing/ticket/create', [CustomTicketingController::class, 'createTicket']);
-    });
 
-    // Ticketing Block
-    Route::middleware(['menu_access:masterdata:4096'])->group(function () {
-        Route::get('/ticketingblocking', [MasterDataTicketingBlockController::class, 'ticketingBlockView']);
-        Route::post('/ticketingblocking/create', [MasterDataTicketingBlockController::class, 'createTicketingBlock']);
-        Route::post('/ticketingblocking/update', [MasterDataTicketingBlockController::class, 'updateTicketingBlock']);
-        Route::post('/ticketingblocking/reset', [MasterDataTicketingBlockController::class, 'resetTicketingBlock']);
-    });
 
-    // Email CC
-    Route::middleware(['menu_access:masterdata:8192'])->group(function () {
-        Route::get('/emailcc', [CcEmailController::class, 'ccEmailView']);
-        Route::post('/emailcc/create', [CcEmailController::class, 'ccEmailCreate']);
-        Route::get('/emailcc/delete/{id}', [CcEmailController::class, 'ccEmailDelete']);
-    });
 
-    // Upload PO Manual
-    Route::middleware(['menu_access:masterdata:16384'])->group(function () {
-        Route::get('/pomanual', [PoManualController::class, 'pomanualView']);
-        Route::post('/addpomanual', [PoManualController::class, 'addPoManual'])->name('upload.excel');
-    });
 
 
     // BUDGET UPLOAD

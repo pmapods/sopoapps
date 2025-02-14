@@ -25,9 +25,9 @@ class EmployeeSuperAdminSedder extends Seeder
         $employee                         = new Employee;
         $employee->id                     = 1;
         $employee->code                   = 'EMP-00001';
-        $employee->name                   = 'Admin';
+        $employee->name                   = 'Super Admin';
         $employee->username               = 'superadmin';
-        $employee->nik                    = 'superadmin';
+        $employee->position_id            = 1;
         $employee->password               =  Hash::make('FireGundam78');
         $employee->email                  = 'admin@admin.com';
         $employee->save();

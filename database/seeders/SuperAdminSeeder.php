@@ -43,6 +43,7 @@ class SuperAdminSeeder extends Seeder
         $access->logistik    = $this->sumArrayGeometry($logistik_accesses);
         $access->monitoring  = $this->sumArrayGeometry($monitoring_accesses);
         $access->reporting   = $this->sumArrayGeometry($reporting_accesses);
+        // dd($access->masterdata, $access->sales);
         $access->save();
     }
     private function sumArrayGeometry($array){

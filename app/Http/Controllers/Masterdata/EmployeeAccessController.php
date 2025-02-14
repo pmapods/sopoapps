@@ -16,8 +16,8 @@ use Auth;
 class EmployeeAccessController extends Controller
 {
     public function employeeAccessView(){
-        $employees = Employee::whereNotIn('id',[1,Auth::user()->id])->get();
-        // $employees = Employee::all();
+        // $employees = Employee::whereNotIn('id',[1,Auth::user()->id])->get();
+        $employees = Employee::all();
         return view('Masterdata.employeeaccess',compact('employees'));
     }
 
@@ -32,6 +32,7 @@ class EmployeeAccessController extends Controller
         try {
             DB::beginTransaction();
             $old_access = EmployeeLocationAccess::where('employee_id',$request->employee_id)->get();
+            
             if($old_access){
                 foreach($old_access as $access){
                     $access->delete();
@@ -51,6 +52,7 @@ class EmployeeAccessController extends Controller
                 $old_menu_access =  new EmployeeMenuAccess;
                 $old_menu_access->employee_id = $request->employee_id;
             }
+            // dd($old_menu_access->masterdata, array_sum($request->masterdata ?? []), $request->masterdata);
             $old_menu_access->masterdata = array_sum($request->masterdata ?? []);
             $old_menu_access->sales = array_sum($request->sales ?? []);
             $old_menu_access->logistik = array_sum($request->logistik ?? []);
@@ -65,7 +67,7 @@ class EmployeeAccessController extends Controller
             $reporting_access = array_unique($reporting_access);
             
             $old_menu_access->reporting = array_sum($reporting_access);
-            $old_menu_access->feature   = array_sum($request->feature ?? []);
+            // $old_menu_access->feature   = array_sum($request->feature ?? []);
             $old_menu_access->save();
             DB::commit();
             return redirect('/employeeaccess')->with('success','Berhasil update data akses karyawan');

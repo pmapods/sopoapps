@@ -18,148 +18,61 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-sm-6">
-                    <h1 class="m-0 text-dark">Vendor</h1>
+                    <h1 class="m-0 text-dark">Customer</h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item">Masterdata</li>
-                        <li class="breadcrumb-item active">Vendor</li>
+                        <li class="breadcrumb-item active">Customer</li>
                     </ol>
                 </div>
             </div>
             <div class="d-flex justify-content-end mt-2">
-                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addVendorModal"
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addCustomerModal"
                     id="addbutton">
-                    Tambah Vendor
+                    Tambah Customer
                 </button>
             </div>
         </div>
     </div>
     <div class="content-body px-4">
-        {{-- <ul class="nav nav-pills flex-column flex-sm-row mb-3" id="pills-tab" role="tablist">
-            <li class="flex-sm-fill text-sm-center nav-item mr-1" role="presentation">
-                <a class="nav-link active" id="pills-barangjasa-tab" data-toggle="pill" href="#pills-barangjasa"
-                    role="tab" aria-controls="pills-barangjasa" aria-selected="true">Barang Jasa</a>
-            </li>
-            <li class="flex-sm-fill text-sm-center nav-item ml-1" role="presentation">
-                <a class="nav-link" id="pills-armada-tab" data-toggle="pill" href="#pills-armada" role="tab"
-                    aria-controls="pills-armada" aria-selected="false">Armada</a>
-            </li>
-            <li class="flex-sm-fill text-sm-center nav-item ml-1" role="presentation">
-                <a class="nav-link" id="pills-security-tab" data-toggle="pill" href="#pills-security" role="tab"
-                    aria-controls="pills-security" aria-selected="false">Security</a>
-            </li>
-        </ul> --}}
-
         <div class="tab-content" id="pills-tabContent">
             <div class="tab-pane fade show active" id="pills-barangjasa" role="tabpanel"
                 aria-labelledby="pills-barangjasa-tab">
                 <div class="table-responsive">
-                    <table id="vendorDT" class="table table-bordered table-striped dataTable" role="grid">
+                    <table id="customerDT" class="table table-bordered table-striped dataTable" role="grid">
                         <thead>
                             <tr role="row">
                                 <th>#</th>
                                 <th>Kode</th>
                                 <th>Nama</th>
                                 <th>Alias</th>
+                                <th>Type</th>
                                 <th>Alamat</th>
                                 <th>Kota</th>
-                                <th>Sales Person</th>
-                                <th>Telfon</th>
-                                <th>Email</th>
+                                <th>No. Telfon Store</th>
+                                <th>Store Manager</th>
                             </tr>
                         </thead>
                         <tbody>
                             @php $count = 1 @endphp
-                            @foreach ($vendors as $key => $vendor)
-                                <tr data-vendor="{{ $vendor }}">
+                            @foreach ($customers as $key => $customers)
+                                <tr data-customers="{{ $customers }}">
                                     <td>{{ $count++ }}</td>
-                                    <td>{{ $vendor->code }}</td>
-                                    <td>{{ $vendor->name }}</td>
-                                    <td>{{ $vendor->alias }}</td>
-                                    <td>{{ $vendor->address }}</td>
-                                    <td>{{ $vendor->regency->name }}</td>
-                                    <td>{{ $vendor->salesperson }}</td>
-                                    <td>{{ $vendor->phone }}</td>
-                                    <td>{{ implode(",\n", $vendor->emails()) }}</td>
+                                    <td>{{ $customers->code }}</td>
+                                    <td>{{ $customers->name }}</td>
+                                    <td>{{ $customers->alias }}</td>
+                                    <td>{{ $customers->address }}</td>
+                                    <td>{{ $customers->regency->name }}</td>
+                                    <td>{{ $customers->salesperson }}</td>
+                                    <td>{{ $customers->phone }}</td>
+                                    <td>{{ implode(",\n", $customers->emails()) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
-            {{-- <div class="tab-pane fade" id="pills-armada" role="tabpanel" aria-labelledby="pills-armada-tab">
-                <table id="vendorArmadaDT" class="table table-bordered table-striped dataTable" role="grid">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Kode</th>
-                            <th>Nama</th>
-                            <th>Alias</th>
-                            <th>Alamat</th>
-                            <th>Kota</th>
-                            <th>Sales Person</th>
-                            <th>Telfon</th>
-                            <th>Email</th>
-                            <th>E Log Sync</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $count = 1 @endphp
-                        @foreach ($vendors->where('type', 'armada') as $key => $vendor)
-                            <tr data-vendor="{{ $vendor }}">
-                                <td>{{ $count++ }}</td>
-                                <td>{{ $vendor->code }}</td>
-                                <td>{{ $vendor->name }}</td>
-                                <td>{{ $vendor->alias }}</td>
-                                <td>{{ $vendor->address }}</td>
-                                <td>{{ $vendor->regency->name }}</td>
-                                <td>{{ $vendor->salesperson }}</td>
-                                <td>{{ $vendor->phone }}</td>
-                                <td>{{ implode(",\n", $vendor->emails()) }}</td>
-                                @if ($vendor->e_log_sync == 1)
-                                    <td>Yes</td>
-                                @else
-                                    <td>No</td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="tab-pane fade" id="pills-security" role="tabpanel" aria-labelledby="pills-security-tab">
-                <table id="vendorSecurityDT" class="table table-bordered table-striped dataTable" role="grid">
-                    <thead>
-                        <tr role="row">
-                            <th>#</th>
-                            <th>Kode</th>
-                            <th>Nama</th>
-                            <th>Alias</th>
-                            <th>Alamat</th>
-                            <th>Kota</th>
-                            <th>Sales Person</th>
-                            <th>Telfon</th>
-                            <th>Email</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $count = 1 @endphp
-                        @foreach ($vendors->where('type', 'security') as $key => $vendor)
-                            <tr data-vendor="{{ $vendor }}">
-                                <td>{{ $count++ }}</td>
-                                <td>{{ $vendor->code }}</td>
-                                <td>{{ $vendor->name }}</td>
-                                <td>{{ $vendor->alias }}</td>
-                                <td>{{ $vendor->address }}</td>
-                                <td>{{ $vendor->regency->name }}</td>
-                                <td>{{ $vendor->salesperson }}</td>
-                                <td>{{ $vendor->phone }}</td>
-                                <td>{{ implode(",\n", $vendor->emails()) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div> --}}
         </div>
     </div>
     <form method="post" id="submitform">
@@ -358,12 +271,10 @@
 @section('local-js')
     <script>
         $(document).ready(function() {
-            var table = $('#vendorDT').DataTable(datatable_settings);
-            var armadatable = $('#vendorArmadaDT').DataTable(datatable_settings);
-            var securitytable = $('#vendorSecurityDT').DataTable(datatable_settings);
-            $('#vendorDT,#vendorArmadaDT,#vendorSecurityDT tbody').on('click', 'tr', function() {
+            var table = $('#customerDT').DataTable(datatable_settings);
+            $('#customerDT tbody').on('click', 'tr', function() {
                 let modal = $('#updateVendorModal');
-                let data = $(this).data('vendor');
+                let data = $(this).data('customers');
                 modal.find('input[name="id"]').val(data['id']);
                 modal.find('input[name="code"]').val(data['code']);
                 modal.find('select[name="type"]').val(data['type']);

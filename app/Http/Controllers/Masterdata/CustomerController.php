@@ -7,16 +7,16 @@ use Illuminate\Http\Request;
 
 use App\Models\Province;
 use App\Models\Regency;
-use App\Models\Vendor;
+use App\Models\Customer;
 
-class VendorController extends Controller
+class CustomerController extends Controller
 {
-    public function vendorView()
+    public function customerView()
     {
         $regency = Regency::inRandomOrder()->first()->name;
-        $vendors = Vendor::all();
+        $customers = Customer::all();
         $provinces = Province::all();
-        return view('Masterdata.vendor', compact('provinces', 'vendors'));
+        return view('Masterdata.customer', compact('provinces', 'customers'));
     }
 
     public function addVendor(Request $request)

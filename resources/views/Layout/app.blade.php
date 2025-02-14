@@ -140,7 +140,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                     </p>
                                 </a>
                                     <ul class="nav nav-treeview">
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 2) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 1) != 0)
                                         <li class="nav-item">
                                             <a href="/employee" class="nav-link">
                                                 <i class="fad fa-users nav-icon"></i>
@@ -148,7 +148,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                             </a>
                                         </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 8) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 2) != 0)
                                             <li class="nav-item">
                                                 <a href="/employeeaccess" class="nav-link">
                                                     <i class="fad fa-user-unlock nav-icon"></i>
@@ -156,7 +156,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 1) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 4) != 0)
                                             <li class="nav-item">
                                                 <a href="/employeeposition" class="nav-link">
                                                     <i class="fad fa-user-cowboy nav-icon"></i>
@@ -164,7 +164,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 4) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 8) != 0)
                                             <li class="nav-item">
                                                 <a href="/salespoint" class="nav-link">
                                                     <i class="fad fa-globe-asia nav-icon"></i>
@@ -172,7 +172,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 32) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 16) != 0)
                                             <li class="nav-item">
                                                 <a href="/vendor" class="nav-link">
                                                     <i class="fad fa-handshake nav-icon"></i>
@@ -180,7 +180,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 128) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 32) != 0)
                                             <li class="nav-item">
                                                 <a href="/customer" class="nav-link">
                                                     <i class="fad fa-handshake nav-icon"></i>
@@ -188,7 +188,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 256) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 64) != 0)
                                             <li class="nav-item">
                                                 <a href="/armada" class="nav-link">
                                                     <i class="fad fa-garage-car nav-icon"></i>
@@ -196,7 +196,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 512) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 128) != 0)
                                             <li class="nav-item">
                                                 <a href="/notificationemail" class="nav-link">
                                                     <i class="fad fa-bell-on nav-icon"></i>
@@ -204,7 +204,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 16) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 256) != 0)
                                             <li class="nav-item">
                                                 <a href="/authorization" class="nav-link">
                                                     <i class="fad fa-signature nav-icon"></i>
@@ -212,7 +212,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </a>
                                             </li>
                                         @endif
-                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 64) != 0)
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 512) != 0)
                                             <li class="nav-item">
                                                 <a href="/product" class="nav-link">
                                                     <i class="fad fa-calculator nav-icon"></i>
