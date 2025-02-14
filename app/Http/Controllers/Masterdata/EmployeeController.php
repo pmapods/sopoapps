@@ -767,7 +767,7 @@ class EmployeeController extends Controller
             try {
                 Mail::to($mail_to)->send(new GlobalMail($data, 'reset_password'));
             } catch (\Exception $ex) {
-                dd($ex);
+                // dd($ex);
                 $emailflag = false;
             }
             if (!$emailflag) {
