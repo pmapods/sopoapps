@@ -54,4 +54,9 @@ class Regency extends Model
     {
         return $this->hasMany(District::class);
     }
+
+    public function city()
+    {
+        return $this->hasMany(Customer::class);
+    }
 }

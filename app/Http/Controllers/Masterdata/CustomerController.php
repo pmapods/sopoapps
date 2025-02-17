@@ -8,50 +8,49 @@ use Illuminate\Http\Request;
 use App\Models\Province;
 use App\Models\Regency;
 use App\Models\Customer;
+use App\Models\CustomerType;
+use App\Models\EmployeePosition;
 
 class CustomerController extends Controller
 {
     public function customerView()
     {
-        $regency = Regency::inRandomOrder()->first()->name;
+        $regency = Regency::all();
         $customers = Customer::all();
+        $customersType = CustomerType::all();
+        $customersType2 = CustomerType::all();
         $provinces = Province::all();
-        return view('Masterdata.customer', compact('provinces', 'customers'));
+        $positions = EmployeePosition::where('id', '!=', 1)->get();
+        return view('Masterdata.customer', compact('regency', 'customers', 'customersType', 'positions', 'provinces', 'customersType2'));
     }
 
-    public function addVendor(Request $request)
+    public function addCustomer(Request $request)
     {
         try {
-            $check = Vendor::where('code', $request->code)->first();
+            $check = Customer::where('code', $request->code)->first();
             if ($check != null) {
-                return back()->with('error', 'Kode vendor tidak bisa sama / harus berbeda -- ' . $request->code . ' ' . $check->name);
+                return back()->with('error', 'Kode customer tidak bisa sama / harus berbeda -- ' . $request->code . ' ' . $check->name);
             }
-            $newVendor                  = new Vendor;
-            $newVendor->code            = $request->code;
-            // $newVendor->type            = $request->type;
-            $newVendor->name            = $request->name;
-            $newVendor->alias           = $request->alias;
-            $newVendor->address         = $request->address;
-            $newVendor->city_id         = $request->city_id;
-            $newVendor->salesperson     = $request->salesperson;
-            $newVendor->phone           = $request->phone;
-            $emails              = explode(',', $request->email);
-            foreach ($emails as $key => $email) {
-                // trim setiap email
-                $emails[$key] = strtolower(trim($email));
-            }
-            $emails = array_filter($emails, function ($email) {
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    return false;
-                } else {
-                    return true;
-                }
-            });
-            $newVendor->email       = json_encode($emails);
-            $newVendor->save();
-            return back()->with('success', 'Berhasil menambahkan vendor');
+            $stafflist = $request->stafflist;
+            // dd($stafflist);
+            // foreach((array)$stafflist as $key => $item) {
+            //     dd($item, $stafflist);                  
+            // }
+            // dd($request);
+            $newCustomer                  = new Customer;
+            $newCustomer->code            = $request->kode;
+            $newCustomer->name            = $request->nama;
+            $newCustomer->alias           = $request->alias;
+            $newCustomer->type            = $request->cust_type;
+            $newCustomer->regency_id      = $request->regency_id;
+            $newCustomer->address         = $request->address;
+            $newCustomer->opening_date    = $request->requirement_date;
+            $newCustomer->space           = $request->space;
+            $newCustomer->store_staff     = $request->stafflist;
+            $newCustomer->save();
+            return back()->with('success', 'Berhasil menambahkan Customer');
         } catch (\Exception $ex) {
-            return back()->with('error', 'Gagal menambahkan Vendor  "' . $ex->getMessage() . '"');
+            return back()->with('error', 'Gagal menambahkan Customer  "' . $ex->getMessage() . '"');
         }
     }
 

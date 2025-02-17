@@ -779,7 +779,6 @@
                 let as_text = closestmodal.find('.as_text');
                 let table_level = closestmodal.find('.table_level');
 
-
                 // check if all required field were selected
                 if (employee_select.val() == "" || as_text.val() == "" || position_select.val() == "") {
                     alert('"Karyawan", "Jabatan" dan pilihan "Sebagai" harus dipilih');
@@ -859,8 +858,6 @@
             let tr = $(el).closest('tr');
             let employee_id = tr.data('id');
             employee_select.val(employee_id);
-            // validasi gabisa pic yang sama dalam satu urutan otorisasi
-            // employee_select.find('option:selected').prop('disabled', false);
             employee_select.val("");
             employee_select.trigger('change');
             tr.remove();

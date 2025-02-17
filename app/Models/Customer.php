@@ -12,7 +12,11 @@ class Customer extends Model
     protected $primaryKey = 'id';
 
     public function regency(){
-        return $this->belongsTo(Regency::class,'city_id','id');
+        return $this->belongsTo(Regency::class,'regency_id','id');
+    }
+
+    public function customer_type(){
+        return $this->belongsTo(CustomerType::class, 'type', 'code');
     }
 
     public function findByCode($code) {

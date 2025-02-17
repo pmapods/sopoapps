@@ -28,6 +28,7 @@ use App\Http\Controllers\Masterdata\SalesPointController;
 use App\Http\Controllers\Masterdata\EmployeeAccessController;
 use App\Http\Controllers\Masterdata\AuthorizationController;
 use App\Http\Controllers\Masterdata\VendorController;
+use App\Http\Controllers\Masterdata\CustomerController;
 use App\Http\Controllers\Masterdata\BudgetPricingController;
 use App\Http\Controllers\Masterdata\MaintenanceBudgetController;
 use App\Http\Controllers\Masterdata\HOBudgetController;
@@ -270,6 +271,7 @@ Route::middleware(['auth'])->group(function () {
     // Customer
     Route::middleware(['menu_access:masterdata:32'])->group(function () {
         Route::get('/customer', [CustomerController::class, 'customerView']);
+        Route::post('/addcustomer', [CustomerController::class, 'addCustomer']);
     });
 
     // Armada
