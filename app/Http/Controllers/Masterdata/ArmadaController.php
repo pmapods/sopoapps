@@ -10,15 +10,19 @@ use App\Models\Armada;
 use App\Models\ArmadaType;
 use App\Models\SalesPoint;
 use App\Models\Authorization;
+use App\Models\Employee;
 
 class ArmadaController extends Controller
 {
     public function armadaView(){
         $employee_access = Auth::user()->location_access->pluck('salespoint_id');
-        $armadas = Armada::all();
+        $armadas = Armada::leftJoin('employee', 'employee.id', '=', 'driver')
+                ->get();
         $armada_types = ArmadaType::all();
         $salespoints = SalesPoint::whereIn('id', $employee_access)->get();
-        return view('Masterdata.armada',compact('armadas','salespoints','armada_types'));
+        $driver = Employee::where('position_id', '106')->get();
+        $driver2 = Employee::where('position_id', '106')->get();
+        return view('Masterdata.armada',compact('armadas','salespoints','armada_types','driver','driver2'));
     }
 
     public function addArmada(Request $request){
@@ -29,12 +33,11 @@ class ArmadaController extends Controller
             }
             DB::beginTransaction();
             $newArmada                  = new Armada;
-            $newArmada->salespoint_id   = ($request->salespoint_id ?? null);
+            $newArmada->salespoint_id   = $request->salespoint_id;
             $newArmada->armada_type_id  = $request->armada_type_id;
             $newArmada->plate           = str_replace(' ', '', strtoupper($request->plate));
-            $newArmada->vehicle_year    = $request->vehicle_year.'-01-01'; 
-            $newArmada->status          = $request->status; 
-            $newArmada->booked_by       = $request->booked_by ?? null; 
+            $newArmada->vehicle_year    = $request->vehicle_year; 
+            $newArmada->driver          = $request->driver_id; 
             $newArmada->save();
             DB::commit();
             return back()->with('success','Berhasil menambahkan armada');
@@ -58,9 +61,8 @@ class ArmadaController extends Controller
             $armada->salespoint_id   = ($request->salespoint_id ?? null); 
             $armada->armada_type_id  = $request->armada_type_id; 
             $armada->plate           = str_replace(' ', '', strtoupper($request->plate)); 
-            $armada->vehicle_year    = $request->vehicle_year.'-01-01'; 
-            $armada->status          = $request->status; 
-            $armada->booked_by       = $request->booked_by ?? null; 
+            $armada->vehicle_year    = $request->vehicle_year; 
+            $armada->driver          = $request->driver_id ?? null; 
             $armada->save();
             DB::commit();
             return back()->with('success','Berhasil update armada');
@@ -90,10 +92,6 @@ class ArmadaController extends Controller
             $newArmadatype->name = $request->name;
             $newArmadatype->brand_name = $request->brand_name;
             $newArmadatype->alias = $request->alias ?? null;
-            $newArmadatype->isNiaga = $request->isNiaga;
-            if ($request->isSBH) {
-                $newArmadatype->isSBH = $request->isSBH;
-            }
             $newArmadatype->save();
             return back()->with('success','Berhasil Menambah Jenis Armada')->with('menu','armadatypelist');
         } catch (\Exception $ex) {
@@ -113,88 +111,5 @@ class ArmadaController extends Controller
         } catch (\Exception $ex) {
             return back()->with('error','Gagal Menghapus Jenis Kendaraan ('.$ex->getMessage().')');
         }
-    }
-
-    public function getArmadaTypebyNiaga($isNiaga){
-        $armadas = ArmadaType::where('isNiaga',$isNiaga)->get();
-        return response()->json([
-           'data' => $armadas
-        ]);
-    }
-
-    public function getArmadabySalespoint($salespoint_id){
-        try{
-            $salespoint_ids = Auth::user()->location_access->pluck('salespoint_id');
-            if(in_array($salespoint_id,$salespoint_ids->toArray())){
-                $armadas = Armada::where('salespoint_id',$salespoint_id)->get();
-                return response()->json([
-                    'data' => $armadas
-                ]);
-            }else{
-                throw new \Exception('access denied');
-            }
-        }catch(\Exception $e){
-            return $e->getMessage();
-        }
-    }
-
-    public function getArmada(Request $request){
-        $armadas = Armada::all();
-        if($request->isNiaga != null){
-            $armadas = $armadas->filter(function($item) use ($request){
-                if($item->armada_type->isNiaga == $request->isNiaga){
-                    return true;
-                }else{
-                    return false;
-                }
-            });
-        }
-        if($request->salespoint_id != null){
-            $armadas = $armadas->filter(function($item) use ($request){
-                if($item->salespoint_id ==  $request->salespoint_id){
-                    return true;
-                }else{
-                    return false;
-                }
-            });
-        }
-        // butuh di convert jadi array karena hasil filter bentuknya full json
-        $data =[];
-        foreach($armadas as $armada){
-            array_push($data,$armada);
-        }
-        return response()->json([
-            'data' => $data,
-        ]);
-    }
-
-    public function getArmadaAuthorizationbySalespoint($salespoint_id){
-        $salespoint = SalesPoint::find($salespoint_id);
-        $armada_authorizations = Authorization::whereIn('salespoint_id',$salespoint->salespoint_id_list())->where('form_type',7)->get();
-
-        foreach($armada_authorizations as $authorizations){
-            $authorizations->list = $authorizations->authorization_detail;
-            foreach($authorizations->list as $item){
-                $item->employee_name = $item->employee->name;
-            }
-        }
-        return response()->json([
-            'data' => $armada_authorizations,
-        ]);
-    }
-
-    public function getSecurityAuthorizationbySalespoint($salespoint_id){
-        $salespoint = SalesPoint::find($salespoint_id);
-        $security_authorizations = Authorization::whereIn('salespoint_id',$salespoint->salespoint_id_list())->where('form_type',8)->get();
-
-        foreach($security_authorizations as $authorizations){
-            $authorizations->list = $authorizations->authorization_detail;
-            foreach($authorizations->list as $item){
-                $item->employee_name = $item->employee->name;
-            }
-        }
-        return response()->json([
-            'data' => $security_authorizations,
-        ]);
     }
 }

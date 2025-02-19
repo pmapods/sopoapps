@@ -25,19 +25,7 @@ class Armada extends Model
         return $this->belongsTo(ArmadaType::class);
     }
 
-    public function status(){
-        switch ($this->status) {
-            case 0:
-                return 'Available';
-                break;
-            
-            case 1:
-                return 'Booked';
-                break;
-            
-            default:
-                return 'undefined_armada_status';
-                break;
-        }
+    public function employee(){
+        return $this->belongsTo(Employee::class);
     }
 }

@@ -51,7 +51,11 @@
                         <td>{{$key+1}}</td>
                         <td>{{$employee->code}}</td>
                         <td>{{$employee->name}}</td>
-                        <td>{{$employee->username}}</td>
+                        @if ($employee->username == NULL)
+                            <td>-</td>
+                        @else
+                            <td>{{$employee->username}}</td>
+                        @endif
                         <td>{{$employee->emp_position}}</td>
                         <td>{{$employee->email}}</td>
                         <td>{{$employee->statusName()}}</td>
@@ -83,19 +87,6 @@
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                            <label class="optional_field">Nomor Telfon</label>
-                            <input type="text" class="form-control" name="phone" placeholder="ex 08xxxxxxxxxx">
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group">
-                              <label class="required_field">username</label>
-                              <input type="text" class="form-control" name="username" placeholder="Masukkan username (ex: userhobandung1)" required>
-                              <small class="text-info">Username bersifat unik</small>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-group">
                               <label class="required_field">Job Title</label>
                               <select class="form-control select2" id="job_title_id" name="job_title_id" required>
                                     <option value="">-- Pilih Job Title --</option>
@@ -107,21 +98,34 @@
                         </div>
                         <div class="col-12">
                             <div class="form-group">
+                            <label class="optional_field">Nomor Telfon</label>
+                            <input type="text" class="form-control" name="phone" placeholder="ex 08xxxxxxxxxx">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group">
+                              <label class="required_field required_field_username">username</label>
+                              <input type="text" class="form-control username" name="username" placeholder="Masukkan username (ex: userhobandung1)" required>
+                              <small class="text-info">Username bersifat unik</small>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-group">
                               <label class="required_field">Email Karyawan</label>
                               <input type="email" class="form-control" name="email" placeholder="Masukkan email karyawan" required>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                              <label class="required_field">Kata Sandi</label>
-                              <input type="password" class="form-control" oninput="validatepassword()" value="pma123" name="password" placeholder="Masukkan kata sandi" id="password" required>
+                              <label class="required_field required_field_password">Kata Sandi</label>
+                              <input type="password" class="form-control password" oninput="validatepassword()" value="pma123" name="password" placeholder="Masukkan kata sandi" id="password" required>
                               <small class="text-danger">* karyawan akan melakukan pergantian password saat pertama kali melakukan login. Kata sandi ini merupakan kata sandi untuk pertama kali / sementara</small>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="form-group">
-                              <label class="required_field">Konfirmasi Kata Sandi</label>
-                              <input type="password" class="form-control" oninput="validatepassword()" value="pma123" id="confirmpassword" name="conf_password" placeholder="Konfirmasi Kata sandi" required>
+                              <label class="required_field required_field_password">Konfirmasi Kata Sandi</label>
+                              <input type="password" class="form-control password" oninput="validatepassword()" value="pma123" id="confirmpassword" name="conf_password" placeholder="Konfirmasi Kata sandi" required>
                               <small class="text-danger d-none" id="confpassworderror">konfirmasi kata sandi tidak sesuai</small>
                             </div>
                         </div>
@@ -212,9 +216,9 @@
                               <input type="text" class="form-control" name="job_title_id_bfr" readonly>
                             </div>
                         </div>
-                        <div class="col-12">
+                        <div class="col-12 username_edit">
                             <div class="form-group">
-                              <label class="required_field">username</label>
+                              <label class="required_field required_field_username_edit">username</label>
                               <input type="text" class="form-control" name="username" readonly>
                             </div>
                         </div>
@@ -223,7 +227,7 @@
                               <label class="required_field">Email Karyawan</label>
                               <input type="email" class="form-control" name="email" placeholder="Masukkan nama karyawan">
                             </div>
-                    </div>
+                        </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
@@ -333,6 +337,10 @@
             modal.find('select[name="position"]').trigger('change');
             modal.find('input[name="phone"]').val(data['phone']);
             modal.find('input[name="code"]').val(data['code']);
+            if (data['position_id'] == 106) {
+                modal.find('.username_edit').hide();
+                modal.find('.required_field_username_edit').removeClass('required_field').addClass('optional_field');
+            }
             modal.find('input[name="username"]').val(data['username']);
             modal.find('input[name="email"]').val(data['email']);
             if(data['status'] == 0){
@@ -352,6 +360,36 @@
                     $(this).val("");
                     $(this).trigger('change');
                 }
+            }
+        });
+
+        $('#job_title_id').on('change', function() {
+            job_title_id = parseInt($(this).val());
+            job_title_lock = [106];
+            if (job_title_lock.includes(job_title_id)) {
+                $('.username').prop('required',false);
+                $('.username').prop('readonly',true);
+
+                $('.password').prop('required',false);
+                $('.password').prop('readonly',true);
+
+                $('.password').val('');
+
+                $('.required_field_username').removeClass('required_field').addClass('optional_field');
+                $('.required_field_password').removeClass('required_field').addClass('optional_field');
+            }
+            else {
+                $('.username').prop('required',true);
+                $('.username').prop('readonly',false);
+
+                $('.password').prop('required',true);
+                $('.password').prop('readonly',false);
+
+                
+                $('.password').val('pma123');
+
+                $('.required_field_username').removeClass('optional_field').addClass('required_field');
+                $('.required_field_password').removeClass('optional_field').addClass('required_field');
             }
         });
 

@@ -40,9 +40,7 @@
                         <th>Jenis Kendaraan</th>
                         <th>Nomor Kendaaraan</th>
                         <th>Tahun Kendaaraan</th>
-                        <th>Tipe Niaga</th>
-                        <th>Status</th>
-                        <th>Di Booking Oleh</th>
+                        <th>Driver</th>
                 </thead>
                 <tbody>
                     @foreach ($armadas as $key => $armada)
@@ -55,11 +53,9 @@
                             </td>
                             <td>{{ $armada->armada_type->name }}</td>
                             <td class="text-uppercase">{{ $armada->plate }}</td>
-                            <td>{{ $armada->vehicle_year ? \Carbon\Carbon::parse($armada->vehicle_year)->format('Y') : null }}
+                            <td>{{ $armada->vehicle_year }}
                             </td>
-                            <td>{{ $armada->armada_type->isNiaga() }}</td>
-                            <td>{{ $armada->status() }}</td>
-                            <td>{{ $armada->status == 1 ? $armada->booked_by : '-' }}</td>
+                            <td>{{ $armada->name }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -97,9 +93,8 @@
                                     <select class="form-control select2 armada_type_id" name="armada_type_id" required>
                                         <option data-niaga="" value="">-- Pilih Jenis Kendaraan --</option>
                                         @foreach ($armada_types as $type)
-                                            <option data-niaga="{{ $type->isNiaga }}" value="{{ $type->id }}">
+                                            <option value="{{ $type->id }}">
                                                 {{ $type->brand_name }} {{ $type->name }}
-                                                ({{ $type->isNiaga() }})
                                             </option>
                                         @endforeach
                                     </select>
@@ -122,19 +117,15 @@
                             </div>
                             <div class="col-12">
                                 <div class="form-group">
-                                    <label class="required_field">Status</label>
-                                    <select class="form-control status" name="status" disabled>
-                                        <option value="">-- Pilih Status --</option>
-                                        <option value="0">Available</option>
-                                        <option value="1">Booked</option>
+                                    <label class="required_field">Pilih Driver</label>
+                                    <select class="form-control select2 driver_id" name="driver_id" required>
+                                        <option data-niaga="" value="">-- Pilih Driver --</option>
+                                        @foreach ($driver as $driver)
+                                            <option value="{{ $driver->id }}">
+                                                {{ $driver->name }}
+                                            </option>
+                                        @endforeach
                                     </select>
-                                </div>
-                            </div>
-                            <div class="col-12 booked_by_field">
-                                <div class="form-group">
-                                    <label class="required_field">Di Booked Oleh</label>
-                                    <input type="text" class="form-control booked_by" name="booked_by"
-                                        placeholder="Masukan Nama yang melakukan Booking">
                                 </div>
                             </div>
                         </div>
@@ -181,9 +172,8 @@
                                     <select class="form-control select2 armada_type_id" name="armada_type_id" required>
                                         <option data-niaga="" value="">-- Pilih Jenis Kendaraan --</option>
                                         @foreach ($armada_types as $type)
-                                            <option data-niaga="{{ $type->isNiaga }}" value="{{ $type->id }}">
+                                            <option value="{{ $type->id }}">
                                                 {{ $type->brand_name }} {{ $type->name }}
-                                                ({{ $type->isNiaga() }})
                                             </option>
                                         @endforeach
                                     </select>
@@ -200,25 +190,20 @@
                                 <div class="form-group">
                                     <label class="required_field">Tahun Kendaraan</label>
                                     <input type="number" class="form-control autonumber" min="1900"
-                                        max="{{ now()->format('Y') }}" value="{{ now()->format('Y') }}"
-                                        name="vehicle_year" required>
+                                        max="{{ now()->format('Y') }}" name="vehicle_year" required>
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-group">
-                                    <label class="required_field">Status</label>
-                                    <select class="form-control status" name="status" disabled>
-                                        <option value="">-- Pilih Status --</option>
-                                        <option value="0">Available</option>
-                                        <option value="1">Booked</option>
+                                    <label class="required_field">Pilih Driver</label>
+                                    <select class="form-control select2 driver_id" name="driver_id" required>
+                                        <option data-niaga="" value="">-- Pilih Driver --</option>
+                                        @foreach ($driver2 as $driver)
+                                            <option value="{{ $driver->id }}">
+                                                {{ $driver->name }}
+                                            </option>
+                                        @endforeach
                                     </select>
-                                </div>
-                            </div>
-                            <div class="col-12 booked_by_field">
-                                <div class="form-group">
-                                    <label class="required_field">Di Booked Oleh</label>
-                                    <input type="text" class="form-control booked_by" name="booked_by"
-                                        placeholder="Masukan Nama yang melakukan Booking">
                                 </div>
                             </div>
                         </div>
@@ -255,7 +240,6 @@
                                 <th>No</th>
                                 <th>Nama Jenis</th>
                                 <th>Nama Brand</th>
-                                <th>Niaga</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
@@ -270,11 +254,6 @@
                                         @endif
                                     </td>
                                     <td>{{ $armada_type->brand_name }}</td>
-                                    <td>{{ $armada_type->isNiaga() }}
-                                        @if ($armada_type->isNiaga() == 'Non Niaga' && $armada_type->isSBH() == 'SBH')
-                                            {{ '(' . $armada_type->isSBH() . ')' }}
-                                        @endif
-                                    </td>
                                     <td class="text-danger"><i class="fas fa-trash delete_icon"
                                             data-id="{{ $armada_type->id }}" aria-hidden="true"></i></td>
                                 </tr>
@@ -305,17 +284,6 @@
                                 <div class="form-group">
                                     <label class="optional_field">Nama Alias</label>
                                     <input type="text" class="form-control" name="alias">
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label class="required_field">Pilih Jenis Niaga</label>
-                                    <select class="form-control isNiaga" name="isNiaga" required>
-                                        <option value="">-- Pilih Jenis Niaga --</option>
-                                        <option value="0">Non Niaga</option>
-                                        <option value="1">Niaga</option>
-                                        <option value="2">Non Niaga-COP</option>
-                                    </select>
                                 </div>
                             </div>
                             <div class="col-md-1">
@@ -357,36 +325,14 @@
                 modal.find('select[name="armada_type_id"]').val(data['armada_type_id']);
                 modal.find('select[name="armada_type_id"]').trigger('change');
                 modal.find('input[name="plate"]').val(data['plate']);
-                modal.find('select[name="status"]').val(data['status']);
-                modal.find('select[name="status"]').trigger('change');
-                modal.find('input[name="booked_by"]').val(data['booked_by']);
+                modal.find('input[name="vehicle_year"]').val(data['vehicle_year']);
+                modal.find('select[name="driver_id"]').val(data['driver']);
+                modal.find('select[name="driver_id"]').trigger('change');
                 modal.modal('show');
             });
-            $('.status').on('change', function() {
-                let modal = $(this).closest('.modal');
-                let status = $(this).val();
-                modal.find('.booked_by').val("");
-                modal.find('.booked_by_field').hide();
-                modal.find('.booked_by').prop('required', false);
-                if (status == 1) {
-                    modal.find('.booked_by_field').show();
-                    modal.find('.booked_by').prop('required', true);
-                }
-            });
-            $('.armada_type_id').on('change', function() {
-                let modal = $(this).closest('.modal');
-                let value = $(this).val();
-                modal.find('.status').prop("disabled", true);
-                modal.find('.status').val("");
-                modal.find('.status').trigger('change');
-                if (value != "") {
-                    modal.find('.status').prop("disabled", false);
-                }
-            })
             $('#addArmadaModal').on('show.bs.modal', function() {
                 $('#addArmadaModal form').trigger('reset');
                 $('#addArmadaModal .salespoint').trigger('change');
-                $('#addArmadaModal .status').trigger('change');
             });
             $('#armada_delete_button').click(function() {
                 let form = $('#deletearmadaform');
@@ -399,24 +345,6 @@
                 let form = $('#deletearmadatypeform');
                 form.find('.armada_type_id').val(id);
                 form.submit();
-            })
-
-            $('.isNiaga').change(function() {
-                let isNiaga = $(this).val();
-                $('.isSBH').hide();
-                $('.isSBH').empty();
-                if (isNiaga == 0) {
-                    $('.isSBH').show();
-                    $(".isSBH").append(
-                        `<div class="form-group">
-                            <label class="required_field">Pilih Jenis SBH</label>
-                            <select class="form-control" name="isSBH" required>
-                                <option value="">-- Pilih Jenis SBH --</option>
-                                <option value="0">Non SBH</option>
-                                <option value="1">SBH</option>
-                            </select>
-                        </div>`);
-                }
             })
 
             let menu = @json(Session::get('menu'));
