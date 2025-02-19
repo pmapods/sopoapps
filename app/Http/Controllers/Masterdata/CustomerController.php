@@ -27,16 +27,11 @@ class CustomerController extends Controller
     public function addCustomer(Request $request)
     {
         try {
-            $check = Customer::where('code', $request->code)->first();
+            $check = Customer::where('code', $request->kode)->first();
             if ($check != null) {
                 return back()->with('error', 'Kode customer tidak bisa sama / harus berbeda -- ' . $request->code . ' ' . $check->name);
             }
             $stafflist = $request->stafflist;
-            // dd($stafflist);
-            // foreach((array)$stafflist as $key => $item) {
-            //     dd($item, $stafflist);                  
-            // }
-            // dd($request);
             $newCustomer                  = new Customer;
             $newCustomer->code            = $request->kode;
             $newCustomer->name            = $request->nama;
@@ -48,53 +43,41 @@ class CustomerController extends Controller
             $newCustomer->space           = $request->space;
             $newCustomer->store_staff     = $request->stafflist;
             $newCustomer->save();
-            return back()->with('success', 'Berhasil menambahkan Customer');
+            return back()->with('success', 'Berhasil menambahkan customer');
         } catch (\Exception $ex) {
-            return back()->with('error', 'Gagal menambahkan Customer  "' . $ex->getMessage() . '"');
+            return back()->with('error', 'Gagal menambahkan customer  "' . $ex->getMessage() . '"');
         }
     }
 
-    public function updateVendor(Request $request)
+    public function updateCustomer(Request $request)
     {
         try {
-            $vendor = Vendor::findOrFail($request->id);
-            $vendor->alias       = $request->alias;
-            // $vendor->type        = $request->type;
-            $vendor->address     = $request->address;
-            $vendor->city_id     = $request->city_id;
-            $vendor->salesperson = $request->salesperson;
-            $vendor->phone       = $request->phone;
-            $emails              = explode(',', $request->email);
-            foreach ($emails as $key => $email) {
-                // trim setiap email
-                $emails[$key] = strtolower(trim($email));
-            }
-            $emails = array_filter($emails, function ($email) {
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    return false;
-                } else {
-                    return true;
-                }
-            });
-            $vendor->email       = json_encode($emails);
-            // $vendor->e_log_sync  = $request->e_log_sync;
-            $vendor->save();
+            $customer = Customer::where('code', $request->kode)->first();
+            $customer->name             = $request->nama;
+            $customer->alias            = $request->alias;
+            $customer->type             = $request->cust_type;
+            $customer->regency_id       = $request->regency_id;
+            $customer->address          = $request->address;
+            $customer->opening_date     = $request->requirement_date;
+            $customer->space            = $request->space;
+            $customer->store_staff      = $request->stafflist;
+            $customer->save();
 
-            return back()->with('success', 'Berhasil memperbarui vendor');
+            return back()->with('success', 'Berhasil memperbarui customer');
         } catch (\Exception $ex) {
-            return back()->with('error', 'Gagal memperbarui Vendor  "' . $ex->getMessage() . '"');
+            return back()->with('error', 'Gagal memperbarui customer  "' . $ex->getMessage() . '"');
         }
     }
 
-    public function deleteVendor(Request $request)
+    public function deleteCustomer(Request $request)
     {
         try {
-            $vendor = Vendor::findOrFail($request->id);
-            $vendor->delete();
+            $customer = Customer::where('code', $request->kode)->first();
+            $customer->delete();
 
-            return back()->with('success', 'Berhasil menghapus vendor');
+            return back()->with('success', 'Berhasil menghapus customer');
         } catch (\Exception $ex) {
-            return back()->with('error', 'Gagal menghapus Vendor  "' . $ex->getMessage() . '"');
+            return back()->with('error', 'Gagal menghapus customer  "' . $ex->getMessage() . '"');
         }
     }
 }

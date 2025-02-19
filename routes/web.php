@@ -272,6 +272,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['menu_access:masterdata:32'])->group(function () {
         Route::get('/customer', [CustomerController::class, 'customerView']);
         Route::post('/addcustomer', [CustomerController::class, 'addCustomer']);
+        Route::patch('/updatecustomer', [CustomerController::class, 'updateCustomer']);
+        Route::delete('/deletecustomer', [CustomerController::class, 'deleteCustomer']);
     });
 
     // Armada

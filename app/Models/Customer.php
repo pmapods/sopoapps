@@ -23,6 +23,10 @@ class Customer extends Model
         return self::where('code', $code)->first();
     }
 
+    public function employee_position(){
+        return $this->belongsTo(EmployeePosition::class);
+    }
+
     public function status_name(){
         switch ($this->status){
             case '0':

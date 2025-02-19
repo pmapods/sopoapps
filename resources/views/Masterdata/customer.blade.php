@@ -178,7 +178,7 @@
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label class="optional_field">Nama Store Staff</label>
-                                    <input type="text" class="form-control" name="staff_name" id="staff_name"
+                                    <input type="text" class="form-control staff_name" name="staff_name" id="staff_name"
                                         placeholder="Masukkan nama staff">
                                 </div>
                             </div>
@@ -196,14 +196,14 @@
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label class="optional_field">No. Telp Staff</label>
-                                    <input type="text" class="form-control" name="phone_staff" id="phone_staff"
+                                    <input type="text" class="form-control phone_staff" name="phone_staff" id="phone_staff"
                                         placeholder="Masukkan no. telp staff">
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label class="optional_field">Email</label>
-                                    <input type="email" class="form-control" name="email_addr" id="email_addr"
+                                    <input type="email" class="form-control email_addr" name="email_addr" id="email_addr"
                                         placeholder="Masukkan alamat email">
                                 </div>
                             </div>
@@ -246,7 +246,7 @@
                             <div class="form-group">
                                 <label class="required_field">Kode</label>
                                 <input type="text" class="form-control code" name="code"
-                                    placeholder="Masukkan kode customer" required>
+                                    placeholder="Masukkan kode customer" disabled>
                                 <small class="form-text text-danger">Kode customer bersifat unik / tidak boleh sama
                                     dengan
                                     kode customer lainnya</small>
@@ -335,7 +335,7 @@
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label class="optional_field">Nama Store Staff</label>
-                                <input type="text" class="form-control" name="staff_name" id="staff_name"
+                                <input type="text" class="form-control staff_name" name="staff_name" id="staff_name"
                                     placeholder="Masukkan nama staff">
                             </div>
                         </div>
@@ -353,14 +353,14 @@
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label class="optional_field">No. Telp Staff</label>
-                                <input type="text" class="form-control" name="phone_staff" id="phone_staff"
+                                <input type="text" class="form-control phone_staff" name="phone_staff" id="phone_staff"
                                     placeholder="Masukkan no. telp staff">
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label class="optional_field">Email</label>
-                                <input type="email" class="form-control" name="email_addr" id="email_addr"
+                                <input type="email" class="form-control email_addr" name="email_addr" id="email_addr"
                                     placeholder="Masukkan alamat email">
                             </div>
                         </div>
@@ -394,6 +394,8 @@
             @csrf
             @method('delete')
             <input type="hidden" name="customer_id">
+            <div class="inputfield">
+            </div>
         </form>
 
     </div>
@@ -404,54 +406,53 @@
             var table = $('#customerDT').DataTable(datatable_settings);
             $('#customerDT tbody').on('click', 'tr', function() {
                 let modal = $('#detailCustomerModal');
-                // let data = $(this).data('authorization');
-                // let list = $(this).data('list');
-                // let salespoint = modal.find('.salespoint_select2');
-                // let employee_select = modal.find('.employee_select2');
-                // let position_select = modal.find('.position_select2');
-                // let form_type = modal.find('select[name="form_type"]');
-                // form_type.val(data['form_type']);
-                // form_type.trigger('change');
+                let data = $(this).data('customers');
+                let table_level = modal.find('.table_level');
+                let storeStaff = JSON.parse(data.store_staff);
+                table_level.find('tbody').empty();
+                
+                storeStaff.forEach((item, index) => {
+                    let append_text = '<tr data-id="' + item.id + 
+                        '" data-name="' + item.name +
+                        '" data-position="' + item.position + 
+                        '" data-positionname="' + item.positionName + 
+                        '" data-phone="' + item.phone + 
+                        '" data-email="' + item.email + 
+                        '"><td>' + item.name +
+                        '</td><td>' + item.positionName + 
+                        '</td><td>' + item.phone +
+                        '</td><td>' + item.email +
+                        '</td>';
+                    append_text += '<td>';
+                    append_text +=
+                        '<i class="fa fa-trash text-danger remove_list" onclick="removeList(this)" aria-hidden="true"></i>';
+                    append_text += '</td></tr>';
 
-                // let notes = modal.find('.basic_notes input');
-                // modal.find('.notes_field').addClass('d-none');
-                // if (niaga_notes_array.includes(parseInt(data['form_type']))) {
-                //     // case perpanjangan/mutasi
-                //     notes = modal.find('.niaga_notes select');
-                //     modal.find('.niaga_notes').removeClass('d-none');
-                // } else if (budget_notes_array.includes(parseInt(data['form_type']))) {
-                //     // case PR
-                //     notes = modal.find('.budget_notes select');
-                //     modal.find('.budget_notes').removeClass('d-none');
-                // } else if (note_select_array.includes(parseInt(data['form_type']))) {
-                //     // case pengadaan security/pengadaan lembur
-                //     notes = modal.find('.notes_select select');
-                //     modal.find('.notes_select').removeClass('d-none');
-                // } else {
-                //     modal.find('.basic_notes').removeClass('d-none');
-                // }
-                // let table_level = modal.find('.table_level');
-                // modal.find('input[name="authorization_id"]').val(data.id);
+                    
+                    table_level.find('tbody').append(append_text);
+                });
 
-                // salespoint.val(data['salespoint_id']);
-                // salespoint.trigger('change');
-                // notes.val(data['notes']);
+                let code = modal.find('.code');
+                let name = modal.find('.name');
+                let alias = modal.find('.alias');
+                let cust_type = modal.find('select[name="cust_type"]');
+                let city_id = modal.find('select[name="city_id"]');
+                let address = modal.find('.address');
+                let requirement_date = modal.find('.requirement_date');
+                let space = modal.find('.space');
 
-                // table_level.find('tbody').empty();
-                // list.forEach((item, index) => {
-                //     let append_text = '<tr data-id="' + item.id + '" data-as="' + item.as_text +
-                //         '" data-position="' + item.position_id + '"><td>' + item.name +
-                //         '</td><td>' + item.position + '</td><td>' + item.as_text +
-                //         '</td><td class="level"></td>';
-                //     append_text += '<td>';
-                //     append_text +=
-                //         '<i class="fa fa-trash text-danger remove_list" onclick="removeList(this)" aria-hidden="true"></i>';
-                //     append_text +=
-                //         '<i class="fa fa-pen ml-2 text-info edit_list" onclick="editList(this)" aria-hidden="true"></i></i>';
-                //     append_text += '</td>';
-                //     table_level.find('tbody').append(append_text);
-                // })
-                // tableRefreshed(table_level);
+                code.val(data['code']);
+                name.val(data['name']);
+                alias.val(data['alias']);
+                cust_type.val(data['type']);
+                cust_type.trigger('change');
+                city_id.val(data['regency_id']);
+                city_id.trigger('change');
+                address.val(data['address']);
+                requirement_date.val(data['opening_date']);
+                space.val(data['space']);
+
+                tableRefreshed(table_level);
                 modal.modal('show');
             });
 
@@ -473,13 +474,15 @@
                 let email_addr = closestmodal.find('.email_addr');
                 let table_level = closestmodal.find('.table_level');
                 
-                let name = $('#staff_name').val();
+                let name = staff_name.val();
                 let position_id = position_select.val();
                 let position = position_select.find('option:selected').text().trim();
-                let telp = $('#phone_staff').val();
-                let email = $('#email_addr').val();
+                let telp = phone_staff.val();
+                let email = email_addr.val();
 
+                // console.log(name, staff_name.val(), email_addr.val(), email);
                 if (!isEmail(email)) {
+                    
                     alert('Format email salah');
                     return;
                 }
@@ -490,6 +493,7 @@
                 table_level.find('tbody').append('<tr data-id="' + id + 
                     '" data-name="' + name +
                     '" data-position="' + position_id + 
+                    '" data-positionname="' + position + 
                     '" data-phone="' + telp + 
                     '" data-email="' + email + 
                     '"><td>' + name + 
@@ -592,6 +596,7 @@
                 let id = $(el).data('id');
                 let name = $(el).data('name');
                 let position = $(el).data('position');
+                let positionName = $(el).data('positionname');
                 let phone = $(el).data('phone');
                 let email = $(el).data('email');
                     
@@ -599,15 +604,16 @@
                     "id": id,
                     "name": name,
                     "position": position,
+                    "positionName": positionName,
                     "phone": phone,
                     "email": email
                 })
             });
             
-            if (list_count < 1) {
-                alert('Minimal 1 staff dipilih');
-                return;
-            }
+            // if (list_count < 1) {
+            //     alert('Minimal 1 staff dipilih');
+            //     return;
+            // }
             
             // form filling
             let form = modal.find('form');
@@ -624,6 +630,86 @@
             inputfield.append('<input type="hidden" name="space" value="' + space + '">');
             inputfield.append("<input type='hidden' name='stafflist' value='" + JSON.stringify(stafflist) + "'>");
             form.submit();       
+        }
+
+        function updateCustomer() {
+            let modal = $('#detailCustomerModal');
+            let kode = modal.find('.code').val();
+            let name = modal.find('.name').val();
+            let alias = modal.find('.alias').val();
+            let cust_type = modal.find('select[name="cust_type"]').val();
+            let city = modal.find('select[name="city_id"]').val();
+            let address = modal.find('.address').val();
+            let requirement_date = modal.find('.requirement_date').val();
+            let space = modal.find('.space').val();
+
+            let table_level = modal.find('.table_level');
+            let stafflist = [];
+            let list_count = 0;
+            if (cust_type == "") {
+                alert('Harap memilih customer type');
+                return;
+            }
+            if (city == "") {
+                alert('Harap memilih jenis kota');
+                return;
+            }
+            
+            table_level.find('tbody tr').not('.empty_row').each(function(index, el) {
+                list_count++
+
+                let id = $(el).data('id');
+                let name = $(el).data('name');
+                let position = $(el).data('position');
+                let positionName = $(el).data('positionname');
+                let phone = $(el).data('phone');
+                let email = $(el).data('email');
+                    
+                stafflist.push({
+                    "id": id,
+                    "name": name,
+                    "position": position,
+                    "positionName": positionName,
+                    "phone": phone,
+                    "email": email
+                })
+            });
+
+            // if (list_count < 1) {
+            //     alert('Minimal 1 otorisasi dipilih');
+            //     return;
+            // }
+
+            // form filling
+            let form = $('#updateform');
+            let inputfield = form.find('.inputfield');
+            
+            inputfield.empty();
+            inputfield.append('<input type="hidden" name="kode" value="' + kode + '">');
+            inputfield.append('<input type="hidden" name="nama" value="' + name + '">');
+            inputfield.append('<input type="hidden" name="alias" value="' + alias + '">');
+            inputfield.append('<input type="hidden" name="cust_type" value="' + cust_type + '">');
+            inputfield.append('<input type="hidden" name="regency_id" value="' + city + '">');
+            inputfield.append('<input type="hidden" name="address" value="' + address + '">');
+            inputfield.append('<input type="hidden" name="requirement_date" value="' + requirement_date + '">');
+            inputfield.append('<input type="hidden" name="space" value="' + space + '">');
+            inputfield.append("<input type='hidden' name='stafflist' value='" + JSON.stringify(stafflist) + "'>");
+            form.submit();
+        }
+
+        function deleteCustomer() {
+            if (confirm('Data Customer akan dihapus dan tidak dapat dikembalikan. Lanjutkan?')) {
+                let modal = $('#detailCustomerModal');
+                let kode = modal.find('.code').val();
+                let form = $('#deleteform');
+                let inputfield = form.find('.inputfield');
+                
+                inputfield.empty();
+                inputfield.append('<input type="hidden" name="kode" value="' + kode + '">');
+                form.submit();
+            } else {
+
+            }
         }
 
     </script>
