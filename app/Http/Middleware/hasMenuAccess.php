@@ -32,7 +32,7 @@ class hasMenuAccess
             return redirect('/dashboard')->with('error','Anda tidak memiliki access ke menu bersangkutan. Silahkan hubungi developer untuk mendapatkan akses');
         }
         
-        if($access[0] == 'budget'){
+        if($access[0] == 'sales'){
             $emp_access = intval(Auth::user()->menu_access->sales ?? 0);
             foreach($menu_acceses as $key=>$menu_access){
                 if(($emp_access & $menu_access) != 0){
@@ -42,7 +42,7 @@ class hasMenuAccess
             return redirect('/dashboard')->with('error','Anda tidak memiliki access ke menu bersangkutan. Silahkan hubungi developer untuk mendapatkan akses');
         }
         
-        if($access[0] == 'operational'){
+        if($access[0] == 'logistik'){
             $emp_access = intval(Auth::user()->menu_access->operational ?? 0);
             foreach($menu_acceses as $key=>$menu_access){
                 if(($emp_access & $menu_access) != 0){

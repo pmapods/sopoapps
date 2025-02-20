@@ -29,16 +29,10 @@ use App\Http\Controllers\Masterdata\EmployeeAccessController;
 use App\Http\Controllers\Masterdata\AuthorizationController;
 use App\Http\Controllers\Masterdata\VendorController;
 use App\Http\Controllers\Masterdata\CustomerController;
-use App\Http\Controllers\Masterdata\BudgetPricingController;
-use App\Http\Controllers\Masterdata\MaintenanceBudgetController;
-use App\Http\Controllers\Masterdata\HOBudgetController;
-use App\Http\Controllers\Masterdata\FileCompletementController;
 use App\Http\Controllers\Masterdata\ArmadaController;
 use App\Http\Controllers\Masterdata\MailingController;
-use App\Http\Controllers\Masterdata\CustomTicketingController;
-use App\Http\Controllers\Masterdata\MasterDataTicketingBlockController;
-use App\Http\Controllers\Masterdata\CcEmailController;
-use App\Http\Controllers\Masterdata\PoManualController;
+use App\Http\Controllers\Masterdata\ProductController;
+use App\Http\Controllers\Masterdata\MaterialController;
 
 // Budget
 use App\Http\Controllers\Budget\BudgetUploadController;
@@ -310,12 +304,18 @@ Route::middleware(['auth'])->group(function () {
 
     // Produk
     Route::middleware(['menu_access:masterdata:512'])->group(function () {
-        Route::get('/customer', [CustomerController::class, 'customerView']);
+        Route::get('/product', [ProductController::class, 'productView']);
+        Route::post('/addproduct', [ProductController::class, 'addProduct']);
+        Route::patch('/updateproduct', [ProductController::class, 'updateProduct']);
+        Route::delete('/deleteproduct', [ProductController::class, 'deleteProduct']);
     });
 
     // Bahan Baku
     Route::middleware(['menu_access:masterdata:1024'])->group(function () {
-        Route::get('/customer', [CustomerController::class, 'customerView']);
+        Route::get('/material', [MaterialController::class, 'materialView']);
+        Route::post('/addmaterial', [MaterialController::class, 'addMaterial']);
+        Route::patch('/updatematerial', [MaterialController::class, 'updateMaterial']);
+        Route::delete('/deletematerial', [MaterialController::class, 'deleteMaterial']);
     });
 
     // BUDGET UPLOAD
