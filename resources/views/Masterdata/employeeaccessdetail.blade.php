@@ -91,13 +91,13 @@
             <div class="col-6 col-md-4 mb-3 group_check">
                 <div class="form-check form-check-inline mb-2">
                     <label class="form-check-label">
-                        <span class="h4 mr-2">Budget</span> <input class="form-check-input head_check" type="checkbox">
+                        <span class="h4 mr-2">Sales</span> <input class="form-check-input head_check" type="checkbox">
                     </label>
                 </div>
                 @foreach ($sales_accesses as $key=>$access)
                     <div class="form-check">
                         <label class="form-check-label">
-                            <input type="checkbox" class="form-check-input child_check" name="budget[]"
+                            <input type="checkbox" class="form-check-input child_check" name="sales[]"
                             value="{{pow(2,$key)}}"
                             @if((($employee->menu_access->sales ?? 0) & pow(2,$key)) != 0) checked @endif>{{$access}}
                         </label>
@@ -117,7 +117,7 @@
                 @foreach ($logistik_accesses as $key=>$access)
                     <div class="form-check">
                         <label class="form-check-label">
-                            <input type="checkbox" class="form-check-input child_check" name="operational[]"
+                            <input type="checkbox" class="form-check-input child_check" name="logistik[]"
                             value="{{pow(2,$key)}}"
                             @if((($employee->menu_access->logistik ?? 0) & pow(2,$key)) != 0) checked @endif>{{$access}}
                         </label>

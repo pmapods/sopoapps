@@ -68,12 +68,6 @@
                                 <label class="required_field">SalesPoint</label>
                                 <select class="form-control select2 salespoint_select2" name="salespoint">
                                     <option value="">-- Pilih SalesPoint --</option>
-                                    <optgroup label="Multiple Salespoint">
-                                        <option value="all">All</option>
-                                        <option value="west">West</option>
-                                        <option value="east">East</option>
-                                        <option value="indirect">Indirect</option>
-                                    </optgroup>
                                     @foreach ($regions as $region)
                                         <optgroup label="{{ $region->first()->region_name() }}">
                                             @foreach ($region as $salespoint)
@@ -95,24 +89,9 @@
                                 <label class="required_field">Jenis Form</label>
                                 <select class="form-control form_type" name="form_type" required>
                                     <option value="">-- Pilih Jenis Form --</option>
-                                    <option value="0">Pengadaan Barang Jasa</option>
-                                    <option value="7">Pengadaan Armada</option>
-                                    <option value="8">Pengadaan Security</option>
-                                    <option value="1">Form Bidding</option>
-                                    <option value="4">Form Fasilitas</option>
-                                    <option value="5">Form Mutasi</option>
-                                    <option value="9">Form Evaluasi Security</option>
-                                    <option value="6">Perpanjangan / Perhentian</option>
-                                    <option value="2">PR</option>
-                                    <option value="3">PO</option>
-                                    <option value="10">Upload Budget (baru)</option>
-                                    <option value="11">Upload Budget (revisi)</option>
-                                    <option value="12">FRI (Form Request Infrastruktur)</option>
-                                    <option value="13">Form Evaluasi Vendor</option>
-                                    <option value="14">Form Over Budget (Area)</option>
-                                    <option value="15">Form Over Budget (HO)</option>
-                                    <option value="16">Form Peremajaan Armada</option>
-                                    <option value="17">Cancel End Kontrak (Pest Control, Armada, Security)</option>
+                                    <option value="0">PO Sewa</option>
+                                    <option value="1">PO Jual</option>
+                                    <option value="2">PO Custom</option>
                                 </select>
                             </div>
                         </div>
@@ -120,34 +99,6 @@
                             <div class="form-group">
                                 <label class="optional_field">Notes</label>
                                 <input class="form-control" name="notes">
-                            </div>
-                        </div>
-                        <div class="col-md-12 notes_field basic_notes note_field2" style="display: none">
-                            <div class="form-group">
-                                <label class="required_field">Notes</label>
-                                <select class="form-control notes_select" name="notes_select" required>
-                                    <option value="">-- Pilih Notes --</option>
-                                    <option value="Pengadaan Security">Pengadaan Security</option>
-                                    <option value="Pengadaan Lembur">Pengadaan Lembur</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-12 notes_field niaga_notes d-none">
-                            <div class="form-group">
-                                <label class="required_field">Notes</label>
-                                <select class="form-control" name="notes">
-                                    <option value="Niaga">Niaga</option>
-                                    <option value="Non-Niaga">Non-Niaga</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-12 notes_field budget_notes d-none">
-                            <div class="form-group">
-                                <label class="required_field">Notes</label>
-                                <select class="form-control" name="notes">
-                                    <option value="Budget">Budget</option>
-                                    <option value="Non-Budget">Non-Budget</option>
-                                </select>
                             </div>
                         </div>
                         <div class="col-md-12">
@@ -257,12 +208,6 @@
                                 <label class="required_field">SalesPoint</label>
                                 <select class="form-control select2 salespoint_select2" name="salespoint" disabled>
                                     <option value="">-- Pilih SalesPoint --</option>
-                                    <optgroup label="Multiple Salespoint">
-                                        <option value="all">All</option>
-                                        <option value="west">West</option>
-                                        <option value="east">East</option>
-                                        <option value="indirect">Indirect</option>
-                                    </optgroup>
                                     @foreach ($regions as $region)
                                         <optgroup label="{{ $region->first()->region_name() }}">
                                             @foreach ($region as $salespoint)
@@ -284,24 +229,10 @@
                                 <label class="required_field">Jenis Form</label>
                                 <select class="form-control form_type" name="form_type" required disabled>
                                     <option value="">-- Pilih Jenis Form --</option>
-                                    <option value="0">Pengadaan Barang Jasa</option>
-                                    <option value="7">Pengadaan Armada</option>
-                                    <option value="8">Pengadaan Security</option>
-                                    <option value="1">Form Bidding</option>
-                                    <option value="4">Form Fasilitas</option>
-                                    <option value="5">Form Mutasi</option>
-                                    <option value="9">Form Evaluasi Security</option>
-                                    <option value="6">Perpanjangan / Perhentian</option>
-                                    <option value="2">PR</option>
-                                    <option value="3">PO</option>
-                                    <option value="10">Upload Budget (baru)</option>
-                                    <option value="11">Upload Budget (revisi)</option>
-                                    <option value="12">FRI (Form Request Infrastruktur)</option>
-                                    <option value="13">Form Evaluasi Vendor</option>
-                                    <option value="14">Form Over Budget (Area)</option>
-                                    <option value="15">Form Over Budget (HO)</option>
-                                    <option value="16">Form Peremajaan Armada</option>
-                                    <option value="17">Cancel End Kontrak (Pest Control, Armada, Security)</option>
+                                    <option value="">-- Pilih Jenis Form --</option>
+                                    <option value="0">PO Sewa</option>
+                                    <option value="1">PO Jual</option>
+                                    <option value="2">PO Custom</option>
                                 </select>
                             </div>
                         </div>
@@ -309,33 +240,6 @@
                             <div class="form-group">
                                 <label class="optional_field">Notes</label>
                                 <input class="form-control" name="notes">
-                            </div>
-                        </div>
-                        <div class="col-md-12 notes_field notes_select d-none">
-                            <div class="form-group">
-                                <label class="required_field">Notes</label>
-                                <select class="form-control" name="notes">
-                                    <option value="Pengadaan Security">Pengadaan Security</option>
-                                    <option value="Pengadaan Lembur">Pengadaan Lembur</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-12 notes_field niaga_notes d-none">
-                            <div class="form-group">
-                                <label class="required_field">Notes</label>
-                                <select class="form-control" name="notes">
-                                    <option value="Niaga">Niaga</option>
-                                    <option value="Non-Niaga">Non-Niaga</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-12 notes_field budget_notes d-none">
-                            <div class="form-group">
-                                <label class="required_field">Notes</label>
-                                <select class="form-control" name="notes">
-                                    <option value="Budget">Budget</option>
-                                    <option value="Non-Budget">Non-Budget</option>
-                                </select>
                             </div>
                         </div>
                         <div class="col-md-12">
@@ -509,29 +413,9 @@
 @endsection
 @section('local-js')
     <script>
-        let niaga_notes_array = [5, 6];
-        let budget_notes_array = [2];
-        let note_select_array = [8];
-
-        let formpengadaan = ['Pengaju', 'Atasan Langsung', 'Atasan Tidak Langsung'];
-        let formbidding = ['Diajukan Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
-        let formpr = ['Dibuat Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
-        let formpo = ['Dibuat Oleh', 'Diperiksa dan disetujui oleh'];
-        let formfasilitas = ['Pemohon', 'Menyetujui'];
-        let formmutasi = ['Dibuat Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
-        let formperpanjangan = ['Yang Mengajukan', 'Diketahui Oleh', 'Disetujui'];
-        let formpengadaanarmada = ['Pengaju', 'Atasan Langsung', 'Atasan Tidak Langsung'];
-        let formpengadaansecurity = ['Pengaju', 'Atasan Langsung', 'Atasan Tidak Langsung', 'Dibuat Oleh', 'Diperiksa Oleh',
-            'Disetujui Oleh'
-        ];
-        let formevaluasi = ['Disiapkan Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
-        let uploadbudget = ['Dibuat Oleh', 'Diketahui Oleh', 'Disetujui Oleh'];
-        let formfri = ["Diketahui Oleh", "Diinput Oleh"];
-        let formevaluasivendor = ["Menilai", "Mengetahui"];
-        let formoverbudgetarea = ['Diperiksa Oleh', 'Disetujui Oleh', 'Disetujui Oleh'];
-        let formoverbudgetho = ['Disetujui Oleh', 'Disetujui Oleh'];
-        let formperemajaanarmada = ['Disetujui Oleh'];
-        let formcancelendkontrak = ['Diperiksa Oleh', 'Disetujui Oleh', 'Disetujui Oleh', 'Disetujui Oleh'];
+        let posewa = ['Diajukan Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
+        let pojual = ['Diajukan Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
+        let pocustom = ['Diajukan Oleh', 'Diperiksa Oleh', 'Disetujui Oleh'];
 
         $(document).ready(function() {
             // var table = $('#authorDT').DataTable(datatable_settings);
@@ -563,22 +447,6 @@
                 form_type.trigger('change');
 
                 let notes = modal.find('.basic_notes input');
-                modal.find('.notes_field').addClass('d-none');
-                if (niaga_notes_array.includes(parseInt(data['form_type']))) {
-                    // case perpanjangan/mutasi
-                    notes = modal.find('.niaga_notes select');
-                    modal.find('.niaga_notes').removeClass('d-none');
-                } else if (budget_notes_array.includes(parseInt(data['form_type']))) {
-                    // case PR
-                    notes = modal.find('.budget_notes select');
-                    modal.find('.budget_notes').removeClass('d-none');
-                } else if (note_select_array.includes(parseInt(data['form_type']))) {
-                    // case pengadaan security/pengadaan lembur
-                    notes = modal.find('.notes_select select');
-                    modal.find('.notes_select').removeClass('d-none');
-                } else {
-                    modal.find('.basic_notes').removeClass('d-none');
-                }
                 let table_level = modal.find('.table_level');
                 modal.find('input[name="authorization_id"]').val(data.id);
 
@@ -614,85 +482,15 @@
                 let default_array = [];
                 closestmodal.find('.table_default_level tbody').empty();
 
-                $('.notes_select').val("");
-                $('.notes_select').trigger('change');
-
-                $('.note_field2').css('display', 'none');
-                $('.note_field1').css('display', 'block');
-
                 switch ($(this).val()) {
                     case "0":
-                        value_array = formpengadaan;
+                        value_array = posewa;
                         break;
                     case "1":
-                        value_array = formbidding;
+                        value_array = pojual;
                         break;
                     case "2":
-                        value_array = formpr;
-                        default_array = [{
-                                "nama": "Diisi oleh otorisasi kedua dari tiket",
-                                "jabatan": "User (Min Gol 5A)",
-                                "sebagai": "Dibuat Oleh"
-                            },
-                            {
-                                "nama": "Diisi oleh otorisasi ketiga dari tiket",
-                                "jabatan": "Atasan Berikutnya",
-                                "sebagai": "Diperiksa Oleh"
-                            }
-                        ];
-                        break;
-                    case "3":
-                        value_array = formpo;
-                        default_array = [{
-                            "nama": "Diisi saat pembuatan PO",
-                            "jabatan": "Supplier PIC",
-                            "sebagai": "Konfirmasi Supplier"
-                        }];
-                        break;
-                    case "4":
-                        value_array = formfasilitas;
-                        break;
-                    case "5":
-                        value_array = formmutasi;
-                        break;
-                    case "6":
-                        value_array = formperpanjangan;
-                        break;
-                    case "7":
-                        value_array = formpengadaanarmada;
-                        break;
-                    case "8":
-                        value_array = formpengadaansecurity;
-                        $('.note_field2').css('display', 'block');
-                        $('.note_field1').css('display', 'none');
-                        $('.notes_select').prop('required', true);
-                        break;
-                    case "9":
-                        value_array = formevaluasi;
-                        break;
-                    case "10":
-                        value_array = uploadbudget;
-                        break;
-                    case "11":
-                        value_array = uploadbudget;
-                        break;
-                    case "12":
-                        value_array = formfri;
-                        break;
-                    case "13":
-                        value_array = formevaluasivendor;
-                        break;
-                    case "14":
-                        value_array = formoverbudgetarea;
-                        break;
-                    case "15":
-                        value_array = formoverbudgetho;
-                        break;
-                    case "16":
-                        value_array = formperemajaanarmada;
-                        break;
-                    case "17":
-                        value_array = formcancelendkontrak;
+                        value_array = pocustom;
                         break;
                     default:
                         return;
@@ -710,17 +508,6 @@
                         '<tr><td colspan="3" class="text-center">Tidak ada</td></tr>');
                 }
                 as_text.prop('disabled', false);
-
-                closestmodal.find('.notes_field').addClass('d-none');
-                if (niaga_notes_array.includes(parseInt($(this).val()))) {
-                    // CASE FORM PERPANJANGAN/MUTASI
-                    closestmodal.find('.niaga_notes').removeClass('d-none');
-                } else if (budget_notes_array.includes(parseInt($(this).val()))) {
-                    // case PR
-                    closestmodal.find('.budget_notes').removeClass('d-none');
-                } else {
-                    closestmodal.find('.basic_notes').removeClass('d-none');
-                }
             });
             $('.salespoint_select2').on('change', function() {
                 let closestmodal = $(this).closest('.modal');
@@ -973,14 +760,6 @@
             let form_type = modal.find('select[name="form_type"]').val();
             let notes_select = modal.find('select[name="notes_select"]').val();
             let notes = modal.find('.basic_notes input').val();
-            // case perpanjangan/mutasi
-            if (niaga_notes_array.includes(parseInt(form_type))) {
-                notes = modal.find('.niaga_notes select').val();
-            }
-            // case PR
-            if (budget_notes_array.includes(parseInt(form_type))) {
-                notes = modal.find('.budget_notes select').val();
-            }
             let table_level = modal.find('.table_level');
             let authorizationlist = [];
             let list_count = 0;
@@ -1016,7 +795,6 @@
             inputfield.append('<input type="hidden" name="salespoint" value="' + salespoint + '">');
             inputfield.append('<input type="hidden" name="form_type" value="' + form_type + '">');
             inputfield.append('<input type="hidden" name="notes" value="' + notes + '">');
-            inputfield.append('<input type="hidden" name="notes_select" value="' + notes_select + '">');
             authorizationlist.forEach((item, index) => {
                 inputfield.append('<input type="hidden" name="authorization[' + index + '][id]" value="' + item.id +
                     '">');
@@ -1035,14 +813,6 @@
             let salespoint = modal.find('select[name="salespoint"]').val();
             let form_type = modal.find('select[name="form_type"]').val();
             let notes = modal.find('.basic_notes input').val();
-            // case perpanjangan/mutasi
-            if (niaga_notes_array.includes(parseInt(form_type))) {
-                notes = modal.find('.niaga_notes select').val();
-            }
-            // case PR
-            if (budget_notes_array.includes(parseInt(form_type))) {
-                notes = modal.find('.budget_notes select').val();
-            }
             let table_level = modal.find('.table_level');
             let authorizationlist = [];
             let list_count = 0;

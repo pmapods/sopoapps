@@ -200,94 +200,19 @@ class AuthorizationController extends Controller
             // dd($request);
             switch ($request->form_type) {
                 case '0':
-                    // 0 form pengadaan barang jasa
+                    // 0 form po sewa
                     $detail_counts = [3];
-                    $errMessage = "Form Pengadaan Barang jasa membutuhkan 3 pilihan torisasi";
+                    $errMessage = "Form PO Sewa membutuhkan 3 pilihan torisasi";
                     break;
                 case '1':
-                    // 1 form bidding
+                    // 1 form po jual
                     $detail_counts = [3];
-                    $errMessage = "Form Bidding membutuhkan 3 pilihan otorisasi";
+                    $errMessage = "Form PO Jual membutuhkan 3 pilihan otorisasi";
                     break;
                 case '2':
-                    // 2 form pr
-                    $detail_counts = [4, 5];
-                    $errMessage = "Form PR membutuhkan 4 atau 5 pilihan otorisasi";
-                    break;
-                case '3':
-                    // 3 form po
-                    $detail_counts = [2];
-                    $errMessage = "Form PO membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '4':
-                    // 4 form fasilitas
-                    $detail_counts = [2];
-                    $errMessage = "Form Fasilitas membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '5':
-                    // 5 form mutasi
-                    $detail_counts = [5, 7];
-                    $errMessage = "Form Mutasi membutuhkan 5 atau 7 pilihan otorisasi";
-                    break;
-                case '6':
-                    // 6 form perpanjangan perhentian
-                    $detail_counts = [4, 5];
-                    $errMessage = "Form Perpanjangan Perhentian membutuhkan 4 atau 5 pilihan otorisasi";
-                    break;
-                case '7':
-                    // 7 form pengadaan armada
+                    // 2 form po custom
                     $detail_counts = [3];
-                    $errMessage = "Form Pengadaan Armada membutuhkan 3 pilihan otorisasi";
-                    break;
-                case '8':
-                    // 8 form pengadaan security
-                    $detail_counts = [3, 5];
-                    $errMessage = "Form Pengadaan Security membutuhkan 3 atau 5 pilihan otorisasi";
-                    break;
-                case '9':
-                    // 9 form evaluasi security
-                    $detail_counts = [4];
-                    $errMessage = "Form Evaluasi Security membutuhkan 4 pilihan otorisasi";
-                    break;
-                case '10':
-                    // 10 upload budget (baru)
-                    $detail_counts = -1;
-                    $errMessage = "Otorisasi upload budget membutuhkan minimal 1 pilihan otorisasi";
-                    break;
-                case '11':
-                    // 11 upload budget (revisi)
-                    $detail_counts = -1;
-                    $errMessage = "Otorisasi upload budget membutuhkan minimal 1 pilihan otorisasi";
-                    break;
-                case '12':
-                    // 12 FORM FRI
-                    $detail_counts = [2];
-                    $errMessage = "Form Pengadaan Armada membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '13':
-                    // 13 form evaluasi vendor
-                    $detail_counts = [2];
-                    $errMessage = "Form Evaluasi Vendor membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '14':
-                    // 14 form over budget area
-                    $detail_counts = [3];
-                    $errMessage = "Form Over Budget Area membutuhkan 3 pilihan otorisasi";
-                    break;
-                case '15':
-                    // 15 form over budget ho
-                    $detail_counts = [2];
-                    $errMessage = "Form Over Budget HO membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '16':
-                    // 16 form peremajaan armada
-                    $detail_counts = [1];
-                    $errMessage = "Form Over Budget HO membutuhkan 1 pilihan otorisasi";
-                    break;
-                case '17':
-                    // 17 cancel end kontrak (pest control, armada, security)
-                    $detail_counts = [4];
-                    $errMessage = "Form Cancel End Kontrak membutuhkan 4 pilihan otorisasi";
+                    $errMessage = "Form PO Custom membutuhkan 3 pilihan otorisasi";
                     break;
             }
             if ($detail_counts != -1) {
@@ -303,15 +228,8 @@ class AuthorizationController extends Controller
             $newAuthorization                 = new Authorization;
             $newAuthorization->salespoint_id  = $request->salespoint;
             $newAuthorization->form_type      = $request->form_type;
-            if ($request->notes != null) {
-                $newAuthorization->notes          = $request->notes;
-            }
-            else {
-                $newAuthorization->notes          = $request->notes_select;
-            }
+            $newAuthorization->notes          = $request->notes;
             $newAuthorization->save();
-
-            $level_over_budget = 4;
 
             foreach ($request->authorization as $data) {
                 $detail                         = new AuthorizationDetail;
@@ -319,17 +237,11 @@ class AuthorizationController extends Controller
                 $detail->employee_id            = $data['id'];
                 $detail->employee_position_id   = $data['position'];
                 $detail->sign_as                = $data['as'];
-
-                if ($request->form_type == 14 || $request->form_type == 15) {
-                    $detail->level                  = $level_over_budget++;
-                } else {
-                    $detail->level                  = $data['level'];
-                }
-
+                $detail->level                  = $data['level'];
                 $detail->save();
             }
             DB::commit();
-            return back()->with('success', 'Berhasil menambahkan otorisasi untuk salespoint');
+            return back()->with('success', 'Berhasil menambahkan otorisasi untuk PO');
         } catch (\Exception $ex) {
             DB::rollback();
             return back()->with('error', 'Gagal membuat otorisasi "' . $ex->getMessage() . '"');
@@ -343,89 +255,19 @@ class AuthorizationController extends Controller
 
             switch ($request->form_type) {
                 case '0':
-                    // 0 form pengadaan barang jasa
+                    // 0 form po sewa
                     $detail_counts = [3];
-                    $errMessage = "Form Pengadaan Barang jasa membutuhkan 3 opilihan torisasi";
+                    $errMessage = "Form PO Sewa membutuhkan 3 pilihan torisasi";
                     break;
                 case '1':
-                    // 1 form bidding
+                    // 1 form po jual
                     $detail_counts = [3];
-                    $errMessage = "Form Bidding membutuhkan 3 pilihan otorisasi";
+                    $errMessage = "Form PO Jual membutuhkan 3 pilihan otorisasi";
                     break;
                 case '2':
-                    // 2 form pr
-                    $detail_counts = [4, 5];
-                    $errMessage = "Form PR membutuhkan 4 atau 5 pilihan otorisasi";
-                    break;
-                case '3':
-                    // 3 form po
-                    $detail_counts = [2];
-                    $errMessage = "Form PO membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '4':
-                    // 4 form fasilitas
-                    $detail_counts = [2];
-                    $errMessage = "Form Fasilitas membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '5':
-                    // 5 form mutasi
-                    $detail_counts = [5, 7];
-                    $errMessage = "Form Mutasi membutuhkan 5 atau 7 pilihan otorisasi";
-                    break;
-                case '6':
-                    // 6 form perpanjangan perhentian
-                    $detail_counts = [4, 5];
-                    $errMessage = "Form Perpanjangan Perhentian membutuhkan 4 atau 5 pilihan otorisasi";
-                    break;
-                case '7':
-                    // 7 form pengadaan armada
+                    // 2 form po custom
                     $detail_counts = [3];
-                    $errMessage = "Form Pengadaan Armada membutuhkan 3 pilihan otorisasi";
-                    break;
-                case '8':
-                    // 8 form pengadaan security
-                    $detail_counts = [3, 5];
-                    $errMessage = "Form Pengadaan Security membutuhkan 3 atau 5 pilihan otorisasi";
-                    break;
-                case '9':
-                    // 9 form evaluasi
-                    $detail_counts = [4];
-                    $errMessage = "Form Evaluasi membutuhkan 4 pilihan otorisasi";
-                    break;
-                case '10':
-                    // 10 upload budget (baru)
-                    $detail_counts = -1;
-                    $errMessage = "Otorisasi upload budget membutuhkan minimal 1 pilihan otorisasi";
-                    break;
-                case '11':
-                    // 11 upload budget (revisi)
-                    $detail_counts = -1;
-                    $errMessage = "Otorisasi upload budget membutuhkan minimal 1 pilihan otorisasi";
-                    break;
-                case '12':
-                    // 12 FORM FRI
-                    $detail_counts = [2];
-                    $errMessage = "Form Pengadaan Armada membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '13':
-                    // 13 form evaluasi vendor
-                    $detail_counts = [2];
-                    $errMessage = "Form Evaluasi Vendor membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '14':
-                    // 14 form over budget area
-                    $detail_counts = [3];
-                    $errMessage = "Form Over Budget Area membutuhkan 3 pilihan otorisasi";
-                    break;
-                case '15':
-                    // 15 form over budget ho
-                    $detail_counts = [2];
-                    $errMessage = "Form Over Budget HO membutuhkan 2 pilihan otorisasi";
-                    break;
-                case '16':
-                    // 16 form peremajaan armada
-                    $detail_counts = [1];
-                    $errMessage = "Form Over Budget HO membutuhkan 1 pilihan otorisasi";
+                    $errMessage = "Form PO Custom membutuhkan 3 pilihan otorisasi";
                     break;
             }
 
@@ -445,20 +287,13 @@ class AuthorizationController extends Controller
                 $old->delete();
             }
 
-            $level_over_budget = 4;
-
             foreach ($request->authorization as $data) {
                 $detail                         = new AuthorizationDetail;
                 $detail->authorization_id       = $authorization->id;
                 $detail->employee_id            = $data['id'];
                 $detail->employee_position_id   = $data['position'];
                 $detail->sign_as                = $data['as'];
-
-                if ($request->form_type == 14 || $request->form_type == 15) {
-                    $detail->level                  = $level_over_budget++;
-                } else {
-                    $detail->level                  = $data['level'];
-                }
+                $detail->level                  = $data['level'];
 
                 $detail->save();
             }
@@ -489,9 +324,8 @@ class AuthorizationController extends Controller
 
     public function AuthorizedEmployeeBySalesPoint($salespoint_id)
     {
-
         $employeeaccess = EmployeeLocationAccess::where('salespoint_id', $salespoint_id)
-            ->where('employee_id', '!=', 1)
+            ->where('employee_id', '!=', 0)
             ->get();
         $employees = $employeeaccess->pluck('employee_id')->unique();
         if (in_array($salespoint_id, ["all", "west", "east", "indirect"])) {

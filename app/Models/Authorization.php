@@ -37,58 +37,13 @@ class Authorization extends Model
     {
         switch ($this->form_type) {
             case 0:
-                return 'Form Pengadaan Barang Jasa';
+                return 'PO Sewa';
                 break;
             case 1:
-                return 'Form Bidding';
+                return 'PO Jual';
                 break;
             case 2:
-                return 'Form PR';
-                break;
-            case 3:
-                return 'Form PO';
-                break;
-            case 4:
-                return 'Form Fasilitas';
-                break;
-            case 5:
-                return 'Form Mutasi';
-                break;
-            case 6:
-                return 'Form Perpanjangan / Perhentian';
-                break;
-            case 7:
-                return 'Form Pengadaan Armada';
-                break;
-            case 8:
-                return 'Form Pengadaan Security';
-                break;
-            case 9:
-                return 'Form Evaluasi Security';
-                break;
-            case 10:
-                return 'Upload Budget (baru)';
-                break;
-            case 11:
-                return 'Upload Budget (revisi)';
-                break;
-            case 12:
-                return 'FRI';
-                break;
-            case 13:
-                return 'Form Evaluasi Vendor';
-                break;
-            case 14:
-                return 'Form Over Budget (Area)';
-                break;
-            case 15:
-                return 'Form Over Budget (HO)';
-                break;
-            case 16:
-                return 'Form Peremajaan Armada';
-                break;
-            case 17:
-                return 'Cancel End Kontrak (Pest Control, Armada, Security)';
+                return 'PO Custom';
                 break;
             default:
                 return 'form_type_undefined';

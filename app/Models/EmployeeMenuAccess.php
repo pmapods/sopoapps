@@ -27,12 +27,12 @@ class EmployeeMenuAccess extends Model
             }
         }
         foreach($sales_accesses as $key=>$access){
-            if((($this->budget ?? 0) & pow(2,$key)) != 0){
-                array_push($menu_array_access, "Budget ".$access);
+            if((($this->sales ?? 0) & pow(2,$key)) != 0){
+                array_push($menu_array_access, $access);
             }
         }
         foreach($logistik_accesses as $key=>$access){
-            if((($this->operational ?? 0) & pow(2,$key)) != 0){
+            if((($this->logistik ?? 0) & pow(2,$key)) != 0){
                 array_push($menu_array_access, $access);
             }
         }

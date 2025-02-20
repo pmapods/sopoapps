@@ -318,11 +318,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/customer', [CustomerController::class, 'customerView']);
     });
 
-
-
-
-
-
     // BUDGET UPLOAD
     Route::get('/getSalespointBudget', [BudgetUploadController::class, 'getSalespointBudget']);
     Route::get('/budget/itemtracking', [BudgetUploadController::class, 'itemTracking']);
