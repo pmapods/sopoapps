@@ -79,7 +79,7 @@
                 <div class="form-group">
                     <label class="required_field">Tanggal Pengadaan</label>
                     <input type="date" class="form-control requirement_date">
-                    <small class="text-danger">*Tanggal pengadaan minimal 14 hari dari tanggal pengajuan</small>
+                    <small class="text-danger">*Tanggal estimasi barang ready untuk di kirim</small>
                 </div>
             </div>
             <div class="col-md-4">
@@ -222,9 +222,12 @@
                                 <select class="form-control select2 select_customer">
                                     <option value="">-- Pilih Customer --</option>
                                     @foreach ($customers as $customers)
-                                        <option value="{{ $customers->id }}" data-id="{{ $customers->id }}"
-                                            data-code="{{ $customers->code }}" data-name="{{ $customers->name }}"
-                                            data-salesperson="{{ $customers->store_staff }}" data-type="{{ $customers->type }}">
+                                        <option value="{{ $customers->id }}" 
+                                            data-id="{{ $customers->id }}"
+                                            data-code="{{ $customers->code }}" 
+                                            data-name="{{ $customers->name }}"
+                                            data-salesperson="{{ $customers->store_staff }}" 
+                                            data-type="{{ $customers->type }}">
                                             {{ $customers->name }}
                                         </option>
                                     @endforeach
@@ -250,10 +253,10 @@
                 style="display:none">Approve</button>
         </div>
     </div>
-    <form action="/addticket" method="post" enctype="multipart/form-data" id="addform">
+    <form action="/addpo" method="post" enctype="multipart/form-data" id="addform">
         @csrf
         <input type="hidden" name="id" class="ticket_id">
-        <input type="hidden" name="updated_at" class="updated_at">
+        <input type="hidden" name="updated_at" class="updated_at" value="{{ now()->translatedFormat('Y-m-d') }}">
         <div id="input_field">
         </div>
     </form>
@@ -265,181 +268,10 @@
 @endsection
 @section('local-js')
     <script src="/js/podetail.js?ver={{ now()->format('Ymd') }}"></script>
-    @if (Request::is('po/*'))
-        <script>
-            $(document).ready(function() {
-                $('#loading_modal').modal('show');
-                let user = @json(Auth::user());
-                let current_auth = @json($ticket->current_authorization());
-                let ticket = @json($ticket);
-                let ticket_items = @json($ticket->ticket_items_with_attachments());
-                let ticket_vendors = @json($ticket->ticket_vendors_with_additional_data());
-                let ticket_additional_attachments = @json($ticket->ticket_additional_attachment);
-
-                $('.ticket_id').val(ticket["id"]);
-                $('.ticket_code').val(ticket["code"]);
-                $('.updated_at').val(ticket["updated_at"]);
-                if (ticket["requirement_date"]) {
-                    $('.requirement_date').val(ticket["requirement_date"]);
-                }
-                if (ticket['salespoint_id']) {
-                    $('.salespoint_select2').val(ticket['salespoint_id']);
-                    $('.salespoint_select2').trigger('change');
-                }
-                $('.updated_at').val(ticket["updated_at"]);
-                $('.is_over_budget_hidden').val(ticket["is_over_budget"]);
-
-                setTimeout(function() {
-                    if (ticket['authorization_id']) {
-                        $('.authorization_select2').val(ticket['authorization_id']);
-                        $('.authorization_select2').trigger('change');
-                    }
-                    if (ticket['item_type'] != null || ticket['item_type'] == 'undefined') {
-                        $('.item_type').val(ticket['item_type']);
-                        $('.item_type').trigger('change');
-                    }
-                    if (ticket['request_type'] != null || ticket['request_type'] == 'undefined') {
-                        $('.request_type').val(ticket['request_type']);
-                        $('.request_type').trigger('change');
-                    }
-                    if (ticket['is_it'] != null || ticket['is_it'] == 'undefined') {
-                        $('.is_it').val(ticket['is_it']);
-                        $('.is_it').trigger('change');
-                    }
-                    if (ticket['budget_type'] != null || ticket['item_type'] == 'undefined') {
-                        $('.budget_type').val(ticket['budget_type']);
-                        $('.budget_type').trigger('change');
-                    }
-                    if (ticket['division'] != null || ticket['item_type'] == 'undefined') {
-                        $('.division_select').val(ticket['division']);
-                        $('.division_select').trigger('change');
-
-                        if (ticket['division'] == 'Indirect' && ticket['indirect_salespoint_id'] != null) {
-                            $('.indirect_salespoint').val(ticket['indirect_salespoint_id']);
-                            $('.indirect_salespoint').trigger('change');
-                        }
-                    }
-                    if (ticket_items.length > 0) {
-                        $('.salespoint_select2').prop('disabled', true);
-                        $('.request_type').prop('disabled', true);
-                        $('.is_it').prop('disabled', true);
-                        $('.item_type').prop('disabled', true);
-                        $('.budget_type').prop('disabled', true);
-                    }
-                    $('#loading_modal').modal('hide');
-                }, 2500);
-                if (ticket_items.length > 0) {
-                    $('.table_item tbody:eq(0)').empty();
-                }
-                ticket_items.forEach(function(item, index) {
-                    let naming = item.name;
-                    if (item.expired_date != null) {
-                        naming = item.name + '<br>(expired : ' + item.expired_date + ')';
-                    }
-                    let attachments_link = '-';
-                    item.attachments.forEach(function(attachment, i) {
-                        if (i == 0) attachments_link = "";
-                        attachments_link += '<a class="attachment" href="/storage' + attachment.path +
-                            '" download="' + attachment.name + '">' + attachment.name + '</a><br>';
-                    });
-                    let files_data = [];
-                    let other_attachment =
-                        "<table class='other_attachments small table table-sm table-borderless'><tbody>";
-                    item.files.forEach(function(file, i) {
-                        let data;
-                        data = {
-                            id: file.id,
-                            file_completement_id: file.file_completement_id,
-                            file: '/storage/' + file.path,
-                            filename: file.name,
-                            name: file.name
-                        };
-                        other_attachment += "<tr><td>" + data.filename + "</td>"
-                        other_attachment += "<td><a href='" + data.file + "' download='" + data.name +
-                            "'>tampilkan</a></td></tr>";
-                        files_data.push(data);
-                    });
-                    other_attachment += "</tbody></table>";
-                    attachments_link += other_attachment;
-
-                    // get is it and it alias
-                    let stringtext = '<tr class="item_list" ';
-
-                    stringtext += 'data-id="' + item.id + '" ';
-                    stringtext += 'data-name="' + item.name + '" ';
-                    stringtext += 'data-price="' + item.price + '" ';
-                    stringtext += 'data-count="' + item.count + '" ';
-                    stringtext += 'data-brand="' + item.brand + '" ';
-                    stringtext += 'data-type="' + item.type + '" ';
-                    if (item.budget_pricing_id != null) {
-                        stringtext += 'data-budget_pricing_id="' + item.budget_pricing_id + '" ';
-                        stringtext += 'data-is_it="' + item.budget_pricing.isIT + '" ';
-                        stringtext += 'data-it_alias="' + item.budget_pricing.IT_alias + '" ';
-                    }
-                    if (item.ho_budget_id != null) {
-                        stringtext += 'data-ho_budget_id="' + item.ho_budget_id + '" ';
-                        stringtext += 'data-is_it="' + item.ho_budget.isIT + '" ';
-                        stringtext += 'data-it_alias="' + item.ho_budget.IT_alias + '" ';
-                    }
-                    if (item.maintenance_budget_id != null) {
-                        stringtext += 'data-maintenance_budget_id="' + item.maintenance_budget_id + '" ';
-                        stringtext += 'data-is_it="' + item.maintenance_budget.isIT + '" ';
-                        stringtext += 'data-it_alias="' + item.maintenance_budget.IT_alias + '" ';
-                    }
-                    stringtext += 'data-expired="' + item.expired_date + '">';
-                    stringtext += '<td>' + naming + '</td>'
-                    stringtext += '<td>' + (item.brand ?? "") + '</td>'
-                    stringtext += '<td>' + (item.type ?? "") + '</td><td class="text-nowrap">' + setRupiah(item
-                        .price) + '</td>'
-                    stringtext += '<td>' + item.count + '</td><td class="text-nowrap">' + setRupiah(item.count *
-                        item.price) + '</td>'
-                    stringtext += '<td>' + attachments_link +
-                        '</td><td class="text-nowrap"><i class="fa fa-trash text-danger remove_list mr-3" onclick="removeList(this)" aria-hidden="true"></i><button type="button" class="btn btn-primary btn-sm filesbutton">kelengkapan berkas</button></td></tr>';
-                    $('.table_item tbody:eq(0)').append(stringtext);
-
-                    $('.table_item tbody:eq(0) .item_list').last().data('files', files_data);
-                });
-                $('.reason').val(ticket.reason);
-                if (ticket_vendors.length > 0) {
-                    $('.table_vendor').find('tbody').empty();
-                }
-                ticket_vendors.forEach(function(vendor, index) {
-                    let type = (vendor.type == 0) ? 'Terdaftar' : 'One Time Vendor';
-                    let code = (vendor.code == null) ? '-' : vendor.code;
-                    $('.table_vendor').find('tbody').append('<tr class="vendor_item_list" data-vendor_id="' +
-                        vendor.vendor_id + '" data-id="' + vendor.id + '"><td>' + code + '</td><td>' +
-                        vendor.name + '</td><td>' + vendor.salesperson + '</td><td>' + vendor.phone +
-                        '</td><td>' + type +
-                        '</td><td><i class="fa fa-trash text-danger" onclick="removeVendor(this)" aria-hidden="true"></i></td></tr>'
-                    );
-                });
-                if (ticket_vendors.length < 2) {
-                    // need ba
-                    $('.vendor_ba_field').show();
-                    if (ticket.ba_vendor_filepath != null) {
-                        $('#vendor_ba_preview').show();
-                        $('#vendor_ba_preview').on('click', function() {
-                            window.open("/storage" + (ticket.ba_vendor_filepath ?? "/"));
-                        });
-                    }
-                } else {
-                    // no need ba
-                    $('.vendor_ba_field').hide();
-                    $('.vendor_ba_file').val('');
-                }
-                $('#attachment_list').empty();
-                ticket_additional_attachments.forEach(function(attachment, index) {
-                    $('#attachment_list').append('<div><a class="opt_attachment" href="/storage' + attachment
-                        .path + '" download="' + attachment.name +
-                        '">tampilkan attachment</a><span class="remove_attachment">X</span></div>')
-                });
-
-            });
-
-            function deleteTicket() {
-                $('#deleteform').submit();
-            }
-        </script>
-    @endif
+    <script>
+        function deleteTicket() {
+            $('#deleteform').submit();
+        }
+    </script>
     @yield('fri-js')
 @endsection

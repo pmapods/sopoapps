@@ -18,7 +18,8 @@ use App\Models\Product;
 use App\Models\IssuePO;
 use App\Models\Employee;
 use App\Models\SalesPoint;
-use App\Models\POItem;
+use App\Models\PoItem;
+use App\Models\PoVendor;
 use App\Models\Authorization;
 use App\Models\POMonitoring;
 use App\Models\POAuthorization;
@@ -123,11 +124,15 @@ class POController extends Controller
                     $status_text = substr($status_text, 0, 200) . '...';
                 }
 
+                
+
                 array_push($array, $count);
                 array_push($array, $psewa->code);
                 array_push($array, $psewa->po_number);
                 array_push($array, $psewa->created_at->translatedFormat('d F Y (H:i)'));
-                array_push($array, $psewa->customer->name);
+                foreach ($psewa->po_vendor as $customers) {
+                    array_push($array, $customers->name);
+                }
                 array_push($array, $created_by_employee);
                 array_push($array, $psewa->salespoint->name);
                 array_push($array, $keterangan);
@@ -235,67 +240,36 @@ class POController extends Controller
         }
     }
 
-    public function addTicket(Request $request)
+    public function addPo(Request $request)
     {
         try {
-            // dd($request);
             DB::beginTransaction();
             if (!isset($request->salespoint)) {
                 return back()->with('error', 'SalesPoint harus dipilih');
             }
-            $ticket = Ticket::find($request->id);
+            $po = Po::find($request->id);
             $isnew = true;
-            if ($ticket == null) {
-                $ticket = new Ticket;
+            if ($po == null) {
+                $po = new Po;
             } else {
                 $isnew = false;
             }
-            $ticket->requirement_date   = $request->requirement_date;
-            $ticket->salespoint_id      = $request->salespoint;
-            $ticket->authorization_id   = $request->authorization;
-            $ticket->item_type          = $request->item_type;
-            $ticket->request_type       = $request->request_type;
-            $ticket->is_it              = $request->is_it;
-            $ticket->budget_type        = $request->budget_type;
-            $ticket->division           = $request->division;
-            $ticket->over_budget_reason    = $request->reason_over_budget;
-            $ticket->is_over_budget        = $request->is_over_budget;
 
-            if ($ticket->division == "Indirect") {
-                $ticket->indirect_salespoint_id        = $request->indirect_salespoint_id;
-            } else {
-                $ticket->indirect_salespoint_id        = null;
-            }
-            $ticket->reason             = $request->reason;
-            $ticket->save();
-            if ($ticket->code == null) {
-                $ticket->code = 'draft_' . date('ymdHi') . $ticket->id;
-            }
-            if ($request->ba_vendor_name != null && $request->ba_vendor_file != null) {
-                $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
-                $ext = pathinfo($request->ba_vendor_name, PATHINFO_EXTENSION);
-                $ticket->ba_vendor_filename = "berita_acara_vendor_" . $salespointname . '.' . $ext;
-                $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/' . $ticket->ba_vendor_filename;
+            $po->requirement_date       = $request->requirement_date;
+            $po->po_number              = '-';
+            $po->salespoint_id          = $request->salespoint;
+            $po->authorization_id       = $request->authorization;
+            $po->request_type           = $request->request_type;
+            $po->created_by             = Auth::user()->id;
+            $po->save();
 
-                if (!str_contains($request->ba_vendor_file, 'base64,')) {
-                    // url
-                    $file = Storage::disk('public')->get(explode('storage', $request->ba_vendor_file)[1]);
-                    Storage::disk('public')->put($path, $file);
-                } else {
-                    // base 64 data
-                    $file = explode('base64,', $request->ba_vendor_file)[1];
-                    Storage::disk('public')->put($path, base64_decode($file));
-                }
-                $ticket->ba_vendor_filepath = $path;
-            } else {
-                $ticket->ba_vendor_filename = null;
-                $ticket->ba_vendor_filepath = null;
+            if ($po->code == null) {
+                $po->code = 'draft_' . date('ymdHi') . $po->id;
             }
-            $ticket->save();
-            $salespoint = $ticket->salespoint;
+            $po->save();
 
             // remove old data
-            if ($ticket->ticket_item->count() > 0) {
+            if ($po->po_item->count() > 0) {
                 // get deleted new data
                 $registered_id = collect($request->item)->pluck('id')->filter(function ($item) {
                     if ($item != "undefined") {
@@ -305,177 +279,36 @@ class POController extends Controller
                     }
                 });
                 $deleted_item = [];
-                if ($ticket->ticket_item->count() > 0) {
-                    $deleted_item = $ticket->ticket_item->whereNotIn('id', $registered_id);
+                if ($po->po_item->count() > 0) {
+                    $deleted_item = $po->po_item->whereNotIn('id', $registered_id);
                 }
                 foreach ($deleted_item as $deleted) {
                     $deleted->delete();
                 }
             }
-            // get all registered file id on ticket
-            $registered_file_id = [];
-            foreach ($ticket->ticket_item as $t_item) {
-                if ($t_item->ticket_item_file_requirement->count() > 0) {
-                    foreach ($t_item->ticket_item_file_requirement as $t_item_file) {
-                        array_push($registered_file_id, $t_item_file->id);
-                    }
+            
+            foreach ($request->item as $key => $item) {
+                $newPoItem                    = new PoItem;
+                $newPoItem->po_id             = $po->id;
+                $newPoItem->name              = $item['name'];
+                $newPoItem->price             = $item['price'];
+                $newPoItem->qty               = $item['count'];
+                
+                
+                $product = Product::where('code', $item['code'])->get();
+                foreach ($product as $product) {
+                    $newPoItem->uom               = $product->uom;
+                    $newPoItem->dimension         = $product->dimension;
                 }
-            }
-            // get all files from request
-            $allfiles = [];
-            if (count($request->item ?? []) > 0) {
-                foreach ($request->item as $item) {
-                    if (isset($item['files'])) {
-                        foreach ($item['files'] as $file) {
-                            if ($file['id'] != "undefined") {
-                                array_push($allfiles, $file);
-                            }
-                        }
-                    }
-                }
-            }
-            $deleted_files = array_diff($registered_file_id, collect($allfiles)->pluck('id')->toArray());
-            foreach ($deleted_files as $del) {
-                $r = TicketItemFileRequirement::find($del);
-                // TODO delete the file from the storage
-                $r->delete();
-            }
-            // update registered files with new data if updated
-            foreach ($allfiles as $afiles) {
-                $tfile = TicketItemFileRequirement::find($afiles['id']);
-                $ext = pathinfo($afiles['name'], PATHINFO_EXTENSION);
-                $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
-                $name = $tfile->file_completement->filename . '_' . $salespointname . '.' . $ext;
-                $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $tfile->ticket_item->id . '/files/' . $name;
-                if (str_contains($afiles['file'], 'base64,')) {
-                    $file = explode('base64,', $afiles['file'])[1];
-                    $tfile->path = $path;
-                    $tfile->name = $name;
-                    $tfile->save();
-                    Storage::disk('public')->put($path, base64_decode($file));
-                }
+
+                $newPoItem->sub_tot           = $item['price'] * $item['count'];
+                $newPoItem->save();
             }
 
-            // add ticket item that not registered
-            $newitems = collect($request->item)->where('id', 'undefined');
-            if (isset($newitems)) {
-                foreach ($newitems as $key => $item) {
-                    $newTicketItem                        = new TicketItem;
-                    $newTicketItem->ticket_id             = $ticket->id;
-                    if ($item['budget_pricing_id'] != "undefined" && is_numeric($item['budget_pricing_id'])) {
-                        $newTicketItem->budget_pricing_id = $item['budget_pricing_id'];
-                    }
-                    if ($item['maintenance_budget_id'] != "undefined" && is_numeric($item['maintenance_budget_id'])) {
-                        $newTicketItem->maintenance_budget_id = $item['maintenance_budget_id'];
-                    }
-                    if ($item['ho_budget_id'] != "undefined" && is_numeric($item['ho_budget_id'])) {
-                        $newTicketItem->ho_budget_id = $item['ho_budget_id'];
-                    }
-                    $newTicketItem->name                  = $item['name'];
-                    $newTicketItem->brand                 = $item['brand'];
-                    $newTicketItem->type                  = $item['type'];
-                    $newTicketItem->price                 = $item['price'];
-                    $newTicketItem->count                 = $item['count'];
+            
 
-                    if (
-                        $request->is_over_budget == 1 && $item['price'] > $item['item_max_price'] ||
-                        $ticket->is_over_budget == 1 && $item['price'] > $item['item_max_price']
-                    ) {
-                        $newTicketItem->nilai_budget_over_budget = $item['item_max_price'];
-                        $newTicketItem->nilai_ajuan_over_budget  = $item['price'];
-                        $selisih_over_budget_item = $item['item_max_price'] - $item['price'];
-                        $selisih_over_budget_item_remove_minus = str_replace('-', '', $selisih_over_budget_item);
-                        $newTicketItem->selisih_over_budget      = $selisih_over_budget_item_remove_minus;
-                    } else {
-                        $newTicketItem->nilai_budget_over_budget = null;
-                        $newTicketItem->nilai_ajuan_over_budget  = null;
-                        $newTicketItem->selisih_over_budget      = null;
-                    }
-
-                    $newTicketItem->save();
-                    if (isset($item["attachments"])) {
-                        foreach ($item["attachments"] as $attachment) {
-                            $newAttachment = new TicketItemAttachment;
-                            $newAttachment->ticket_item_id = $newTicketItem->id;
-                            $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
-                            $filename = pathinfo($attachment['filename'], PATHINFO_FILENAME);
-                            $ext = pathinfo($attachment['filename'], PATHINFO_EXTENSION);
-                            $newAttachment->name = $filename . '_' . $salespointname . '.' . $ext;
-                            $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $newTicketItem->id . '/' . $newAttachment->name;
-                            if (!str_contains($attachment['file'], 'base64,')) {
-                                $file = Storage::disk('public')->get(explode('storage', $attachment['file'])[1]);
-                                Storage::disk('public')->put($path, $file);
-                            } else {
-                                // base 64 data
-                                $file = explode('base64,', $attachment['file'])[1];
-                                Storage::disk('public')->put($path, base64_decode($file));
-                            }
-                            $newAttachment->path = $path;
-                            $newAttachment->save();
-                        }
-                    }
-                    if (isset($item['files'])) {
-                        foreach ($item["files"] as $filereq) {
-                            $ext = pathinfo($filereq['name'], PATHINFO_EXTENSION);
-                            $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
-                            $filecompletement = FileCompletement::find($filereq['file_completement_id']);
-                            $name = $filecompletement->filename . '_' . $salespointname . '.' . $ext;
-
-                            $newfile                        = new TicketItemFileRequirement;
-                            $newfile->ticket_item_id        = $newTicketItem->id;
-                            $newfile->file_completement_id  = $filereq['file_completement_id'];
-                            $newfile->name                  = $name;
-                            $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $newTicketItem->id . '/files/' . $name;
-                            if (!str_contains($filereq['file'], 'base64,')) {
-                                $file = Storage::disk('public')->get(explode('storage', $filereq['file'])[1]);
-                                Storage::disk('public')->put($path, $file);
-                            } else {
-                                // base 64 data
-                                $file = explode('base64,', $filereq['file'])[1];
-                                Storage::disk('public')->put($path, base64_decode($file));
-                            }
-                            $newfile->path                  = $path;
-                            $newfile->save();
-                        }
-                    }
-                }
-            }
-
-            $registereditem = collect($request->item)->filter(function ($oitem) {
-                if ($oitem['id'] != "undefined") {
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-            foreach ($registereditem as $reg) {
-                if (isset($reg['files'])) {
-                    foreach ($reg['files'] as $regfile) {
-                        if ($regfile['id'] == "undefined") {
-                            $filecompletement = FileCompletement::find($regfile['file_completement_id']);
-                            $ext = pathinfo($regfile['name'], PATHINFO_EXTENSION);
-                            $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
-                            $name = $filecompletement->filename . '_' . $salespointname . '.' . $ext;
-
-                            $newfile                        = new TicketItemFileRequirement;
-                            $newfile->ticket_item_id        = $reg['id'];
-                            $newfile->file_completement_id  = $regfile['file_completement_id'];
-                            $newfile->name                  = $name;
-                            $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $reg['id'] . '/files/' . $name;
-                            if (str_contains($regfile['file'], 'base64,')) {
-                                // base 64 data
-                                $newfile->path = $path;
-                                $newfile->save();
-                                $file = explode('base64,', $regfile['file'])[1];
-                                Storage::disk('public')->put($path, base64_decode($file));
-                            }
-                        }
-                    }
-                }
-            }
-            // ticket vendor
-            if ($ticket->ticket_vendor->count() > 0) {
-                $registered_id = collect($request->vendor)->pluck('id')->filter(function ($item) {
+            if ($po->po_vendor->count() > 0) {
+                $registered_id = collect($request->customer)->pluck('id')->filter(function ($item) {
                     if ($item != "undefined") {
                         return true;
                     } else {
@@ -483,8 +316,8 @@ class POController extends Controller
                     }
                 });
                 $deleted_item = [];
-                if ($ticket->ticket_vendor->count() > 0) {
-                    $deleted_item = $ticket->ticket_vendor->whereNotIn('id', $registered_id);
+                if ($po->po_vendor->count() > 0) {
+                    $deleted_item = $po->po_vendor->whereNotIn('id', $registered_id);
                 }
                 foreach ($deleted_item as $deleted) {
                     $deleted->deleted_by = Auth::user()->id;
@@ -493,205 +326,59 @@ class POController extends Controller
                 }
             }
 
-            // add ticket vendor that not registered yet
-            $newitems = collect($request->vendor)->where('id', 'undefined');
-            if (isset($newitems)) {
-                foreach ($newitems as $list) {
-                    $vendor = Vendor::find($list['vendor_id']);
-                    $newTicketVendor = new TicketVendor;
-                    $newTicketVendor->ticket_id         = $ticket->id;
-                    if ($vendor) {
-                        $newTicketVendor->vendor_id     = $vendor->id;
-                        $newTicketVendor->name          = $vendor->name;
-                        $newTicketVendor->salesperson   = $vendor->salesperson;
-                        // hide phone on order (personal for purhasing team)
-                        $newTicketVendor->phone         = '';
-                        $newTicketVendor->type          = 0;
-                    } else {
-                        $newTicketVendor->vendor_id     = null;
-                        $newTicketVendor->name          = $list['name'];
-                        $newTicketVendor->salesperson   = $list['sales'];
-                        $newTicketVendor->phone         = $list['phone'];
-                        $newTicketVendor->type          = 1;
-                    }
-                    $newTicketVendor->save();
+            foreach ($request->customer as $customer) {
+                $customer_master = Customer::where('code', $customer['customer_code'])->get();
+
+                
+                $newPoVendor = new PoVendor;
+                $newPoVendor->po_id                 = $po->id;
+                
+                $newPoVendor->customer_id       = $customer['customer_id'];
+                $newPoVendor->name              = $customer['customer_name'];
+                $newPoVendor->manager_name      = $customer['customer_nameManager'];
+                $newPoVendor->email             = $customer['customer_emailManager'];
+                $newPoVendor->phone             = $customer['customer_phoneManager'];
+            
+                foreach ($customer_master as $customer_master) {
+                    $newPoVendor->type          = $customer_master->type;
                 }
+                $newPoVendor->save();
             }
 
+            
             // ticket authorization
-            if (isset($ticket->ticket_authorization)) {
-                if ($ticket->ticket_authorization->count() > 0) {
-                    foreach ($ticket->ticket_authorization as $auth) {
+            if (isset($po->po_authorization)) {
+                if ($po->po_authorization->count() > 0) {
+                    foreach ($po->po_authorization as $auth) {
                         $auth->delete();
                     }
                 }
             }
-
-            $authorization_over_budget_area = Authorization::where('form_type', 14)->first();
-            $authorization_over_budget_ho = Authorization::where('form_type', 15)->first();
-
+            
             $authorizations = Authorization::find($request->authorization);
-
+            
             if (isset($authorizations)) {
                 foreach ($authorizations->authorization_detail as $detail) {
-                    $newTicketAuthorization                     = new TicketAuthorization;
-                    $newTicketAuthorization->ticket_id          = $ticket->id;
-                    $newTicketAuthorization->employee_id        = $detail->employee_id;
-                    $newTicketAuthorization->employee_name      = $detail->employee->name;
-                    $newTicketAuthorization->as                 = $detail->sign_as;
-                    $newTicketAuthorization->employee_position  = $detail->employee_position->name;
-                    $newTicketAuthorization->level              = $detail->level;
-                    $newTicketAuthorization->save();
-                }
-
-                if ($request->is_over_budget == 1 || $ticket->is_over_budget == 1) {
-                    if ($request->salespoint != 251 || $request->salespoint != 252) {
-                        foreach ($authorization_over_budget_area->authorization_detail as $detail) {
-                            $newTicketAuthorization                     = new TicketAuthorization;
-                            $newTicketAuthorization->ticket_id          = $ticket->id;
-                            $newTicketAuthorization->employee_id        = $detail->employee_id;
-                            $newTicketAuthorization->employee_name      = $detail->employee->name;
-                            $newTicketAuthorization->as                 = $detail->sign_as;
-                            $newTicketAuthorization->employee_position  = $detail->employee_position->name;
-                            $newTicketAuthorization->level              = $detail->level;
-                            $newTicketAuthorization->save();
-                        }
-                    } else {
-                        foreach ($authorization_over_budget_ho->authorization_detail as $detail) {
-                            $newTicketAuthorization                     = new TicketAuthorization;
-                            $newTicketAuthorization->ticket_id          = $ticket->id;
-                            $newTicketAuthorization->employee_id        = $detail->employee_id;
-                            $newTicketAuthorization->employee_name      = $detail->employee->name;
-                            $newTicketAuthorization->as                 = $detail->sign_as;
-                            $newTicketAuthorization->employee_position  = $detail->employee_position->name;
-                            $newTicketAuthorization->level              = $detail->level;
-                            $newTicketAuthorization->save();
-                        }
-                    }
+                    $newPoAuthorization                     = new PoAuthorization;
+                    $newPoAuthorization->po_id              = $po->id;
+                    $newPoAuthorization->employee_id        = $detail->employee_id;
+                    $newPoAuthorization->employee_name      = $detail->employee->name;
+                    $newPoAuthorization->as                 = $detail->sign_as;
+                    $newPoAuthorization->employee_position  = $detail->employee_position->name;
+                    $newPoAuthorization->level              = $detail->level;
+                    $newPoAuthorization->save();
                 }
             }
-
-            // optional attachment
-            if ($ticket->ticket_additional_attachment->count() > 0) {
-                foreach ($ticket->ticket_additional_attachment as $attach) {
-                    $attach->delete();
-                }
-            }
-            if (isset($request->opt_attach)) {
-                foreach ($request->opt_attach as $attach) {
-                    $path = '/attachments/ticketing/barangjasa/' . $ticket->code . '/optional_attachment/' . $attach['name'];
-                    if (!str_contains($attach['file'], 'base64,')) {
-                        // url
-                        $replaced = str_replace('%20', ' ', explode('storage', $attach['file'])[1]);;
-                        $file = Storage::disk('public')->get($replaced);
-                        Storage::disk('public')->put($path, $file);
-                    } else {
-                        // base 64 data
-                        $file = explode('base64,', $attach['file'])[1];
-                        Storage::disk('public')->put($path, base64_decode($file));
-                    }
-                    $newAttachment = new TicketAdditionalAttachment;
-                    $newAttachment->ticket_id = $ticket->id;
-                    $newAttachment->name = $attach['name'];
-                    $newAttachment->path = $path;
-                    $newAttachment->save();
-                }
-            }
-
             // if IT create FRI Form
-            $ticket->refresh();
-            if ($ticket->is_it) {
-                if ($ticket->fri_forms->count() > 0) {
-                    $fri_form = $ticket->fri_forms->first();
-                } else {
-                    $fri_form             = new FRIForm;
-                    $fri_form->ticket_id  = $ticket->id;
-                }
-                $fri_form->date_request         = $ticket->created_at->format('Y-m-d');
-                $fri_form->date_use             = $ticket->requirement_date;
-                $fri_form->work_location        = $request->work_location;
-                $fri_form->salespoint_id        = $ticket->salespoint_id;
-                $fri_form->salespoint_name      = $ticket->salespoint->name;
-
-                $username_position = null;
-                $user_email_address = null;
-                if (isset($ticket->ticket_authorization) && $ticket->ticket_authorization->count() > 0) {
-                    $first_author = $ticket->ticket_authorization->sortBy('level')->first();
-                    $username_position = $first_author->employee_name . " | " . $first_author->employee_position;
-                    $user_email_address = $first_author->employee->email;
-                }
-                $fri_form->username_position    = $username_position;
-
-                $fri_form->division_department  = $request->division_department;
-                $fri_form->contact_number       = $request->contact_number;
-                $fri_form->email_address        = $user_email_address;
-
-                $fri_form->hardware_details     = json_encode(array_values($request->hardware_details));
-
-                $application_details = json_encode(array_values(array_filter(array_unique($request->application_details))));
-                $fri_form->application_details  = $application_details;
-
-                $fri_form->created_by           = Auth::user()->id;
-                $fri_form->save();
-
-                // fri authorization
-                if (isset($fri_form->authorizations)) {
-                    if ($fri_form->authorizations->count() > 0) {
-                        foreach ($fri_form->authorizations as $auth) {
-                            $auth->delete();
-                        }
-                    }
-                }
-
-                // Otorisasi FRI ambil 2 author pertatma dari ticketing + otorisasi TIM IT
-                $level = 1;
-                if (isset($ticket->ticket_authorization)) {
-                    foreach ($ticket->ticket_authorization->sortBy('level')->take(2) as $ticket_authorization) {
-                        $newFRIAuthorization                     = new FRIFormAuthorization;
-                        $newFRIAuthorization->fri_form_id        = $fri_form->id;
-                        $newFRIAuthorization->employee_id        = $ticket_authorization->employee_id;
-                        $newFRIAuthorization->employee_name      = $ticket_authorization->employee_name;
-                        $newFRIAuthorization->as                 = $ticket_authorization->as;
-                        $newFRIAuthorization->employee_position  = $ticket_authorization->employee_position;
-                        $newFRIAuthorization->level              = $level;
-                        $newFRIAuthorization->save();
-                        $level++;
-                    }
-                }
-                $fri_authorization = Authorization::find($request->fri_authorization);
-                if (isset($fri_authorization)) {
-                    foreach ($fri_authorization->authorization_detail->sortBy('level') as $detail) {
-                        $newFRIAuthorization                     = new FRIFormAuthorization;
-                        $newFRIAuthorization->fri_form_id        = $fri_form->id;
-                        $newFRIAuthorization->employee_id        = $detail->employee_id;
-                        $newFRIAuthorization->employee_name      = $detail->employee->name;
-                        $newFRIAuthorization->as                 = $detail->sign_as;
-                        $newFRIAuthorization->employee_position  = $detail->employee_position->name;
-                        $newFRIAuthorization->level              = $level;
-                        $newFRIAuthorization->save();
-                        $level++;
-                    }
-                }
-            } else {
-                if ($ticket->fri_forms->count() > 0) {
-                    if (isset($ticket->fri_forms->first()->authorizations)) {
-                        if ($ticket->fri_forms->first()->authorizations->count() > 0) {
-                            foreach ($fri_form->authorizations as $auth) {
-                                $auth->delete();
-                            }
-                        }
-                    }
-                    $ticket->fri_forms->first()->forceDelete();
-                }
-            }
+            $po->refresh();
             DB::commit();
             if ($request->type == 1) {
                 // start authorization
-                $ticket = Ticket::find($ticket->id);
-                return $this->startAuthorization($ticket);
+                $po = Po::find($po->id);
+                return $this->startAuthorization($po);
             } else {
                 if ($isnew) {
-                    return redirect('/ticketing/' . $ticket->code)->with('success', 'Berhasil menambah form pengadaan kedalam draft. Silahkan melakukan review kembali');
+                    return redirect('/po/' . $po->code)->with('success', 'Berhasil menambah form pengadaan kedalam draft. Silahkan melakukan review kembali');
                 } else {
                     return back()->with('success', 'Berhasil update form pengadaan');
                 }

@@ -10,7 +10,7 @@ var temp_olditem_extension = null;
 
 $(document).ready(function () {
     // set minimal tanggal pengadaan 14 setelah tanggal pengajuan
-    tableVendorRefreshed();
+    tableCustomerRefreshed();
     $('.requirement_date').val(moment().add(14, 'days').format('YYYY-MM-DD'));
     $('.requirement_date').prop('min', moment().add(14, 'days').format('YYYY-MM-DD'));
     $('.requirement_date').trigger('change');
@@ -112,6 +112,7 @@ function addItem(el) {
     let id = select_item.find('option:selected').val();
     let name = select_item.find('option:selected').text().trim();
     let price = select_item.find('option:selected').data('hargasewa');
+    let code = select_item.find('option:selected').data('code');
 
     // let price_text = price_item.domElement.value;
     let count = count_item.val();
@@ -126,7 +127,7 @@ function addItem(el) {
     }
 
     // tbody eq(0) supaya ga nyasar ke table other attachment
-    table_item.find('tbody:eq(0)').append('<tr class="item_list" data-id="' + id + '" data-name="' + name + '" data-price="' + price + '" data-count="' + count + '"><td>' + name + '</td><td>' + count + '</td><td>' + setRupiah(price) + '</td><td>' + setRupiah(count * price) + '</td><td><i class="fa fa-trash text-danger remove_list mr-3" onclick="removeList(this)" aria-hidden="true"></i></td></tr>');
+    table_item.find('tbody:eq(0)').append('<tr class="item_list" data-id="' + id + '" data-code="' + code + '" data-name="' + name + '" data-price="' + price + '" data-count="' + count + '"><td>' + name + '</td><td>' + count + '</td><td>' + setRupiah(price) + '</td><td>' + setRupiah(count * price) + '</td><td><i class="fa fa-trash text-danger remove_list mr-3" onclick="removeList(this)" aria-hidden="true"></i></td></tr>');
 
     select_item.val("");
     select_item.trigger('change');
@@ -163,6 +164,25 @@ function tableRefreshed() {
     }
 }
 
+function tableCustomerRefreshed(current_element) {
+    let table_vendor = $('.table_vendor');
+
+    let row_count = 0;
+    table_vendor.find('tbody tr').not('.empty_row').each(function () {
+        row_count++;
+    });
+    if (row_count > 0) {
+        table_vendor.find('.empty_row').remove();
+    } else {
+        table_vendor.find('tbody').append('<tr class="empty_row text-center"><td colspan="6">Vendor belum dipilih</td></tr>');
+    }
+    if ($('.vendor_item_list').length < 2) {
+        $('.vendor_ba_field').show();
+    } else {
+        $('.vendor_ba_field').hide();
+    }
+}
+
 // add vendor
 function addCustomer(el) {
     let select_customer = $('.select_customer');
@@ -192,129 +212,22 @@ function addCustomer(el) {
     });
 
 
-    table_customer.find('tbody').append('<tr class="customer_list" data-customer_id="' + id + '"><td>' + code + '</td><td>' + name + '</td><td>' + nameManager + '</td><td>' + emailManager + '</td><td>' + phoneManager + '</td><td>' + type + '</td><td>Terdaftar</td><td><i class="fa fa-trash text-danger" onclick="removeVendor(this)" aria-hidden="true"></i></td></tr>');
+    table_customer.find('tbody').append('<tr class="customer_list" data-customer_id="' + id + '" data-customer_code="' + code + '" data-customer_name="' + name + '" data-customer_namemanager="' + nameManager + '" data-customer_emailmanager="' + emailManager + '" data-customer_phonemanager="' + phoneManager + '"><td>' + code + '</td><td>' + name + '</td><td>' + nameManager + '</td><td>' + emailManager + '</td><td>' + phoneManager + '</td><td>' + type + '</td><td><i class="fa fa-trash text-danger" onclick="removeCustomer(this)" aria-hidden="true"></i></td></tr>');
     select_customer.val('');
     select_customer.trigger('change');
-    tableVendorRefreshed(select_customer);
-}
-
-function addOTVendor(el) {
-    let vendor_name = $('.ot_vendor_name');
-    let vendor_sales = $('.ot_vendor_sales');
-    let vendor_phone = $('.ot_vendor_phone');
-    let table_vendor = $('.table_vendor');
-    if (vendor_name.val() == "") {
-        alert('Nama Vendor tidak boleh kosong');
-        return;
-    }
-    if (vendor_sales.val() == "") {
-        alert('Sales Vendor tidak boleh kosong');
-        return;
-    }
-    if (vendor_phone.val() == "") {
-        alert('Telfon Vendor tidak boleh kosong');
-        return;
-    }
-    if ($('.vendor_item_list').length > 1) {
-        alert('Maksimal 2 vendor');
-        return;
-    }
-    table_vendor.find('tbody').append('<tr class="vendor_item_list" data-name="' + vendor_name.val() + '" data-sales="' + vendor_sales.val() + '" data-phone="' + vendor_phone.val() + '"><td>-</td><td>' + vendor_name.val() + '</td><td>' + vendor_sales.val() + '</td><td>' + vendor_phone.val() + '</td><td>One Time</td><td><i class="fa fa-trash text-danger" onclick="removeVendor(this)" aria-hidden="true"></i></td></tr>'
-    );
-    vendor_name.val('');
-    vendor_sales.val('');
-    vendor_phone.val('');
-    tableVendorRefreshed(vendor_name);
+    tableCustomerRefreshed(select_customer);
 }
 
 // remove vendor
-function removeVendor(el) {
+function removeCustomer(el) {
     let tr = $(el).closest('tr');
     tr.remove();
-    tableVendorRefreshed();
-}
-
-// table on refresh
-function tableVendorRefreshed(current_element) {
-    let table_vendor = $('.table_vendor');
-
-    let row_count = 0;
-    table_vendor.find('tbody tr').not('.empty_row').each(function () {
-        row_count++;
-    });
-    if (row_count > 0) {
-        table_vendor.find('.empty_row').remove();
-    } else {
-        table_vendor.find('tbody').append('<tr class="empty_row text-center"><td colspan="7">Vendor belum dipilih</td></tr>');
-    }
-    if ($('.vendor_item_list').length < 2) {
-        $('.vendor_ba_field').show();
-    } else {
-        $('.vendor_ba_field').hide();
-    }
-}
-
-function overBudget() {
-    $('#overBudgetModal').modal('show');
-
-    hideMatriksApprovalOverBudget();
-}
-
-function notifOverBudget() {
-    $('#notifOverBudgetModal').modal('show');
-}
-
-function overBudgetPopUp() {
-    $('#modalOverBudgetCountainer').children().not(':first').remove();
-
-    let is_over_budget = 0;
-
-    $('.item_list').each(function () {
-        let total = $(this).data("price");
-        let over_budget = $(this).data("max");
-        let selisih = over_budget - total;
-        let nama_barang = $(this).data("name");
-
-        if (total > over_budget) {
-            let html = $('#template_over_budget').clone();
-            $('#modalOverBudgetCountainer').append(html.show());
-            html.find('.nama_barang').val(nama_barang)
-            html.find('.nilai_ajuan').val((Number.isInteger(total)) ? setRupiah(total) : '-')
-            html.find('.selisih').val((Number.isInteger(selisih)) ? setRupiah(selisih) : '-')
-            html.find('.nilai_budget').val(Number.isInteger(over_budget) ? setRupiah(over_budget) : '-')
-
-            is_over_budget++;
-
-            notifOverBudget();
-        }
-    });
-
-    console.log(is_over_budget);
-
-    return is_over_budget;
-}
-
-function hideMatriksApprovalOverBudget() {
-    let salespoint_over_budget = $('.salespoint_select2').val();
-
-    if (salespoint_over_budget != 251 || salespoint_over_budget != 252) {
-        $('#approval_over_budget_area').show();
-    } else {
-        $('#approval_over_budget_area').hide();
-    }
+    tableCustomerRefreshed();
 }
 
 function addRequest(type) {
-    let hasil = overBudgetPopUp();
-
-    if (type == 3) {
-        type = 1;
-    } else if (hasil > 0) {
-        return false;
-    }
-
     let item_list = $('.item_list');
-    let vendor_item_list = $('.vendor_item_list');
+    let customer_list = $('.customer_list');
 
     let input_field = $('#input_field');
     input_field.empty();
@@ -325,77 +238,26 @@ function addRequest(type) {
     input_field.append('<input type="hidden" name="requirement_date" value="' + $('.requirement_date').val() + '">');
     input_field.append('<input type="hidden" name="salespoint" value="' + $('.salespoint_select2').val() + '">');
     input_field.append('<input type="hidden" name="authorization" value="' + $('.authorization_select2').val() + '">');
-    input_field.append('<input type="hidden" name="item_type" value="' + $('.item_type').val() + '">');
     input_field.append('<input type="hidden" name="request_type" value="' + $('.request_type').val() + '">');
-    input_field.append('<input type="hidden" name="is_it" value="' + $('.is_it').val() + '">');
-    input_field.append('<input type="hidden" name="budget_type" value="' + $('.budget_type').val() + '">');
-    input_field.append('<input type="hidden" name="division" value="' + $('.division_select').val() + '">');
-    input_field.append('<input type="hidden" name="indirect_salespoint_id" value="' + $('.indirect_salespoint').val() + '">');
-    input_field.append('<input type="hidden" name="reason" value="' + $('.reason').val() + '">');
-    input_field.append('<input type="hidden" name="is_over_budget" value="' + hasil + '">');
-    input_field.append('<input type="hidden" name="is_over_budget_hidden" value="' + $('.is_over_budget_hidden').val() + '">');
 
-    let reason_over_budget = $('.reason_over_budget').val();
-    input_field.append('<input type="hidden" name="reason_over_budget" value="' + reason_over_budget + '">');
 
     item_list.each(function (index, el) {
         input_field.append('<input type="hidden" name="item[' + index + '][id]" value="' + $(el).data('id') + '">');
-        input_field.append('<input type="hidden" name="item[' + index + '][budget_pricing_id]" value="' + $(el).data('budget_pricing_id') + '">');
-        input_field.append('<input type="hidden" name="item[' + index + '][maintenance_budget_id]" value="' + $(el).data('maintenance_budget_id') + '">');
-        input_field.append('<input type="hidden" name="item[' + index + '][ho_budget_id]" value="' + $(el).data('ho_budget_id') + '">');
+        input_field.append('<input type="hidden" name="item[' + index + '][code]" value="' + $(el).data('code') + '">');
         input_field.append('<input type="hidden" name="item[' + index + '][name]" value="' + $(el).data('name') + '">');
         input_field.append('<input type="hidden" name="item[' + index + '][price]" value="' + $(el).data('price') + '">');
         input_field.append('<input type="hidden" name="item[' + index + '][count]" value="' + $(el).data('count') + '">');
-        input_field.append('<input type="hidden" name="item[' + index + '][brand]" value="' + $(el).data('brand') + '">');
-        input_field.append('<input type="hidden" name="item[' + index + '][type]" value="' + $(el).data('type') + '">');
-
-        input_field.append('<input type="hidden" name="item[' + index + '][item_max_price]" value="' + $(el).data('max') + '">');
-
-        $(el).find('.attachment').each(function (att_index, att_el) {
-            let filename = $(att_el).prop('download');
-            let file = $(att_el).prop('href');
-            input_field.append('<input type="hidden" name="item[' + index + '][attachments][' + att_index + '][filename]" value="' + filename + '">');
-            // base 64 data
-            input_field.append('<input type="hidden" name="item[' + index + '][attachments][' + att_index + '][file]" value="' + file + '">');
-        });
-        if ($(el).data('files')) {
-            $(el).data('files').forEach((file, index_file) => {
-                input_field.append('<input type="hidden" name="item[' + index + '][files][' + index_file + '][id]" value="' + file.id + '">');
-                input_field.append('<input type="hidden" name="item[' + index + '][files][' + index_file + '][file_completement_id]" value="' + file.file_completement_id + '">');
-                input_field.append('<input type="hidden" name="item[' + index + '][files][' + index_file + '][name]" value="' + file.name + '">');
-                input_field.append('<input type="hidden" name="item[' + index + '][files][' + index_file + '][file]" value="' + file.file + '">');
-            });
-        }
     });
 
-    vendor_item_list.each(function (index, el) {
-        input_field.append('<input type="hidden" name="vendor[' + index + '][id]" value="' + $(el).data('id') + '">');
-        input_field.append('<input type="hidden" name="vendor[' + index + '][vendor_id]" value="' + $(el).data('vendor_id') + '">');
-        input_field.append('<input type="hidden" name="vendor[' + index + '][name]" value="' + $(el).data('name') + '">');
-        input_field.append('<input type="hidden" name="vendor[' + index + '][sales]" value="' + $(el).data('sales') + '">');
-        input_field.append('<input type="hidden" name="vendor[' + index + '][phone]" value="' + $(el).data('phone') + '">');
+    customer_list.each(function (index, el) {
+        input_field.append('<input type="hidden" name="customer[' + index + '][customer_id]" value="' + $(el).data('customer_id') + '">');
+        input_field.append('<input type="hidden" name="customer[' + index + '][customer_code]" value="' + $(el).data('customer_code') + '">');
+        input_field.append('<input type="hidden" name="customer[' + index + '][customer_name]" value="' + $(el).data('customer_name') + '">');
+        input_field.append('<input type="hidden" name="customer[' + index + '][customer_nameManager]" value="' + $(el).data('customer_namemanager') + '">');
+        input_field.append('<input type="hidden" name="customer[' + index + '][customer_emailManager]" value="' + $(el).data('customer_emailmanager') + '">');
+        input_field.append('<input type="hidden" name="customer[' + index + '][customer_phoneManager]" value="' + $(el).data('customer_phonemanager') + '">');
     });
 
-    if (vendor_item_list.length < 2) {
-        let filename = $('#vendor_ba_preview').prop('download');
-        let file = $('#vendor_ba_preview').prop('href');
-        if (filename != "null") {
-            input_field.append('<input type="hidden" name="ba_vendor_name" value="' + filename + '">');
-            input_field.append('<input type="hidden" name="ba_vendor_file" value="' + file + '">');
-        }
-    }
-
-    $('.opt_attachment').each(function (index, el) {
-        let file = $(el).prop('href');
-        let filename = $(el).prop('download');
-        input_field.append('<input type="hidden" name="opt_attach[' + index + '][file]" value="' + file + '">');
-        input_field.append('<input type="hidden" name="opt_attach[' + index + '][name]" value="' + filename + '">');
-    });
-
-    // FRI FORM
-    if ($('.is_it').val() == true) {
-        input_field.append($('#fri_form_create input').clone());
-    }
     $('#addform').submit();
 }
 

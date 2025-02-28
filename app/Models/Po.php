@@ -20,9 +20,14 @@ class Po extends Model
         return $this->hasMany(PoItem::class);  
     }
 
+    public function po_vendor()
+    {
+        return $this->hasMany(PoVendor::class);  
+    }
+
     public function po_authorization()
     {
-        return $this->hasMany(POAuthorization::class);
+        return $this->hasMany(PoAuthorization::class);
     }
 
     public function cancel_authorization()

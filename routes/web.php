@@ -326,6 +326,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/addnewpo', [POController::class, 'addNewPO']);
         Route::get('/po/{code}', [POController::class, 'poDetailView']);
         Route::get('/getsalespointauthorization', [SalesPointController::class, 'getSalesAuthorization']);
+        Route::post('/addpo', [POController::class, 'addPo']);
     });
 
     // OPERATIONAL
