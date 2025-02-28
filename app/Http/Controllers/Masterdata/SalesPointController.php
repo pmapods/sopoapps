@@ -31,8 +31,8 @@ class SalesPointController extends Controller
                 $west_region = [0,1,2,3,4,5,6,7,8,9,17];
                 $east_region = [10,11,12,13,14,15,16,18];
                 $region_type = (in_array($request->region,$west_region) == true) ? 'west' : 'east';
-                $newSalesPoint->region              = $request->region;
-                $newSalesPoint->region_type         = $region_type;
+                $newSalesPoint->region         = $request->region;
+                $newSalesPoint->region_type    = $region_type;
                 $newSalesPoint->status         = $request->status;
                 $newSalesPoint->trade_type     = $request->trade_type;
                 $newSalesPoint->isJawaSumatra  = $request->isJawaSumatra;
@@ -91,12 +91,22 @@ class SalesPointController extends Controller
         }
     }
 
-    public function getSalesAuthorization($salespoint_id) {
-        $salespoint = SalesPoint::find($salespoint_id);
+    public function getSalesAuthorization(Request $request) {
+        if ($request->request_type == 1) {
+            $request_type = 0;
+        }
+        if ($request->request_type == 2) {
+            $request_type = 1;
+        }
+        if ($request->request_type == 3) {
+            $request_type = 2;
+        }
+
+        $salespoint = SalesPoint::find($request->salespoint);
         $authorizations = Authorization::whereIn('salespoint_id',$salespoint->salespoint_id_list())
-        ->where('form_type',0)
+        ->where('form_type', $request_type)
         ->get();
-        // dd($authorizations);
+        
         $data = array();
         foreach($authorizations as $authorization){
             $single_data = (object)[];
@@ -114,6 +124,7 @@ class SalesPointController extends Controller
             }
             array_push($data,$single_data);
         }
+        // dd($data);
         return response()->json([
             'data' => $data
         ]);

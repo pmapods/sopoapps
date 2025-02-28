@@ -34,24 +34,24 @@ use App\Http\Controllers\Masterdata\MailingController;
 use App\Http\Controllers\Masterdata\ProductController;
 use App\Http\Controllers\Masterdata\MaterialController;
 
-// Budget
-use App\Http\Controllers\Budget\BudgetUploadController;
-use App\Http\Controllers\Budget\ArmadaBudgetUploadController;
-use App\Http\Controllers\Budget\AssumptionBudgetUploadController;
-use App\Http\Controllers\Budget\HOBudgetUploadController;
+// Sales
+use App\Http\Controllers\Operational\POController;
+// use App\Http\Controllers\Budget\ArmadaBudgetUploadController;
+// use App\Http\Controllers\Budget\AssumptionBudgetUploadController;
+// use App\Http\Controllers\Budget\HOBudgetUploadController;
 
 // Operational
-use App\Http\Controllers\Operational\RenewalArmadaController;
-use App\Http\Controllers\Operational\TicketingController;
-use App\Http\Controllers\Operational\TicketingBlockController;
-use App\Http\Controllers\Operational\ArmadaTicketingController;
-use App\Http\Controllers\Operational\SecurityTicketingController;
-use App\Http\Controllers\Operational\AdditionalTicketingController;
-use App\Http\Controllers\Operational\BiddingController;
-use App\Http\Controllers\Operational\PRController;
-use App\Http\Controllers\Operational\FormValidationController;
-use App\Http\Controllers\Operational\POController;
-use App\Http\Controllers\Operational\VendorEvaluationController;
+// use App\Http\Controllers\Operational\RenewalArmadaController;
+// use App\Http\Controllers\Operational\TicketingController;
+// use App\Http\Controllers\Operational\TicketingBlockController;
+// use App\Http\Controllers\Operational\ArmadaTicketingController;
+// use App\Http\Controllers\Operational\SecurityTicketingController;
+// use App\Http\Controllers\Operational\AdditionalTicketingController;
+// use App\Http\Controllers\Operational\BiddingController;
+// use App\Http\Controllers\Operational\PRController;
+// use App\Http\Controllers\Operational\FormValidationController;
+// use App\Http\Controllers\Operational\POController;
+// use App\Http\Controllers\Operational\VendorEvaluationController;
 
 // Monitoring
 use App\Http\Controllers\Monitoring\MonitoringController;
@@ -318,86 +318,14 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/deletematerial', [MaterialController::class, 'deleteMaterial']);
     });
 
-    // BUDGET UPLOAD
-    Route::get('/getSalespointBudget', [BudgetUploadController::class, 'getSalespointBudget']);
-    Route::get('/budget/itemtracking', [BudgetUploadController::class, 'itemTracking']);
-    Route::get('/getBudgetAuthorizationbySalespoint/{salespoint_id}', [BudgetUploadController::class, 'getBudgetAuthorizationbySalespoint']);
-    // inventory budget upload
-    Route::middleware(['menu_access:budget:1'])->group(function () {
-        Route::get('/inventorybudget', [BudgetUploadController::class, 'inventoryBudgetView']);
-        Route::middleware(['menu_access:budget:16'])->group(function () {
-            Route::get('/inventorybudget/monitoring', [BudgetUploadController::class, 'monitoringBudget']);
-            Route::get('/inventorybudget/monitoring/export', [BudgetUploadController::class, 'monitoringBudgetExport']);
-        });
-        Route::get('/inventorybudget/create', [BudgetUploadController::class, 'addInventoryBudgetView']);
-        Route::get('/inventorybudget/create/template', [BudgetUploadController::class, 'getBudgetTemplate']);
-        Route::post('/inventorybudget/create/readtemplate', [BudgetUploadController::class, 'readTemplate']);
-
-        Route::get('/inventorybudget/{budget_upload_code}', [BudgetUploadController::class, 'inventoryBudgetDetailView']);
-        Route::post('/inventorybudget/approvebudgetauthorization', [BudgetUploadController::class, 'approveBudgetAuthorization']);
-        Route::post('/inventorybudget/rejectbudgetauthorization', [BudgetUploadController::class, 'rejectBudgetAuthorization']);
-        Route::post('/inventorybudget/reviseBudget', [BudgetUploadController::class, 'reviseBudget']);
-        Route::post('/inventorybudget/terminateBudget', [BudgetUploadController::class, 'terminateBudget']);
-        Route::post('/createBudgetRequest/inventory', [BudgetUploadController::class, 'createBudgetRequest']);
-        Route::get('/inventorybudget/nonActiveBudget/{budget_upload_code}', [BudgetUploadController::class, 'nonActiveBudget']);
-    });
-
-    Route::middleware(['menu_access:budget:2'])->group(function () {
-        // armada budget upload
-        Route::get('/armadabudget', [ArmadaBudgetUploadController::class, 'armadaBudgetView']);
-        Route::middleware(['menu_access:budget:16'])->group(function () {
-            Route::get('/armadabudget/monitoring', [ArmadaBudgetUploadController::class, 'monitoringBudget']);
-            Route::get('/armadabudget/monitoring/export', [ArmadaBudgetUploadController::class, 'monitoringBudgetExport']);
-        });
-        Route::get('/armadabudget/create', [ArmadaBudgetUploadController::class, 'addArmadaBudgetView']);
-        Route::get('/armadabudget/create/template', [ArmadaBudgetUploadController::class, 'getBudgetTemplate']);
-        Route::post('/armadabudget/create/readtemplate', [ArmadaBudgetUploadController::class, 'readTemplate']);
-
-        Route::get('/armadabudget/{budget_upload_code}', [ArmadaBudgetUploadController::class, 'armadaBudgetDetailView']);
-        Route::post('/armadabudget/approvebudgetauthorization', [ArmadaBudgetUploadController::class, 'approveBudgetAuthorization']);
-        Route::post('/armadabudget/rejectbudgetauthorization', [ArmadaBudgetUploadController::class, 'rejectBudgetAuthorization']);
-        Route::post('/armadabudget/reviseBudget', [ArmadaBudgetUploadController::class, 'reviseBudget']);
-        Route::post('/armadabudget/terminateBudget', [ArmadaBudgetUploadController::class, 'terminateBudget']);
-        Route::post('/createBudgetRequest/armada', [ArmadaBudgetUploadController::class, 'createBudgetRequest']);
-        Route::get('/armadabudget/nonActiveBudget/{budget_upload_code}', [ArmadaBudgetUploadController::class, 'nonActiveBudget']);
-    });
-
-    Route::middleware(['menu_access:budget:4'])->group(function () {
-        // assumption budget upload
-        Route::get('/assumptionbudget', [AssumptionBudgetUploadController::class, 'assumptionBudgetView']);
-        Route::middleware(['menu_access:budget:16'])->group(function () {
-            Route::get('/assumptionbudget/monitoring', [AssumptionBudgetUploadController::class, 'monitoringBudget']);
-            Route::get('/assumptionbudget/monitoring/export', [AssumptionBudgetUploadController::class, 'monitoringBudgetExport']);
-        });
-        Route::get('/assumptionbudget/create', [AssumptionBudgetUploadController::class, 'addAssumptionBudgetView']);
-        Route::get('/assumptionbudget/create/template', [AssumptionBudgetUploadController::class, 'getBudgetTemplate']);
-        Route::post('/assumptionbudget/create/readtemplate', [AssumptionBudgetUploadController::class, 'readTemplate']);
-        Route::get('/assumptionbudget/{budget_upload_code}', [AssumptionBudgetUploadController::class, 'assumptionBudgetDetailView']);
-        Route::post('/assumptionbudget/approvebudgetauthorization', [AssumptionBudgetUploadController::class, 'approveBudgetAuthorization']);
-        Route::post('/assumptionbudget/rejectbudgetauthorization', [AssumptionBudgetUploadController::class, 'rejectBudgetAuthorization']);
-        Route::post('/assumptionbudget/reviseBudget', [AssumptionBudgetUploadController::class, 'reviseBudget']);
-        Route::post('/assumptionbudget/terminateBudget', [AssumptionBudgetUploadController::class, 'terminateBudget']);
-        Route::post('/createBudgetRequest/assumption', [AssumptionBudgetUploadController::class, 'createBudgetRequest']);
-        Route::get('/assumptionbudget/nonActiveBudget/{budget_upload_code}', [AssumptionBudgetUploadController::class, 'nonActiveBudget']);
-    });
-
-    Route::middleware(['menu_access:budget:8'])->group(function () {
-        // ho budget upload
-        Route::get('/ho_budget', [HOBudgetUploadController::class, 'hoBudgetView']);
-        Route::middleware(['menu_access:budget:16'])->group(function () {
-            Route::get('/ho_budget/monitoring', [HOBudgetUploadController::class, 'monitoringBudget']);
-            Route::get('/ho_budget/monitoring/export', [HOBudgetUploadController::class, 'monitoringBudgetExport']);
-        });
-        Route::get('/ho_budget/create', [HOBudgetUploadController::class, 'addHOBudgetView']);
-        Route::get('/ho_budget/create/template', [HOBudgetUploadController::class, 'getBudgetTemplate']);
-        Route::post('/ho_budget/create/readtemplate', [HOBudgetUploadController::class, 'readTemplate']);
-        Route::get('/ho_budget/{budget_upload_code}', [HOBudgetUploadController::class, 'hoBudgetDetailView']);
-        Route::post('/ho_budget/approvebudgetauthorization', [HOBudgetUploadController::class, 'approveBudgetAuthorization']);
-        Route::post('/ho_budget/rejectbudgetauthorization', [HOBudgetUploadController::class, 'rejectBudgetAuthorization']);
-        Route::post('/ho_budget/reviseBudget', [HOBudgetUploadController::class, 'reviseBudget']);
-        Route::post('/ho_budget/terminateBudget', [HOBudgetUploadController::class, 'terminateBudget']);
-        Route::post('/createBudgetRequest/ho', [HOBudgetUploadController::class, 'createBudgetRequest']);
-        Route::get('/ho_budget/nonActiveBudget/{budget_upload_code}', [HOBudgetUploadController::class, 'nonActiveBudget']);
+    // SALES
+    //Purchase Order
+    Route::middleware(['menu_access:sales:1'])->group(function () {
+        Route::get('/po', [POController::class, 'poView']);
+        Route::get('/po/data', [POController::class, 'poData']);
+        Route::get('/addnewpo', [POController::class, 'addNewPO']);
+        Route::get('/po/{code}', [POController::class, 'poDetailView']);
+        Route::get('/getsalespointauthorization', [SalesPointController::class, 'getSalesAuthorization']);
     });
 
     // OPERATIONAL
@@ -428,12 +356,6 @@ Route::middleware(['auth'])->group(function () {
         // Barang Jasa
         Route::get('/ticketing', [TicketingController::class, 'ticketingView']);
         Route::get('/ticketing/data', [TicketingController::class, 'ticketingData']);
-        Route::middleware(['superadmin'])->group(function () {
-            // superadmin only
-            Route::get('/ticketing/BAVerification', [TicketingBlockController::class, 'BAVerification']);
-            Route::post('/ticketing/BAVerification/confirm', [TicketingBlockController::class, 'BAVerificationConfirm']);
-            Route::post('/ticketing/BAVerification/reject', [TicketingBlockController::class, 'BAVerificationReject']);
-        });
         Route::get('/ticketing/{code}', [TicketingController::class, 'ticketingDetailView']);
         Route::get('/getsalespointauthorization/{salespoint_id}', [SalesPointController::class, 'getSalesAuthorization']);
         Route::get('/addnewticket', [TicketingController::class, 'addNewTicket']);
@@ -534,7 +456,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/cancelEndKontrakPEST/{id}', [AdditionalTicketingController::class, 'cancelEndKontrakPEST']);
 
         // AJAX
-        Route::get('/getActivePO', [POController::class, 'getActivePO']);
+        // Route::get('/getActivePO', [POController::class, 'getActivePO']);
 
         // Approval Management
         Route::get('/vendor-approve-register', [VendorApprovalController::class, 'vendorApprovalView']);
@@ -600,33 +522,33 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Purchase Order
-    Route::middleware(['menu_access:operational:8|16'])->group(function () {
-        Route::get('/po', [POController::class, 'poView']);
-        Route::get('/po/data', [POController::class, 'poData']);
-        Route::get('/po/{ticket_code}', [POController::class, 'poDetailView']);
+    // Route::middleware(['menu_access:operational:8|16'])->group(function () {
+    //     Route::get('/po', [POController::class, 'poView']);
+    //     Route::get('/po/data', [POController::class, 'poData']);
+    //     Route::get('/po/{ticket_code}', [POController::class, 'poDetailView']);
 
-        Route::middleware(['menu_access:operational:8'])->group(function () {
-            Route::post('/po/setuppo', [POController::class, 'newSetupPO']);
-            Route::post('/po/quickrefresh', [POController::class, 'quickRefresh']);
-            Route::post('/setupPO', [POController::class, 'setupPO']);
-        });
-        Route::middleware(['menu_access:operational:16'])->group(function () {
-            Route::post('/revisepodata', [POController::class, 'revisePOData']);
-            Route::post('/revisePO', [POController::class, 'revisePO']);
-            Route::post('/submitPO', [POController::class, 'submitPO']);
-            Route::get('/printPO', [POController::class, 'printPO']);
-            Route::patch('/uploadinternalsignedfile', [POController::class, 'uploadInternalSignedFile']);
-            Route::post('/cancelvendorconfirmation/{id}', [POController::class, 'cancelVendorConfirmation']);
-            Route::post('/confirmvendorconfirmation/{id}', [POController::class, 'confirmVendorConfirmation']);
-            Route::patch('/rejectposigned', [POController::class, 'rejectPosigned']);
-            Route::patch('/confirmposigned', [POController::class, 'confirmPosigned']);
-            Route::post('/sendemail', [POController::class, 'sendEmail']);
-            Route::get('/po/{ticket_code}/compare', [POController::class, 'poCompareView']);
-            Route::post('/po/{ticket_code}/reminderupdate', [POController::class, 'poReminderUpdate']);
-        });
-        Route::get('/getPrSapbyTicketCode', [POController::class, 'getPrSapbyTicketCode']);
-        Route::get('/getPoSap', [POController::class, 'getPoSap']);
-    });
+    //     Route::middleware(['menu_access:operational:8'])->group(function () {
+    //         Route::post('/po/setuppo', [POController::class, 'newSetupPO']);
+    //         Route::post('/po/quickrefresh', [POController::class, 'quickRefresh']);
+    //         Route::post('/setupPO', [POController::class, 'setupPO']);
+    //     });
+    //     Route::middleware(['menu_access:operational:16'])->group(function () {
+    //         Route::post('/revisepodata', [POController::class, 'revisePOData']);
+    //         Route::post('/revisePO', [POController::class, 'revisePO']);
+    //         Route::post('/submitPO', [POController::class, 'submitPO']);
+    //         Route::get('/printPO', [POController::class, 'printPO']);
+    //         Route::patch('/uploadinternalsignedfile', [POController::class, 'uploadInternalSignedFile']);
+    //         Route::post('/cancelvendorconfirmation/{id}', [POController::class, 'cancelVendorConfirmation']);
+    //         Route::post('/confirmvendorconfirmation/{id}', [POController::class, 'confirmVendorConfirmation']);
+    //         Route::patch('/rejectposigned', [POController::class, 'rejectPosigned']);
+    //         Route::patch('/confirmposigned', [POController::class, 'confirmPosigned']);
+    //         Route::post('/sendemail', [POController::class, 'sendEmail']);
+    //         Route::get('/po/{ticket_code}/compare', [POController::class, 'poCompareView']);
+    //         Route::post('/po/{ticket_code}/reminderupdate', [POController::class, 'poReminderUpdate']);
+    //     });
+    //     Route::get('/getPrSapbyTicketCode', [POController::class, 'getPrSapbyTicketCode']);
+    //     Route::get('/getPoSap', [POController::class, 'getPoSap']);
+    // });
 
     // Form Validation
     Route::middleware(['menu_access:operational:32'])->group(function () {

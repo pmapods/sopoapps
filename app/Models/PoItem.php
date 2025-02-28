@@ -4,14 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Employee;
+use App\Models\Po;
 
-class PoDetail extends Model
+class PoItem extends Model
 {
     use SoftDeletes;
+    protected $table = 'po_item';
     protected $primaryKey = 'id';
-    protected $table = 'po_detail';
 
-    public function ticket_item(){
-        return $this->belongsTo(TicketItem::class);
-    }
+    
 }

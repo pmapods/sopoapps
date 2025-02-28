@@ -245,7 +245,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                 <ul class="nav nav-treeview">
                                     @if (((Auth::user()->menu_access->sales ?? 0) & 1) != 0)
                                         <li class="nav-item">
-                                            <a href="/quotation" class="nav-link">
+                                            <a href="/po" class="nav-link">
                                                 <i class="fad fa-inventory nav-icon"></i>
                                                 <p>PO/Quotation</p>
                                             </a>
@@ -255,16 +255,6 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                 <ul class="nav nav-treeview">
                                     @if (((Auth::user()->menu_access->sales ?? 0) & 2) != 0)
                                         <li class="nav-item">
-                                            <a href="/salesorder" class="nav-link">
-                                                <i class="fad fa-truck nav-icon"></i>
-                                                <p>Sales Order</p>
-                                            </a>
-                                        </li>
-                                    @endif
-                                </ul>
-                                <ul class="nav nav-treeview">
-                                    @if (((Auth::user()->menu_access->sales ?? 0) & 4) != 0)
-                                        <li class="nav-item">
                                             <a href="/delivery order" class="nav-link">
                                                 <i class="fad fa-th nav-icon"></i>
                                                 <p>Delivery Order</p>
@@ -273,37 +263,17 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                     @endif
                                 </ul>
                                 <ul class="nav nav-treeview">
-                                    @if (((Auth::user()->menu_access->sales ?? 0) & 8) != 0)
+                                    @if (((Auth::user()->menu_access->sales ?? 0) & 4) != 0)
                                         <li class="nav-item">
                                             <a href="/shipment" class="nav-link">
                                                 <i class="fad fa-house nav-icon"></i>
-                                                <p>Pengiriman</p>
-                                            </a>
-                                        </li>
-                                    @endif
-                                </ul>
-                                <ul class="nav nav-treeview">
-                                    @if (((Auth::user()->menu_access->sales ?? 0) & 16) != 0)
-                                        <li class="nav-item">
-                                            <a href="/collection" class="nav-link">
-                                                <i class="fad fa-house nav-icon"></i>
-                                                <p>Pelunasan</p>
+                                                <p>Shipment (Pengiriman)</p>
                                             </a>
                                         </li>
                                     @endif
                                 </ul>
                                 <ul class="nav nav-treeview">
                                     @if (((Auth::user()->menu_access->sales ?? 0) & 32) != 0)
-                                        <li class="nav-item">
-                                            <a href="/billing" class="nav-link">
-                                                <i class="fad fa-house nav-icon"></i>
-                                                <p>Invoice</p>
-                                            </a>
-                                        </li>
-                                    @endif
-                                </ul>
-                                <ul class="nav nav-treeview">
-                                    @if (((Auth::user()->menu_access->sales ?? 0) & 64) != 0)
                                         <li class="nav-item">
                                             <a href="/undelivery" class="nav-link">
                                                 <i class="fad fa-house nav-icon"></i>

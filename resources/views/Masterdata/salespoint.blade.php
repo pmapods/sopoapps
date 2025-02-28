@@ -101,26 +101,16 @@
                                 <label class="required_field">Pilih Region</label>
                                 <select class="form-control select2" name="region" required>
                                     <option value="">-- Pilih Region --</option>
-                                    <option value="0">MT CENTRAL 1</option>
-                                    <option value="17">HO</option>
-                                    <option value="1">SUMATERA 1</option>
-                                    <option value="2">SUMATERA 2</option>
-                                    <option value="3">SUMATERA 3</option>
-                                    <option value="4">SUMATERA 4</option>
-                                    <option value="5">BANTEN</option>
-                                    <option value="6">DKI</option>
-                                    <option value="7">JABAR 1</option>
-                                    <option value="8">JABAR 2</option>
-                                    <option value="9">JABAR 3</option>
-                                    <option value="10">JATENG 1</option>
-                                    <option value="11">JATENG 2</option>
-                                    <option value="18">JATENG 3</option>
-                                    <option value="12">JATIM 1</option>
-                                    <option value="13">JATIM 2</option>
-                                    <option value="14">BALINUSRA</option>
-                                    <option value="15">KALIMANTAN</option>
-                                    <option value="16">SULAWESI</option>
-                                    <option value="19">INDIRECT</option>
+                                    <option value="1">SUMATERA</option>
+                                    <option value="2">BANTEN</option>
+                                    <option value="3">DKI</option>
+                                    <option value="4">JABAR</option>
+                                    <option value="5">JATENG</option>
+                                    <option value="6">JATIM</option>
+                                    <option value="7">BALINUSRA</option>
+                                    <option value="8">KALIMANTAN</option>
+                                    <option value="9">SULAWESI</option>
+                                    <option value="10">HO</option>
                                 </select>
                             </div>
                         </div>

@@ -1,10 +1,10 @@
 let autoNumeric_field;
-$(document).ready(function(){
+$(document).ready(function () {
     let pageURL = $(location).attr("href");
     // matikan tanggal bisa diketik / harus pilih
     // menu dikecualikan (po)
-    if(!pageURL.includes("/po/")){
-        $("input[type='date']").keypress(function(event) {
+    if (!pageURL.includes("/po/")) {
+        $("input[type='date']").keypress(function (event) {
             event.preventDefault();
         });
     }
@@ -12,11 +12,11 @@ $(document).ready(function(){
     $('.sidebar .active').removeClass('active');
 
     var a = location.pathname.split("/");
-    $('.sidebar a[href$="/'+a[1]+'"]').addClass('active');
-    if($('.sidebar a[href$="/'+a[1]+'"]').parents('li').hasClass('has-treeview')==true){
-        $('.sidebar a[href$="/'+a[1]+'"]').parents('ul').prev().addClass('active')
-        $('.sidebar a[href$="/'+a[1]+'"]').parents('ul').css('display','block');
-        $('.sidebar a[href$="/'+a[1]+'"]').parents('li').addClass('menu-open');
+    $('.sidebar a[href$="/' + a[1] + '"]').addClass('active');
+    if ($('.sidebar a[href$="/' + a[1] + '"]').parents('li').hasClass('has-treeview') == true) {
+        $('.sidebar a[href$="/' + a[1] + '"]').parents('ul').prev().addClass('active')
+        $('.sidebar a[href$="/' + a[1] + '"]').parents('ul').css('display', 'block');
+        $('.sidebar a[href$="/' + a[1] + '"]').parents('li').addClass('menu-open');
     }
 
     // rupiah formatter
@@ -41,18 +41,18 @@ $(document).ready(function(){
         minimumValue: 0,
         unformatOnSubmit: true,
         modifyValueOnWheel: false,
-        alwaysAllowDecimalCharacter:true,
+        alwaysAllowDecimalCharacter: true,
         allowDecimalPadding: 'floats',
     });
 
     // rupiahDecimaltext formatter
-    $('.rupiahDecimal_text').each(function(){
+    $('.rupiahDecimal_text').each(function () {
         let value = parseFloat($(this).text().trim());
         $(this).text(AutoNumeric.multiple.format(parseFloat(value), autonum_setting));
     });
 
     // rupiahtext formatter
-    $('.rupiah_text').each(function(){
+    $('.rupiah_text').each(function () {
         let value = parseFloat($(this).text().trim());
         $(this).text(AutoNumeric.format(parseFloat(value), autonum_setting));
     });
@@ -65,9 +65,9 @@ $(document).ready(function(){
         $('.select2').css('width', "100%");
     });
 
-    $(document).ready(function() {
-        $("form[method='post'], form[method='get']").on('submit', function(e){
-            $('button[type="submit"]').prop('disabled',true);
+    $(document).ready(function () {
+        $("form[method='post'], form[method='get']").on('submit', function (e) {
+            $('button[type="submit"]').prop('disabled', true);
             $('.modal:not("#loading_modal")').modal('hide');
             $('#loading_modal').modal('show');
         });
@@ -80,7 +80,7 @@ function setRupiah(amount) {
     amount = parseFloat(amount);
     amount = amount.toFixed(2);
     var isNegative = false;
-    if(Number(amount) < 0) {
+    if (Number(amount) < 0) {
         isNegative = true;
         amount *= -1;
     }
@@ -88,10 +88,10 @@ function setRupiah(amount) {
     var reversed = truncated.toString().split("").reverse().join("");
     var ctr = 0;
     var addedDots = "";
-    for(var i=0; i<reversed.length; i++){
+    for (var i = 0; i < reversed.length; i++) {
         addedDots += reversed.charAt(i);
         ctr++;
-        if(ctr == 3 && i != reversed.length - 1){
+        if (ctr == 3 && i != reversed.length - 1) {
             addedDots += "."
             ctr = 0;
         }
@@ -99,23 +99,17 @@ function setRupiah(amount) {
     var corrected = addedDots.split("").reverse().join("");
 
 
-    var floatAmount =  Number((amount-truncated).toFixed(3));
+    var floatAmount = Number((amount - truncated).toFixed(3));
     var finalString = "";
-    if(isNegative == true) {
+
+    if (isNegative == true) {
         finalString += "- ";
     }
-    if(floatAmount == 0) {
+    if (floatAmount == 0) {
         finalString += "Rp " + corrected + ",00";
-    }
-    else {
-        var float_part = amount.toString().split(".");
-        if(float_part[1].length == 1) {
-            finalString +=  "Rp " + corrected + "," + float_part[1].charAt(0) + "0";
-
-        }
-        else {
-
-            finalString +=  "Rp " + corrected + "," + float_part[1].charAt(0) + float_part[1].charAt(1);
+        if (amount == 1) {
+            var finalString = "";
+            finalString += "Rp " + 0;
         }
     }
     return finalString;
@@ -128,16 +122,16 @@ function autonumber(el) {
         $(el).val(max);
     } else if ($(el).val() < min) {
         $(el).val(min);
-    } else if($(el).val() == ""){
+    } else if ($(el).val() == "") {
         $(el).val(0);
-    }else{
+    } else {
         $(el).val(parseInt($(el).val()));
     }
 }
 
 // max 5mb
-function validatefilesize(event){
-    if(event.target.files[0].size > 5242880){
+function validatefilesize(event) {
+    if (event.target.files[0].size > 5242880) {
         alert("File melebihi kapasitas maksimum");
         return false;
     };
@@ -146,10 +140,10 @@ function validatefilesize(event){
 
 function isEmail(email) {
     var regex = /^([a-zA-Z0-9_\.\-\+])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
-    if(!regex.test(email)) {
-      return false;
-    }else{
-      return true;
+    if (!regex.test(email)) {
+        return false;
+    } else {
+        return true;
     }
 }
 
@@ -199,7 +193,7 @@ var autonum_setting = {
 
 function getUrlVars() {
     var vars = {};
-    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (m, key, value) {
         vars[key] = value;
     });
     return vars;

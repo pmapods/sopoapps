@@ -30,65 +30,35 @@ class SalesPoint extends Model
     public function region_name()
     {
         switch ($this->region) {
-            case 0:
-                return 'MT CENTRAL 1';
-                break;
             case 1:
-                return 'SUMATERA 1';
+                return 'SUMATERA';
                 break;
             case 2:
-                return 'SUMATERA 2';
-                break;
-            case 3:
-                return 'SUMATERA 3';
-                break;
-            case 4:
-                return 'SUMATERA 4';
-                break;
-            case 5:
                 return 'BANTEN';
                 break;
-            case 6:
+            case 3:
                 return 'DKI';
                 break;
+            case 4:
+                return 'JABAR';
+                break;
+            case 5:
+                return 'JATENG';
+                break;
+            case 6:
+                return 'JATIM';
+                break;
             case 7:
-                return 'JABAR 1';
-                break;
-            case 8:
-                return 'JABAR 2';
-                break;
-            case 9:
-                return 'JABAR 3';
-                break;
-            case 10:
-                return 'JATENG 1';
-                break;
-            case 11:
-                return 'JATENG 2';
-                break;
-            case 12:
-                return 'JATIM 1';
-                break;
-            case 13:
-                return 'JATIM 2';
-                break;
-            case 14:
                 return 'BALINUSRA';
                 break;
-            case 15:
+            case 8:
                 return 'KALIMANTAN';
                 break;
-            case 16:
+            case 9:
                 return 'SULAWESI';
                 break;
-            case 17:
+            case 10:
                 return 'HO';
-                break;
-            case 18:
-                return 'JATENG 3';
-                break;
-            case 19:
-                return 'INDIRECT';
                 break;
             default:
                 return 'region_undefined';

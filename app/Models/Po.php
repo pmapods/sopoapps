@@ -2,14 +2,12 @@
 
 namespace App\Models;
 
-use App\Models\Vendor;
-use App\Models\EmailCC;
-use App\Models\ArmadaTicket;
-use App\Models\Authorization;
-use App\Models\SecurityTicket;
-use App\Models\POUploadRequest;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Model;
+use App\Models\Employee;
+use App\Models\PoMonitoring;
+use App\Models\EmailAdditional;
+use DB;
 
 class Po extends Model
 {
@@ -17,29 +15,19 @@ class Po extends Model
     protected $table = 'po';
     protected $primaryKey = 'id';
 
-    public function ticket()
+    public function po_item()
     {
-        return $this->belongsTo(Ticket::class);
+        return $this->hasMany(PoItem::class);  
     }
 
-    public function armada_ticket()
+    public function po_authorization()
     {
-        return $this->belongsTo(ArmadaTicket::class);
+        return $this->hasMany(POAuthorization::class);
     }
 
-    public function security_ticket()
+    public function cancel_authorization()
     {
-        return $this->belongsTo(SecurityTicket::class);
-    }
-
-    public function po_detail()
-    {
-        return $this->hasMany(PoDetail::class);
-    }
-
-    public function ticket_vendor()
-    {
-        return $this->belongsTo(TicketVendor::class);
+        return $this->hasMany(CancelAuthorization::class);
     }
 
     public function created_by_employee()
@@ -47,41 +35,108 @@ class Po extends Model
         return $this->belongsTo(Employee::class, 'created_by', 'id')->withTrashed();
     }
 
-    public function po_authorization()
+    public function salespoint()
     {
-        return $this->hasMany(PoAuthorization::class);
+        return $this->belongsTo(SalesPoint::class);
     }
 
-    public function po_upload_request()
+    public function customer()
     {
-        return $this->hasOne(PoUploadRequest::class, 'id', 'po_upload_request_id');
+        return $this->belongsTo(Customer::class);
     }
 
-    public function cc_email()
+    public function request_type()
     {
-        return $this->hasMany(EmailCC::class);
+        switch ($this->request_type) {
+            case '1':
+                return 'PO Sewa';
+                break;
+            case '2':
+                return 'PO Jual';
+                break;
+            case '3':
+                return 'PO Custom';
+                break;
+
+            default:
+                return 'request_type_undefined';
+                break;
+        }
     }
 
-    public function status()
+    public function status($type = "default")
     {
         switch ($this->status) {
-            case -1:
-                return 'Draft';
+            case '0':
+                if ($this->reject_reason != null) {
+                    return 'di Reject oleh ' . $this->reject_by_employee->name . ', Alasan: ' . $this->reject_reason;
+                } else {
+                    return 'Draft PO';
+                }
                 break;
-            case 0:
-                return 'PO diterbitkan (Belum Aktif)';
+
+            case '1':
+                $current_authorization = $this->current_authorization();
+                return 'Menunggu Otorisasi PO Oleh ' . $current_authorization->employee_name;
                 break;
-            case 1:
-                return 'Menunggu TTD Vendor (Belum Aktif)';
+
+            case '2':
+                return 'Otorisasi PO Selesai / Menunggu Proses Delivery Order';
                 break;
-            case 2:
-                return 'Menunggu Konfirmasi PO (Belum Aktif)';
+
+            case '3':
+                return 'Proses Delivery Order Selesai / Menunggu Proses Shipment (Pengiriman)';
                 break;
-            case 3:
-                return 'PO Aktif';
+
+            case '4':
+                if ($this->is_dp == 0) {
+                    if ($this->reschedule_at != null) {
+                        return 'Proses Proses Shipment (Pengiriman) Ulang Sedang Berlangsung';
+                    } else {
+                        return 'Proses Proses Shipment (Pengiriman) Sedang Berlangsung';
+                    }
+                }
+                elseif ($this->is_dp == 1) {
+                    if ($this->reschedule_at != null) {
+                        return 'Proses Proses Shipment (Pengiriman) Ulang Sedang Berlangsung / Menunggu Proses Collection (Pelunasan)';
+                    } else {
+                        return 'Proses Proses Shipment (Pengiriman) Sedang Berlangsung / Menunggu Proses Collection (Pelunasan)';
+                    }
+                }
                 break;
-            case 4:
-                return 'Closed PO';
+
+            case '5':
+                if ($this->is_dp == 0) {
+                    return 'Proses Shipment (Pengiriman) Selesai';
+                }
+                elseif ($this->is_dp == 1) {
+                    return 'Proses Shipment (Pengiriman) & Collection (Pelunasan) Selesai';
+                }
+                break;
+
+            case '-1':
+                $string = 'Tidak Terkirim';
+                if (isset($this->undelivery_reason)) {
+                    $string .= "\n" . 'Alasan : ' . $this->undelivery_reason;
+                }
+                if (isset($this->undelivery_at)) {
+                    $string .= "\n" . 'Tanggal : ' . $this->undelivery_at;
+                }
+                return $string;
+                break;
+
+            case '-2':
+                $string = 'Batal';
+                if (isset($this->cancel_end_reason)) {
+                    $string .= "\n" . 'Alasan : ' . $this->cancel_end_reason;
+                }
+                if (isset($this->cancel_end_by_employee)) {
+                    $string .= "\n" . 'Dibatalkan oleh : ' . $this->cancel_end_by_employee->name;
+                }
+                if (isset($this->cancel_end_at)) {
+                    $string .= "\n" . 'Tanggal : ' . $this->cancel_end_at;
+                }
+                return $string;
                 break;
 
             default:
@@ -90,120 +145,44 @@ class Po extends Model
         }
     }
 
-    public function issue()
+    public function current_authorization()
     {
-        // latest of many buat ambil latest issue
-        return $this->hasOne(IssuePO::class, 'po_number', 'no_po_sap')->latestOfMany();
-    }
-
-    public function sender_email()
-    {
-        try {
-            $vendor = Vendor::where('code', $this->vendor_code)->first();
-            if ($vendor) {
-                $emails = json_decode($vendor->email);
-                return $emails;
-            } else {
-                return [];
-            }
-        } catch (\Throwable $e) {
-            return [];
+        $queue = $this->po_authorization->where('status', 0)->sortBy('level');
+        $current = $queue->first();
+        if ($this->status != 1) {
+            return null;
+        } else {
+            return $current;
         }
     }
 
-    public function cc()
+    public function reject_by_employee()
     {
-        if ($this->ticket) {
-            $salespoint = $this->ticket->salespoint;
-            $additional_emails = $this->ticket->additional_emails();
-        }
-        if ($this->armada_ticket) {
-            $salespoint = $this->armada_ticket->salespoint;
-            $additional_emails = $this->armada_ticket->additional_emails();
-        }
-        if ($this->security_ticket) {
-            $salespoint = $this->security_ticket->salespoint;
-            $additional_emails = $this->security_ticket->additional_emails();
-        }
-
-        $positions = array_column(EmailCC::get()->toArray(), 'employee_position');
-
-        $author_emails =  AuthorizationDetail::join('authorization', 'authorization.id', '=', 'authorization_detail.authorization_id')
-            ->join('employee_position', 'employee_position.id', '=', 'authorization_detail.employee_position_id')
-            ->join('employee', 'employee.id', '=', 'authorization_detail.employee_id')
-            ->where('authorization.salespoint_id', $salespoint->id)
-            ->whereIn('employee_position.id', $positions)
-            ->select('employee.email')
-            ->get()
-            ->pluck('email')
-            ->toArray();
-
-        $emails = array_unique(array_values(array_merge($additional_emails, ($author_emails ?? []))));
-        return $emails;
+        return $this->belongsTo(Employee::class, 'reject_by', 'id')->withTrashed();
     }
 
-    public function current_ticketing()
+    public function cancel_end_by_employee()
     {
-        $po_number = $this->no_po_sap;
-        if ($po_number) {
-            if ($this->armada_ticket_id) {
-                $ticket = ArmadaTicket::where('po_reference_number', $po_number)->where('status', '!=', -1)->first();
-                return $ticket;
-            }
-            if ($this->security_ticket_id) {
-                $ticket = SecurityTicket::where('po_reference_number', $po_number)->where('status', '!=', -1)->first();
-                return $ticket;
-            }
-        }
-        return null;
+        return $this->belongsTo(Employee::class, 'cancel_end_by', 'id')->withTrashed();
     }
 
-    public function email_template()
+    public function monitoring_log()
     {
-        if ($this->ticket) {
-            $data = [
-                "po_number" => $this->no_po_sap,
-                "ticket_items" => $this->ticket->ticket_item,
-            ];
-            return $this->ticket->email_template($data);
-        }
-        if ($this->armada_ticket) {
-            $po = Po::where('no_po_sap', $this->armada_ticket->po_reference_number)->first();
-            $pomanual = PoManual::where('po_number', $this->armada_ticket->po_reference_number)->first();
-            try {
-                if ($po) {
-                    $plate = $po->armada_ticket->armada->plate;
-                } else {
-                    $plate = $pomanual->plate();
-                }
-            } catch (\Throwable $e) {
-                $plate = "-";
-            }
-            $unit_name = $this->armada_ticket->armada_type->name;
-            $salespoint_name = $this->armada_ticket->salespoint->name;
-            $data = [
-                "po_number" => $this->no_po_sap ?? "",
-                "salespoint_name" => $salespoint_name ?? "",
-                "plate" => $plate ?? "",
-                "unit_name" => $unit_name ?? "",
-                "sender_address" => $this->sender_address ?? "",
-                "send_address" => $this->send_address ?? "",
-                "send_name" => $this->send_name ?? "",
-                "pic" => $this->send_address ?? "",
-                "phone" => $this->phone ?? "",
-            ];
-            return $this->armada_ticket->email_template($data);
-        }
-        if ($this->security_ticket) {
-            $salespoint_name = $this->security_ticket->salespoint->name;
-            $data = [
-                "po_number" => $this->no_po_sap ?? "",
-                "salespoint_name" => $salespoint_name ?? "",
-                "pic_name" => $this->supplier_pic_name ?? "",
-                "phone" => "",
-                "finish_date" => "",
-            ];
-            return $this->security_ticket->email_template($data);
-        }
+        return PoMonitoring::where('po_id', $this->id)->get();
+    }
+
+    public function email_template($data)
+    {
+        $items_name = collect($data['po_item'])->pluck('name');
+        $items_name = implode(",", $items_name->toArray());
+        $texts = "";
+        $texts .= "Dear Bapak/Ibu" . "\n";
+        $texts .= "Terlampir adalah PO dengan informasi berikut" . "\n";
+        $texts .= "Nomor PO : " . $data['po_number'] . "\n";
+        $texts .= "List Item : " . $items_name . "\n";
+        $texts .= "Mohon bantuannya untuk memastikan kesesuian nya, apabila sudah Clear Mohon diapproval" . "\n";
+        $texts .= "Regards " . "\n";
+        $texts .= "Staff" . "\n";
+        return $texts;
     }
 }

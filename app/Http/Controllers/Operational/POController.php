@@ -2,3040 +2,3302 @@
 
 namespace App\Http\Controllers\Operational;
 
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Mail\NotificationMail;
+use Illuminate\Support\Facades\File;
+use Carbon\Carbon;
 use DB;
 use PDF;
 use Auth;
-use Form;
 use Mail;
 use Storage;
 use App\Models\Po;
-use Carbon\Carbon;
-use App\Mail\POMail;
-use App\Models\Armada;
-use App\Models\Ticket;
-use App\Models\Vendor;
-use App\Models\EmailCC;
+use App\Models\Customer;
+use App\Models\Product;
 use App\Models\IssuePO;
 use App\Models\Employee;
-use App\Models\PoDetail;
-use App\Models\PoManual;
-use App\Models\PrDetail;
-use App\Models\ArmadaType;
 use App\Models\SalesPoint;
-use App\Models\TicketItem;
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
-use App\Models\ArmadaBudget;
-use App\Models\ArmadaTicket;
-use App\Models\TicketVendor;
-use Illuminate\Http\Request;
+use App\Models\POItem;
 use App\Models\Authorization;
-use App\Models\SecurityTicket;
-use App\Models\PoAuthorization;
-use App\Models\POUploadRequest;
-use App\Models\TicketMonitoring;
-use App\Http\Controllers\Controller;
-use App\Models\ArmadaTicketMonitoring;
-use App\Models\EmployeeLocationAccess;
-use App\Models\SecurityTicketMonitoring;
-
+use App\Models\POMonitoring;
+use App\Models\POAuthorization;
 
 class POController extends Controller
 {
     public function poView(Request $request)
     {
-        return view('Operational.po');
+        // show ticket liat based on auth access area
+        $access = Auth::user()->location_access->pluck('salespoint_id');
+
+        $user_location_access  = Auth::user()->location_access->pluck('salespoint_id');
+        $available_salespoints = SalesPoint::whereIn('id', $user_location_access)->get();
+        $available_salespoints = $available_salespoints->groupBy('region');
+        $indirect_salespoints = SalesPoint::where('region', 19)->get();
+
+        return view('Operational.Sales.po', compact('available_salespoints', 'indirect_salespoints'));
     }
 
     public function poData(Request $request)
     {
         $search_value = $request->search["value"];
-        if ($request->type == "ticket") {
-            $item_type_array = [];
-            if (str_contains(strtolower("Barang"), strtolower($search_value))) {
-                array_push($item_type_array, 0);
-            }
-            if (str_contains(strtolower("Jasa"), strtolower($search_value))) {
-                array_push($item_type_array, 1);
-            }
-            if (str_contains(strtolower("Maintenance"), strtolower($search_value))) {
-                array_push($item_type_array, 2);
-            }
-            if (str_contains(strtolower("HO"), strtolower($search_value))) {
-                array_push($item_type_array, 3);
-            }
-
-            $request_type_array = [];
-            if (str_contains(strtolower("Pengadaan"), strtolower($search_value))) {
-                array_push($request_type_array, 0);
-            }
-            if (str_contains(strtolower("Replace Existing"), strtolower($search_value))) {
-                array_push($request_type_array, 1);
-            }
-            if (str_contains(strtolower("Repeat Order"), strtolower($search_value))) {
-                array_push($request_type_array, 2);
-            }
-            if (str_contains(strtolower("Perpanjangan"), strtolower($search_value))) {
-                array_push($request_type_array, 3);
-            }
-            if (str_contains(strtolower("End Kontrak"), strtolower($search_value))) {
-                array_push($request_type_array, 4);
-            }
-
-
+        if ($request->type == "posewa") { 
             $employee_access = Auth::user()->location_access_list();
-            $ticketing =  Ticket::leftJoin('salespoint', 'salespoint.id', '=', 'ticket.salespoint_id')
-                ->leftJoin('po', 'po.ticket_id', '=', 'ticket.id')
+            $posewa =  PO::leftJoin('salespoint', 'salespoint.id', '=', 'po.salespoint_id')
+                ->leftJoin('po_item', 'po_item.po_id', '=', 'po.id')
+                ->leftJoin('po_authorization', 'po_authorization.po_id', '=', 'po.id')
+                ->leftJoin('employee', 'employee.id', '=', 'po.created_by')
                 ->where(function ($query) use ($employee_access, $search_value) {
                     // filter apakan punya akses
-                    $query->whereIn('ticket.salespoint_id', $employee_access);
+                    $query->whereIn('po.salespoint_id', $employee_access)
+                        ->orwhere('po_authorization.employee_id', Auth::user()->id);
                 })
-                ->where(function ($query) use ($search_value, $item_type_array, $request_type_array) {
+                ->where(function ($query) use ($search_value) {
                     // filter apakan punya akses
-                    $query->where(DB::raw('lower(ticket.code)'), 'like', '%' . strtolower($search_value) . '%')
+                    $query->where(DB::raw('lower(po.code)'), 'like', '%' . strtolower($search_value) . '%')
+                        ->orwhere(DB::raw('lower(employee.name)'), 'like', '%' . strtolower($search_value) . '%')
                         ->orwhere(DB::raw('lower(salespoint.name)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(po.no_po_sap)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(po.sender_name)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orWhereIn('ticket.item_type', $item_type_array)
-                        ->orWhereIn('ticket.request_type', $request_type_array);
+                        ->orwhere(DB::raw('lower(po_item.name)'), 'like', '%' . strtolower($search_value) . '%');
                 })
-                ->where('ticket.status', '>=', 6)
-                ->where('item_type', '!=', 4)
-                ->select('ticket.*')
-                ->distinct('ticket.id')
-                ->get();
 
-            // munculkan data ticket yang po nya belum selesai semua & yang masih belom ada po / masih di setup
-            $ticketing = $ticketing->filter(function ($value, $key) use ($request) {
-                $isFinished = true;
-                if (($value->po->count() ?? 0) == 0) {
-                    $isFinished = false;
-                }
-                foreach ($value->po as $po) {
-                    if ($po->status < 3) {
-                        $isFinished = false;
-                    }
-                }
+                ->select('po.*')
+                ->orderBy('po.status', 'desc')
+                ->orderBy('po.created_at', 'asc')
+                ->distinct('po.id');
+
+            if ($request->type == "posewa") {
+                $posewa = $posewa->where('po.request_type', '=', 1);
+            }
+            if ($request->type == "pojual") {
+                $posewa = $posewa->where('po.request_type', '=', 2);
+            }
+            if ($request->type == "pocustom") {
+                $posewa = $posewa->where('po.request_type', '=', 3);
+            }
+            if ($request->searchBySalesPoint) {
+                $posewa = $posewa->where('salespoint_id', '=', $request->searchBySalesPoint);
+            }
+            if ($request->searchByMonth) {
+                $posewa = $posewa->where(DB::raw('month(ticket.created_at)'), '=', $request->searchByMonth);
+            }
+            if ($request->searchByyear) {
+                $posewa = $posewa->where(DB::raw('year(ticket.created_at)'), '=', $request->searchByyear);
+            }
+            $posewa = $posewa->get();
+
+            $posewa = $posewa->filter(function ($item) use ($request) {
                 if ($request->status == -1) {
-                    if (!$isFinished) {
-                        return false;
-                    } else {
+                    if (in_array($item->status, [-1, 7, -2])) {
                         return true;
+                    } else {
+                        return false;
                     }
                 } else {
-                    if ($isFinished) {
-                        return false;
-                    } else {
+                    if (!in_array($item->status, [-1, 7, -2])) {
                         return true;
+                    } else {
+                        return false;
                     }
                 }
             });
 
-            $tickets_paginate = $ticketing->skip($request->start)->take($request->length);
+            $posewa_paginate = $posewa->skip($request->start)->take($request->length);
             $datas = [];
-            $count = $request->start + 1;
-            foreach ($tickets_paginate as $ticket) {
-                $isView = false;
-                if (((Auth::user()->menu_access->operational ?? 0) & 8) != 0 && $ticket->status() == 'Menunggu Setup PO') {
-                    $isView = true;
-                }
-                if (((Auth::user()->menu_access->operational ?? 0) & 16) != 0 && $ticket->status() != 'Menunggu Setup PO') {
-                    $isView = true;
-                }
-                if (!$isView) {
-                    continue;
-                }
+            $count = 1 + $request->start;
+            foreach ($posewa_paginate as $psewa) {
                 $array = [];
+                $created_by_employee = "";
+                if (isset($psewa->created_by)) {
+                    $created_by_employee = $psewa->created_by_employee->name;
+                }
+                $keterangan = "";
+                if (isset($psewa->request_type)) {
+                    $keterangan .= "\n";
+                    $keterangan .= "Jenis Permintaan : " . $psewa->request_type();
+                }
+                $extra_text = "";
+
+                // trim with max 200 character
+                $status_text = $psewa->status("complete") . $extra_text;
+                if (strlen($status_text) > 200) {
+                    $status_text = substr($status_text, 0, 200) . '...';
+                }
+
                 array_push($array, $count);
-                array_push($array, $ticket->code);
-                array_push($array, $ticket->item_type() . " " . $ticket->request_type());
-                array_push($array, $ticket->salespoint->name);
-                array_push($array, (count($ticket->sender_array_list()) > 0) ? (implode(', ', $ticket->sender_array_list())) : '-');
-                array_push($array, (count($ticket->po_array_list()) > 0) ? (implode(', ', $ticket->po_array_list())) : '-');
-                array_push($array, $ticket->created_at->translatedFormat('d F Y (H:i)'));
-                array_push($array, implode(",\n", $ticket->ticket_item->pluck('name')->toArray()));
-                array_push($array, $ticket->status("complete"));
+                array_push($array, $psewa->code);
+                array_push($array, $psewa->po_number);
+                array_push($array, $psewa->created_at->translatedFormat('d F Y (H:i)'));
+                array_push($array, $psewa->customer->name);
+                array_push($array, $created_by_employee);
+                array_push($array, $psewa->salespoint->name);
+                array_push($array, $keterangan);
+                array_push($array, implode(",\n", array_values($psewa->po_item->pluck('name')->toArray())));
+                array_push($array, $status_text);
                 array_push($datas, $array);
                 $count++;
             }
             return response()->json([
                 "data" => $datas,
                 "draw" => $request->draw,
-                "recordsFiltered" => $ticketing->count(),
-                "recordsTotal" => $ticketing->count(),
-            ]);
-        }
-        if ($request->type == "armada") {
-            $ticketing_type_array = [];
-            if (str_contains(strtolower("Pengadaan"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 0);
-            }
-            if (str_contains(strtolower("Perpanjangan"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 1);
-            }
-            if (str_contains(strtolower("Replace"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 1);
-            }
-            if (str_contains(strtolower("Renewal"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 1);
-            }
-            if (str_contains(strtolower("End Kontrak"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 1);
-            }
-            if (str_contains(strtolower("Mutasi"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 2);
-            }
-
-            $employee_access = Auth::user()->location_access_list();
-            $ticketing =  ArmadaTicket::leftJoin('salespoint', 'salespoint.id', '=', 'armada_ticket.salespoint_id')
-                ->leftJoin('po', 'po.armada_ticket_id', '=', 'armada_ticket.id')
-                ->leftJoin('perpanjangan_form', 'perpanjangan_form.armada_ticket_id', '=', 'armada_ticket.id')
-                ->where(function ($query) use ($employee_access, $search_value) {
-                    // filter apakan punya akses
-                    $query->whereIn('armada_ticket.salespoint_id', $employee_access);
-                })
-                ->where(function ($query) use ($search_value, $ticketing_type_array) {
-                    // filter apakan punya akses
-                    $query->where(DB::raw('lower(armada_ticket.code)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(salespoint.name)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(po.no_po_sap)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(po.sender_name)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orWhereIn('armada_ticket.ticketing_type', $ticketing_type_array);
-                })
-                ->where('armada_ticket.status', '>=', 4)
-                // ->where('perpanjangan_form.stopsewa_reason', '!=', 'end')
-                ->select('armada_ticket.*')
-                ->distinct('armada_ticket.id')
-                ->get();
-
-            // munculkan data ticket yang po nya belum selesai semua & yang masih belom ada po / masih di setup
-            $ticketing = $ticketing->filter(function ($value, $key) use ($request) {
-                $isFinished = true;
-                if (($value->po->count() ?? 0) == 0) {
-                    $isFinished = false;
-                }
-                foreach ($value->po as $po) {
-                    if ($po->status < 3) {
-                        $isFinished = false;
-                    }
-                }
-                if ($request->status == -1) {
-                    if (!$isFinished) {
-                        return false;
-                    } else {
-                        return true;
-                    }
-                } else {
-                    if ($isFinished) {
-                        return false;
-                    } else {
-                        return true;
-                    }
-                }
-            });
-
-            $tickets_paginate = $ticketing->skip($request->start)->take($request->length);
-            $datas = [];
-            $count = $request->start + 1;
-            foreach ($tickets_paginate as $ticket) {
-                $isView = false;
-                if (((Auth::user()->menu_access->operational ?? 0) & 8) != 0 && $ticket->status() == 'Menunggu Setup PO') {
-                    $isView = true;
-                }
-                if (((Auth::user()->menu_access->operational ?? 0) & 16) != 0 && $ticket->status() != 'Menunggu Setup PO') {
-                    $isView = true;
-                }
-                if (!$isView) {
-                    continue;
-                }
-                $array = [];
-                array_push($array, $count);
-                array_push($array, $ticket->code);
-                array_push($array, $ticket->type());
-                array_push($array, $ticket->salespoint->name);
-                array_push($array, (count($ticket->sender_array_list()) > 0) ? (implode(', ', $ticket->sender_array_list())) : '-');
-                array_push($array, (count($ticket->po_array_list()) > 0) ? (implode(', ', $ticket->po_array_list())) : '-');
-                array_push($array, $ticket->created_at->translatedFormat('d F Y (H:i)'));
-                array_push($array, $ticket->armada_type->name . " " . $ticket->armada_type->brand_name);
-                array_push($array, $ticket->status("complete"));
-                array_push($datas, $array);
-                $count++;
-            }
-            return response()->json([
-                "data" => $datas,
-                "draw" => $request->draw,
-                "recordsFiltered" => $ticketing->count(),
-                "recordsTotal" => $ticketing->count(),
-            ]);
-        }
-        if ($request->type == "security") {
-            $ticketing_type_array = [];
-            if (str_contains(strtolower("Pengadaan"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 0);
-            }
-            if (str_contains(strtolower("Perpanjangan"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 1);
-            }
-            if (str_contains(strtolower("Replace"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 2);
-            }
-            if (str_contains(strtolower("End Kontrak"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 3);
-            }
-            if (str_contains(strtolower("Pengadaan Lembur"), strtolower($search_value))) {
-                array_push($ticketing_type_array, 4);
-            }
-
-            $employee_access = Auth::user()->location_access_list();
-            $ticketing =  SecurityTicket::leftJoin('salespoint', 'salespoint.id', '=', 'security_ticket.salespoint_id')
-                ->leftJoin('po', 'po.security_ticket_id', '=', 'security_ticket.id')
-                ->where(function ($query) use ($employee_access, $search_value) {
-                    // filter apakan punya akses
-                    $query->whereIn('security_ticket.salespoint_id', $employee_access);
-                })
-                ->where(function ($query) use ($search_value, $ticketing_type_array) {
-                    // filter apakan punya akses
-                    $query->where(DB::raw('lower(security_ticket.code)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(salespoint.name)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(po.no_po_sap)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orwhere(DB::raw('lower(po.sender_name)'), 'like', '%' . strtolower($search_value) . '%')
-                        ->orWhereIn('security_ticket.ticketing_type', $ticketing_type_array);
-                })
-                ->where('security_ticket.status', '>=', 4)
-                ->select('security_ticket.*')
-                ->distinct('security_ticket.id')
-                ->get();
-
-            // munculkan data ticket yang po nya belum selesai semua & yang masih belom ada po / masih di setup
-            $ticketing = $ticketing->filter(function ($value, $key) use ($request) {
-                $isFinished = true;
-                if (($value->po->count() ?? 0) == 0) {
-                    $isFinished = false;
-                }
-                foreach ($value->po as $po) {
-                    if ($po->status < 3) {
-                        $isFinished = false;
-                    }
-                }
-                if ($request->status == -1) {
-                    if (!$isFinished) {
-                        return false;
-                    } else {
-                        return true;
-                    }
-                } else {
-                    if ($isFinished) {
-                        return false;
-                    } else {
-                        return true;
-                    }
-                }
-            });
-
-            $tickets_paginate = $ticketing->skip($request->start)->take($request->length);
-            $datas = [];
-            $count = $request->start + 1;
-            foreach ($tickets_paginate as $ticket) {
-                $isView = false;
-                if (((Auth::user()->menu_access->operational ?? 0) & 8) != 0 && $ticket->status() == 'Menunggu Setup PO') {
-                    $isView = true;
-                }
-                if (((Auth::user()->menu_access->operational ?? 0) & 16) != 0 && $ticket->status() != 'Menunggu Setup PO') {
-                    $isView = true;
-                }
-                if (!$isView) {
-                    continue;
-                }
-                $array = [];
-                array_push($array, $count);
-                array_push($array, $ticket->code);
-                array_push($array, $ticket->type());
-                array_push($array, $ticket->salespoint->name);
-                array_push($array, (count($ticket->sender_array_list()) > 0) ? (implode(', ', $ticket->sender_array_list())) : '-');
-                array_push($array, (count($ticket->po_array_list()) > 0) ? (implode(', ', $ticket->po_array_list())) : '-');
-                array_push($array, $ticket->created_at->translatedFormat('d F Y (H:i)'));
-                array_push($array, $ticket->status("complete"));
-                array_push($datas, $array);
-                $count++;
-            }
-            return response()->json([
-                "data" => $datas,
-                "draw" => $request->draw,
-                "recordsFiltered" => $ticketing->count(),
-                "recordsTotal" => $ticketing->count(),
+                "recordsFiltered" => $posewa->count(),
+                "recordsTotal" => $posewa->count(),
             ]);
         }
     }
 
-    public function podetailView($ticket_code)
+    public function poDetailView($code)
     {
-        try {
-            $ticket = Ticket::where('code', $ticket_code)->first();
-            // $api_token = config('app.api_sap_token');
-            $armadaticket = ArmadaTicket::where('code', $ticket_code)->first();
-            $securityticket = SecurityTicket::where('code', $ticket_code)->first();
-            if ($ticket ==  null && $armadaticket == null && $securityticket == null) {
-                throw new \Exception("Ticket tidak ditemukan");
-            }
-            $user_location_access  = Auth::user()->location_access->pluck('salespoint_id');
-            if ($ticket != null) {
-                $type = 'barangjasa';
-                // validate detail has akses area
-                if (!$user_location_access->contains($ticket->salespoint_id)) {
-                    return redirect('/po')->with('error', 'Anda tidak memiliki akses untuk PO berikut. Tidak memiliki akses salespoint "' . $ticket->salespoint->name . '"');
-                }
+        // dd(base64_decode($code));
 
-                if ($ticket->po->count() > 0) {
-                    $authorization_list = Authorization::where('form_type', 3)->whereIn('salespoint_id', $ticket->salespoint->salespoint_id_list())->get();
-                    return view('Operational.podetail', compact('ticket', 'authorization_list', 'type'));
-                } else {
-                    $issuepolist = Po::where('ticket_id', $ticket->id)->withTrashed()->get()->pluck('no_po_sap');
-                    $issuepos = IssuePO::whereIn('po_number', $issuepolist->toArray())->get();
-                    return view('Operational.setuppo', compact('ticket', 'ticket_code', 'issuepos', 'type'));
-                }
-            }
-            if ($armadaticket != null) {
-                $type = 'armada';
-                // validate detail has akses area
-                if (!$user_location_access->contains($armadaticket->salespoint_id)) {
-                    return redirect('/po')->with('error', 'Anda tidak memiliki akses untuk PO berikut. Tidak memiliki akses salespoint "' . $armadaticket->salespoint->name . '"');
-                }
-
-                // validasi jika form form belum divalidasi
-                if ($armadaticket->status() == "Menunggu validasi form kelengkapan") {
-                    return redirect('/po')->with('error', 'Form kelengkapan terkait ticketing belum di validasi. Harap untuk melakukan validasi form di menu "Form Validation"');
-                }
-
-                if ($armadaticket->po->count() > 0) {
-                    $authorization_list = Authorization::whereIn('salespoint_id', $armadaticket->salespoint->salespoint_id_list())->where('form_type', 3)->get();
-                    return view('Operational.podetail', compact('armadaticket', 'authorization_list', 'type'));
-                } else {
-                    // OLD SETUP PO
-                    // =====================================
-                    // $armada_vendors = Vendor::where('type','armada')->get();
-                    // ambil armada sesuai niaga yang terdaftar
-                    // $armada_types = [];
-                    // $po = $armadaticket->po_reference;
-                    // $pomanual = PoManual::where('po_number',$armadaticket->po_reference_number)->first();
-                    // if($armadaticket->po_reference_number != null){
-                    //     $armada_types = ArmadaType::where('isNiaga',$po->armada_ticket->armada_type->isNiaga ?? $pomanual->isNiaga)
-                    //     ->get();
-                    // }
-                    // return view('Operational.Armada.poitemselection',compact('armadaticket','armada_vendors','armada_types','po','pomanual'));
-                    // =====================================
-
-                    $issuepolist = Po::where('armada_ticket_id', $armadaticket->id)->withTrashed()->get()->pluck('no_po_sap');
-                    $issuepos = IssuePO::whereIn('po_number', $issuepolist->toArray())->get();
-                    return view('Operational.setuppo', compact('armadaticket', 'ticket_code', 'issuepos', 'type'));
-                }
-            }
-
-            if ($securityticket != null) {
-                $type = 'security';
-                // validate detail has akses area
-                if (!$user_location_access->contains($securityticket->salespoint_id)) {
-                    return redirect('/po')->with('error', 'Anda tidak memiliki akses untuk PO berikut. Tidak memiliki akses salespoint "' . $securityticket->salespoint->name . '"');
-                }
-
-                if (count($securityticket->po) > 0) {
-                    $authorization_list = Authorization::where('form_type', 3)
-                        ->whereIn('salespoint_id', $securityticket->salespoint->salespoint_id_list())
-                        ->get();
-                    return view('Operational.podetail', compact('securityticket', 'authorization_list', 'type'));
-                } else {
-                    // OLD SETUP PO
-                    // =====================================
-                    // $po = $securityticket->po_reference;
-                    // $pomanual = PoManual::where('po_number',$securityticket->po_reference_number)->first();
-                    // return view('Operational.Security.poitemselection',compact('securityticket','po','pomanual'));
-                    // =====================================
-                    $issuepolist = Po::where('armada_ticket_id', $securityticket->id)->withTrashed()->get()->pluck('no_po_sap');
-                    $issuepos = IssuePO::whereIn('po_number', $issuepolist->toArray())->get();
-                    return view('Operational.setuppo', compact('securityticket', 'ticket_code', 'issuepos', 'type'));
-                }
-            }
-        } catch (\Exception $ex) {
-            return back()->with('error', $ex->getMessage());
+        $ticket = Ticket::where('code', $code)->first();
+        // validate budget detail has akses area
+        $user_location_access  = Auth::user()->location_access->pluck('salespoint_id');
+        $has_access = false;
+        $armada_types = ArmadaType::all();
+        if ($user_location_access->contains($ticket->salespoint_id)) {
+            $has_access = true;
         }
-    }
-
-    public function setupPO(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            $ticket = Ticket::find($request->ticket_id);
-            $armadaticket = ArmadaTicket::find($request->armada_ticket_id);
-            $securityticket = SecurityTicket::find($request->security_ticket_id);
-            if ($ticket != null) {
-                // sudah di setup po sebelumnnya
-                if ($ticket->po->count() > 0) {
-                    return back()->with('error', 'PO sudah di setup sebelumnya');
-                }
-                $group_item_by_selected_vendor = collect($request->item)->groupBy('ticket_vendor_id');
-                foreach ($group_item_by_selected_vendor as $vendor_items) {
-                    $ticket_vendor = TicketVendor::find($vendor_items[0]["ticket_vendor_id"]);
-                    $ppn_items = [];
-                    $non_ppn_items = [];
-                    foreach ($vendor_items as $item) {
-                        $prdetail = PrDetail::findOrFail($item['pr_detail_id']);
-                        $newDetail = new \stdClass();
-                        $newDetail->item_name         = $prdetail->ticket_item->name;
-                        $newDetail->item_description  = $prdetail->ticket_item->bidding->ketersediaan_barang_notes;
-                        $newDetail->ticket_item_id    = $prdetail->ticket_item->id;
-                        $newDetail->qty               = $prdetail->qty;
-                        $newDetail->item_price        = $prdetail->price;
-                        if ($item['ppn_percentage'] == null) {
-                            array_push($non_ppn_items, $newDetail);
-                        } else {
-                            $newDetail->ppn_percentage    = $item['ppn_percentage'];
-                            array_push($ppn_items, $newDetail);
-                        }
-
-                        if ($prdetail->ongkir > 0) {
-                            $newDetail = new \stdClass();
-                            $newDetail->item_name         = 'Ongkir ' . $prdetail->ticket_item->name;
-                            $newDetail->item_description  = '';
-                            $newDetail->ticket_item_id    = $prdetail->ticket_item->id;
-                            $newDetail->qty               = 1;
-                            $newDetail->item_price        = $prdetail->ongkir;
-                            array_push($non_ppn_items, $newDetail);
-                        }
-
-                        if ($prdetail->ongpas > 0) {
-                            $newDetail = new \stdClass();
-                            $newDetail->item_name         = 'Ongpas ' . $prdetail->ticket_item->name;
-                            $newDetail->item_description  = '';
-                            $newDetail->ticket_item_id    = $prdetail->ticket_item->id;
-                            $newDetail->qty               = 1;
-                            $newDetail->item_price        = $prdetail->ongpas;
-                            array_push($non_ppn_items, $newDetail);
-                        }
-                    }
-
-                    if (count($ppn_items) > 0) {
-                        // PPN ITEMS
-                        $groupby_ppn_percentage = collect($ppn_items)->groupBy('ppn_percentage');
-                        foreach ($groupby_ppn_percentage as $lists) {
-                            $newPO = new Po;
-                            $newPO->ticket_id        = $ticket->id;
-                            $newPO->ticket_vendor_id = $item['ticket_vendor_id'];
-                            $newPO->has_ppn          = true;
-                            $newPO->ppn_percentage   = $lists[0]->ppn_percentage;
-                            $newPO->sender_name      = $ticket_vendor->name;
-                            $newPO->send_name        = $ticket->salespoint->name;
-                            $newPO->save();
-                            foreach ($lists as $list) {
-                                $podetail = new PoDetail;
-                                $podetail->po_id             = $newPO->id;
-                                $podetail->item_name         = $list->item_name;
-                                $podetail->item_description  = $list->item_description;
-                                $podetail->ticket_item_id    = $list->ticket_item_id;
-                                $podetail->qty               = $list->qty;
-                                $podetail->item_price        = $list->item_price;
-                                $podetail->save();
-                            }
-                        }
-                    }
-
-                    // NON PPN ITEM
-                    if (count($non_ppn_items) > 0) {
-                        $newPO = new Po;
-                        $newPO->ticket_id        = $ticket->id;
-                        $newPO->ticket_vendor_id = $item['ticket_vendor_id'];
-                        $newPO->has_ppn          = false;
-                        $newPO->sender_name      = $ticket_vendor->name;
-                        $newPO->send_name        = $ticket->salespoint->name;
-                        $newPO->save();
-
-                        foreach ($non_ppn_items as $list) {
-                            $podetail = new PoDetail;
-                            $podetail->po_id             = $newPO->id;
-                            $podetail->item_name         = $list->item_name;
-                            $podetail->item_description  = $list->item_description;
-                            $podetail->ticket_item_id    = $list->ticket_item_id;
-                            $podetail->qty               = $list->qty;
-                            $podetail->item_price        = $list->item_price;
-                            $podetail->save();
-                        }
-                    }
-                }
-
-                $monitor = new TicketMonitoring;
-                $monitor->ticket_id      = $ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Melakukan Setup PO';
-                $monitor->save();
-
-                // Done Revisi Status
-                $ticket->revise_po       = 2;
-                $ticket->save();
+        // jika ticket fri dan ada user yang ada di approval fri boleh akses tiket
+        if ($ticket->fri_forms->count() > 0) {
+            $check_if_author_exist = $ticket->fri_forms->first()->authorizations->where('employee_id', Auth::user()->id)->first();
+            if ($check_if_author_exist) {
+                $has_access = true;
             }
-
-            if ($armadaticket != null) {
-                // sudah di setup po sebelumnnya
-                if ($armadaticket->po->count() > 0) {
-                    return back()->with('error', 'PO sudah di setup sebelumnya');
-                }
-                switch ($armadaticket->type()) {
-                    case 'Pengadaan':
-                        $armadaticket->vendor_name = $request->selected_vendor;
-                        break;
-
-                    case 'Perpanjangan':
-                        $armadaticket->vendor_name = $request->selected_vendor;
-                        break;
-
-                    case 'Replace':
-                        $armadaticket->vendor_name = $request->selected_vendor;
-                        $armadaticket->armada_type_id = $request->armada_type_id;
-                        break;
-
-                    case 'Renewal':
-                        $armadaticket->vendor_name = $request->selected_vendor;
-                        $armadaticket->armada_type_id = $request->armada_type_id;
-                        break;
-
-                    case 'Mutasi':
-                        // copy semua dari ticket armada lama
-                        $old_armada_ticket              = $armadaticket->po_reference->armada_ticket;
-                        $armadaticket->vendor_name      = $old_armada_ticket->vendor_name;
-                        $armadaticket->armada_type_id   = $old_armada_ticket->armada_type_id;
-                        $armadaticket->armada_id        = $old_armada_ticket->armada_id;
-                        break;
-                }
-                // Done Revisi Status
-                $armadaticket->revise_po       = 2;
-                $armadaticket->save();
-
-                $newPo                   = new Po;
-                $newPo->armada_ticket_id = $armadaticket->id;
-                if ($armadaticket->type() == "Mutasi") {
-                    // untuk mutasi sender dari salespoint lama dan penerima salespoint tujuan
-                    $newPo->sender_name      = $armadaticket->po_reference->armada_ticket->vendor_name;
-                    $newPo->send_name        = $armadaticket->mutasi_form->receiver_salespoint_name;
-                } else {
-                    $newPo->sender_name      = $request->selected_vendor;
-                    $newPo->send_name        = $armadaticket->salespoint->name;
-                }
-                $newPo->has_ppn          = true;
-                $newPo->ppn_percentage   = 10;
-                $newPo->save();
-
-                // sewa
-                if ($request->sewa_value < 10000) {
-                    return back()->with('error', 'Minimal biaya sewa Rp 10.000,-');
-                }
-                $notes = $request->sewa_notes;
-                $value = $request->sewa_value;
-                // jika ada biaya ekspedisi gabungkan dengan biaya sewa
-
-                if ($request->ekspedisi_count != null) {
-                    $value += $request->ekspedisi_value / $request->sewa_count;
-                    $single_expedition_value = $request->ekspedisi_value / $request->sewa_count;
-
-                    $notes = $notes . "\r\n" . 'Biaya Ekspedisi';
-                    $notes = $notes . "\r\n" . $request->ekspedisi_value . '/' . $request->sewa_count . '=' . $single_expedition_value;
-                    $notes = $notes . "\r\n" . $request->ekspedisi_notes;
-                }
-
-                // biaya sewa
-                $newPoDetail = new PoDetail;
-                $newPoDetail->po_id            = $newPo->id;
-                $newPoDetail->item_name        = $request->sewa_name;
-                $newPoDetail->item_description = $notes;
-                $newPoDetail->uom              = 'AU';
-                $newPoDetail->qty              = $request->sewa_count;
-                $newPoDetail->item_price       = $value;
-                $newPoDetail->save();
-
-                // jika ada prorate tambahkan biaya
-                if ($request->prorate_value != null) {
-                    if ($request->prorate_value < 10000) {
-                        return back()->with('error', 'Minimal biaya prorate Rp 10.000,-');
-                    }
-                    $newPoDetail = new PoDetail;
-                    $newPoDetail->po_id            = $newPo->id;
-                    $newPoDetail->item_name        = 'Prorate Armada';
-                    $newPoDetail->item_description = $request->prorate_notes;
-                    $newPoDetail->uom              = 'AU';
-                    $newPoDetail->qty              = $request->prorate_count;
-                    $newPoDetail->item_price       = $request->prorate_value;
-                    $newPoDetail->save();
-                }
-
-                $monitor                        = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id      = $armadaticket->id;
-                $monitor->employee_id           = Auth::user()->id;
-                $monitor->employee_name         = Auth::user()->name;
-                $monitor->message               = 'Melakukan Setup PO';
-                $monitor->save();
-            }
-
-            if ($securityticket != null) {
-                // sudah di setup po sebelumnnya
-                if (count($securityticket->po) > 0) {
-                    throw new \Exception('PO sudah di setup sebelumnya');
-                }
-                switch ($securityticket->type()) {
-                    case 'Pengadaan':
-                        $securityticket->vendor_name = $request->new_vendor;
-                        $selected_vendor             = $request->new_vendor;
-                        break;
-
-                    case 'Pengadaan Lembur':
-                        $securityticket->vendor_name = $request->new_vendor;
-                        $selected_vendor             = $request->new_vendor;
-                        break;
-
-                    case 'Perpanjangan':
-                        $securityticket->vendor_name = $request->old_vendor;
-                        $selected_vendor             = $request->old_vendor;
-                        break;
-
-                    case 'Replace':
-                        $securityticket->vendor_name = $request->new_vendor;
-                        $selected_vendor             = $request->new_vendor;
-                        break;
-                }
-                // Done Revisi Status
-                $securityticket->revise_po       = 2;
-                $securityticket->save();
-
-                // untuk item ppn
-                if (isset($request->item_ppn)) {
-                    $newPo                     = new Po;
-                    $newPo->security_ticket_id = $securityticket->id;
-                    $newPo->sender_name        = $selected_vendor;
-                    $newPo->send_name          = $securityticket->salespoint->name;
-                    $newPo->has_ppn            = true;
-                    $newPo->ppn_percentage     = 10;
-                    $newPo->save();
-
-                    foreach ($request->item_ppn as $item) {
-                        $newPoDetail = new PoDetail;
-                        $newPoDetail->po_id            = $newPo->id;
-                        $newPoDetail->item_name        = $item['name'];
-                        $newPoDetail->item_description = $item['notes'];
-                        $newPoDetail->uom              = 'AU';
-                        $newPoDetail->qty              = $item['count'];
-                        $newPoDetail->item_price       = $item['value'];
-                        $newPoDetail->save();
-                    }
-                }
-
-                // untuk item non ppn
-                if (isset($request->item_nonppn)) {
-                    $newPo                     = new Po;
-                    $newPo->security_ticket_id = $securityticket->id;
-                    $newPo->sender_name        = $selected_vendor;
-                    $newPo->send_name          = $securityticket->salespoint->name;
-                    $newPo->has_ppn            = false;
-                    $newPo->save();
-
-                    foreach ($request->item_nonppn as $item) {
-                        $newPoDetail = new PoDetail;
-                        $newPoDetail->po_id            = $newPo->id;
-                        $newPoDetail->item_name        = $item['name'];
-                        $newPoDetail->item_description = $item['notes'];
-                        $newPoDetail->uom              = 'AU';
-                        $newPoDetail->qty              = $item['count'];
-                        $newPoDetail->item_price       = $item['value'];
-                        $newPoDetail->save();
-                    }
-                }
-                $monitor                        = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id    = $securityticket->id;
-                $monitor->employee_id           = Auth::user()->id;
-                $monitor->employee_name         = Auth::user()->name;
-                $monitor->message               = 'Melakukan Setup PO';
-                $monitor->save();
-            }
-
-            DB::commit();
-            return back()->with('success', 'Berhasil melakukan setting PO. Silahkan melanjutkan penerbitan PO');
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal melakukan setting PO. Silahkan hubungi developer atau coba kembali');
         }
-    }
-
-    public function quickRefresh(Request $request)
-    {
-        // hapus data pr terkait yang lama di table pr_sap dilanjutkan dengan insert data baru
-        $prs = array_unique($request->pr ?? []);
-        $pos = array_unique($request->po ?? []);
-        if (count($prs) < 1 && count($pos) < 1) {
-            return back()->with('error', 'Belum ada nomor PR atau PO yang dapat di refresh');
+        if (!$has_access) {
+            return redirect('/ticketing')->with('error', 'Anda tidak memiliki akses untuk tiket berikut. Tidak memiliki akses salespoint "' . $ticket->salespoint->name . '"');
         }
-        try {
-            DB::beginTransaction();
-            $current_time = now();
-            foreach ($prs as $pr) {
-                $curl = curl_init();
-                switch (config('app.env')) {
-                    case 'local':
-                        // development
-                        // $pr_url = "http://103.111.82.19:8000/sap/bc/zrvpods?sap-client=110&pgmna=zmmr0001";
-                        // $pr_url = "http://103.111.82.20:8000/sap/bc/zrvpods?sap-client=200&pgmna=zmmr0001";
-                        $pr_url = "http://103.111.82.21:8000/sap/bc/zrvpods?sap-client=300&pgmna=zmmr0001&s_banfn=" . $pr;
-                        break;
-                    case 'development':
-                        //  QAS
-                        // $pr_url = "http://103.111.82.20:8000/sap/bc/zrvpods?sap-client=200&pgmna=zmmr0001";
-                        $pr_url = "http://103.111.82.21:8000/sap/bc/zrvpods?sap-client=300&pgmna=zmmr0001&s_banfn=" . $pr;
-                        break;
-                    case 'production':
-                        // Production
-                        $pr_url = "http://103.111.82.21:8000/sap/bc/zrvpods?sap-client=300&pgmna=zmmr0001&s_banfn=" . $pr;
-                        break;
-                    default:
-                        $pr_url = "";
-                        break;
-                }
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => $pr_url,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => 'GET',
-                    CURLOPT_FAILONERROR => true,
-                    CURLOPT_HTTPHEADER => array(
-                        'Cookie: sap-usercontext=sap-client=110'
-                    ),
-                ));
+        if ($ticket) {
+            $available_salespoints = SalesPoint::whereIn('id', $user_location_access)->get();
+            $available_salespoints = $available_salespoints->groupBy('region');
 
-                $response = curl_exec($curl);
-                if (curl_errno($curl)) {
-                    $error_msg = curl_error($curl);
-                }
-                curl_close($curl);
-                if (isset($error_msg)) {
-                    throw new \Exception($error_msg);
-                } else {
-                    $old_pr_data = DB::table('pr_sap')
-                        ->where("data", "like", '%' . '"banfn":"' . $pr . '"' . '%')
-                        ->delete();
-                    $response = json_decode($response);
-                    foreach ($response as $key => $item) {
-                        DB::table('pr_sap')->insert([
-                            [
-                                'data' => json_encode($item),
-                                'created_at' => $current_time,
-                                'updated_at' => $current_time,
-                            ]
-                        ]);
-                    }
-                }
-            }
-            foreach ($pos as $po) {
-                $curl = curl_init();
-                switch (config('app.env')) {
-                    case 'local':
-                        // development
-                        // $pr_url = "http://103.111.82.19:8000/sap/bc/zrvpods?sap-client=110&pgmna=zmmr0001";
-                        // $pr_url = "http://103.111.82.20:8000/sap/bc/zrvpods?sap-client=200&pgmna=zmmr0001";
-                        $pr_url = "http://103.111.82.21:8000/sap/bc/zrvpods?sap-client=300&pgmna=zmmr0002&s_ebeln=" . $po;
-                        break;
-                    case 'development':
-                        //  QAS
-                        // $pr_url = "http://103.111.82.20:8000/sap/bc/zrvpods?sap-client=200&pgmna=zmmr0001";
-                        $pr_url = "http://103.111.82.21:8000/sap/bc/zrvpods?sap-client=300&pgmna=zmmr0002&s_ebeln=" . $po;
-                        break;
-                    case 'production':
-                        // Production
-                        $pr_url = "http://103.111.82.21:8000/sap/bc/zrvpods?sap-client=300&pgmna=zmmr0002&s_ebeln=" . $po;
-                        break;
-                    default:
-                        $pr_url = "";
-                        break;
-                }
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => $pr_url,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => 'GET',
-                    CURLOPT_FAILONERROR => true,
-                    CURLOPT_HTTPHEADER => array(
-                        'Cookie: sap-usercontext=sap-client=110'
-                    ),
-                ));
+            $indirect_salespoints = SalesPoint::where('region', 19)->get();
 
-                $response = curl_exec($curl);
-                if (curl_errno($curl)) {
-                    $error_msg = curl_error($curl);
-                }
-                curl_close($curl);
-                if (isset($error_msg)) {
-                    throw new \Exception($error_msg);
-                } else {
-                    $old_po_data = DB::table('po_sap')
-                        ->where("data", "like", '%' . '"ebeln":"' . $po . '"' . '%')
-                        ->delete();
-                    $response = json_decode($response);
-                    foreach ($response as $key => $item) {
-                        DB::table('po_sap')->insert([
-                            [
-                                'data' => json_encode($item),
-                                'created_at' => $current_time,
-                                'updated_at' => $current_time,
-                            ]
-                        ]);
-                    }
-                }
-            }
-            DB::commit();
-            return back()->with('success', 'Berhasil melakukan quick refresh');
-        } catch (\Exception $ex) {
-            return back()->with('error', 'Gagal melakukan quick refresh data. (' . $ex->getMessage() . ')[' . $ex->getLine() . '])');
-            DB::rollback();
-        }
-    }
+            $budget_category_items = BudgetPricingCategory::all();
+            $maintenance_budgets = MaintenanceBudget::all()->groupBy('category_name');
+            $ho_budgets = HOBudget::all()->groupBy('category_name');
 
-    public function newsetupPO(Request $request)
-    {
-        $response = $this->getPoSap($request);
-        $json_po_data = $response->getData();
-        if ($json_po_data->error) {
-            throw new \Exception('failed');
-        }
-        $po_datas = collect($json_po_data->data);
-        $group_by_po_number = $po_datas->groupBy('po_number');
-        if ($request->ticket_id) {
-            $ticket = Ticket::find($request->ticket_id);
-            $salespoint_name = $ticket->salespoint->name;
-            $salespoint_address = $ticket->salespoint->address;
-        }
-        if ($request->armada_ticket_id) {
-            $armada_ticket = ArmadaTicket::find($request->armada_ticket_id);
-            $salespoint_name = $armada_ticket->salespoint->name;
-            $salespoint_address = $armada_ticket->salespoint->address;
-        }
-        if ($request->security_ticket_id) {
-            $security_ticket = SecurityTicket::find($request->security_ticket_id);
-            $salespoint_name = $security_ticket->salespoint->name;
-            $salespoint_address = $security_ticket->salespoint->address;
-        }
-        try {
-            DB::beginTransaction();
-            foreach ($group_by_po_number as $po) {
-                $firstitem = $po->first();
-                $newPO                          = new Po;
-                $newPO->ticket_id               = $request->ticket_id ?? null;
-                $newPO->armada_ticket_id        = $request->armada_ticket_id ?? null;
-                $newPO->security_ticket_id      = $request->security_ticket_id ?? null;
-                $newPO->has_ppn                 = false;
-                $newPO->sender_name             = $firstitem->vendor_name;
+            // active vendors
+            $vendors = Vendor::where('status', 0)->get();
 
-                // try to get vendor address
-                $vendor = Vendor::where('code', $firstitem->vendor)->first();
-                $newPO->vendor_code             = $firstitem->vendor ?? null;
-                // $newPO->sender_address          = $vendor->address ?? "";
-                $vendor_text = ($firstitem->vendor_name ?? "") . "\n" . ($firstitem->vendor_addr ?? "") . "\n" . ($firstitem->vendor_city ?? "");
-                $newPO->sender_address          = $vendor_text;
+            // trashed ticket vendor
+            $trashed_ticket_vendors = TicketVendor::where('ticket_id', $ticket->id)->onlyTrashed()->get();
 
-                $newPO->send_name               = $salespoint_name;
-                $plant_text = ($firstitem->plant_name_1 ?? "") . "\n" . ($firstitem->plant_name_2 ?? "") . "\n" . ($firstitem->plant_addrs ?? "") . "\n" . ($firstitem->plant_city ?? "");
-                $newPO->send_address            = $plant_text;
-                if (isset($firstitem->payment_days)) {
-                    $newPO->payment_days            = $firstitem->payment_days;
-                }
-                // $newPO->notes
-                $newPO->no_pr_sap               = $firstitem->pr_number;
-                $newPO->no_po_sap               = $firstitem->po_number;
-                $newPO->created_at              = $firstitem->doc_date;
-                $newPO->save();
+            // show file completement data
+            $filecategories = FileCategory::all();
 
-                foreach ($po as $list) {
-                    $podetail = new PoDetail;
-                    $podetail->po_id             = $newPO->id;
-                    $podetail->item_number       = $list->item_po;
-                    $podetail->item_name         = $list->material_short_text;
-                    $podetail->item_description  = $list->item_text_po ?? "";
-                    // $podetail->ticket_item_id    = $list->ticket_item_id;
-                    $podetail->qty               = $list->scheduled_qty_requested;
-                    $podetail->uom               = $list->order_unit;
-                    $podetail->item_price        = $list->net_order_price / $list->price_unit * 100;
-                    $podetail->delivery_notes    = $list->delv_date . " = " . $podetail->qty . " " . $podetail->uom;
-                    $podetail->save();
-                }
-            }
-            DB::commit();
-            return redirect('/po')->with('success', 'Berhasil melakukan setting PO. Silahkan melanjutkan penerbitan PO');
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal melakukan setting PO. Silahkan hubungi developer atau coba kembali');
-        }
-    }
-
-    public function revisePOData(Request $request)
-    {
-        $po = Po::where('no_po_sap', $request->po_number)->first();
-        if ($po->updated_at != $request->updated_at) {
-            return back()->with('error', 'Data telah terupdate');
-        }
-        $po->status = -1;
-        $po->save();
-
-        return back()->with('success', 'Silahkan melakukan Revisi Data');
-    }
-
-    public function revisePO(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            switch ($request->type) {
-                case 'barangjasa':
-                    $ticket = Ticket::find($request->id);
-                    // if($ticket->status() != "Menunggu proses PO & Penerimaan Barang"){
-                    //     return back()->with('error','Gagal Melakukan Revisi PO');
-                    // }
-                    
-                    // Monitoring Revise PO
-                    $monitor                        = new TicketMonitoring;
-                    $monitor->ticket_id             = $request->id;
-                    $monitor->employee_id           = Auth::user()->id;
-                    $monitor->employee_name         = Auth::user()->name;
-                    $monitor->message               = 'Melakukan Revisi PO';
-                    $monitor->save();
-
-                    //Revise Reason
-                    $ticket->revise_by          = Auth::user()->id;
-                    $ticket->revise_po          = 1;
-                    $ticket->reason_revise      = $request->revise_notes;
-                    $ticket->revise_date        = now();
-                    $ticket->save();
-
-
-                    break;
-
-                case 'armada':
-                    $ticket = ArmadaTicket::find($request->id);
-                    // if($ticket->status() != "Menunggu proses PO"){
-                    //     return back()->with('error','Gagal Melakukan Revisi PO');
-                    // }
-                    
-                    // Monitoring Revise PO
-                    $monitor                        = new ArmadaTicketMonitoring;
-                    $monitor->armada_ticket_id      = $request->id;
-                    $monitor->employee_id           = Auth::user()->id;
-                    $monitor->employee_name         = Auth::user()->name;
-                    $monitor->message               = 'Melakukan Revisi PO';
-                    $monitor->save();
-
-                    //Revise Reason
-                    $ticket->revise_by          = Auth::user()->id;
-                    $ticket->revise_po          = 1;
-                    $ticket->reason_revise      = $request->revise_notes;
-                    $ticket->revise_date        = now();
-                    $ticket->save();
-
-                    break;
-
-                case 'security':
-                    $ticket = SecurityTicket::find($request->id);
-                    // if($ticket->status() != "Menunggu proses PO"){
-                    //     return back()->with('error','Gagal Melakukan Revisi PO Security');
-                    // }
-
-                    // Monitoring Revise PO
-                    $monitor                        = new SecurityTicketMonitoring;
-                    $monitor->security_ticket_id    = $request->id;
-                    $monitor->employee_id           = Auth::user()->id;
-                    $monitor->employee_name         = Auth::user()->name;
-                    $monitor->message               = 'Melakukan Revisi PO';
-                    $monitor->save();
-
-                    //Revise Reason
-                    $ticket->revise_by          = Auth::user()->id;
-                    $ticket->revise_po          = 1;
-                    $ticket->reason_revise      = $request->revise_notes;
-                    $ticket->revise_date        = now();
-                    $ticket->save();
-                    
-                    break;
-
-                default:
-                    throw new \Exception('Tipe ticket ditemukan');
-                    break;
-            }
-            if (!$ticket) {
-                throw new \Exception('Ticket tidak ditemukan');
-            }
-
-            foreach ($ticket->po as $po) {
-                $po->po_authorization()->delete();
-                $po->po_detail()->delete();
-                $po->delete();
-            }
-            DB::commit();
-            return redirect("/po")->with("success", "Revisi PO berhasil silahkan mengulang setup PO");
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', "Gagal Melakukan Revisi PO (" . $ex->getMessage() . ")");
-        }
-    }
-
-    public function old_submitPO(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            $po = Po::findOrFail($request->po_id);
-            if ($po->status != -1) {
-                throw new \Exception("PO sudah di proses sebelumnya oleh " . $po->created_by_employee->name . ' pada ' . $po->created_at->translatedFormat('d F Y (H:i)'));
+            // fri_authorization
+            $fri_authorization = Authorization::where('form_type', 12)->first();
+            if ($ticket->status == 0) {
+                // if draft make it editable
+                return view('Operational.ticketingdetail', compact('ticket', 'available_salespoints', 'indirect_salespoints', 'budget_category_items', 'vendors', 'filecategories', 'trashed_ticket_vendors', 'maintenance_budgets', 'ho_budgets', 'fri_authorization'));
             } else {
-                $existing_po = Po::where('no_po_sap', $request->no_po_sap)->first();
-                $existing_pr = Po::where('no_pr_sap', $request->no_pr_sap)->first();
-                // re check on po manual
-                if (!$existing_po) {
-                    $existing_po = PoManual::where('po_number', $request->no_po_sap)->first();
-                }
-
-                if ($existing_pr) {
-                    throw new \Exception('Nomor PR SAP ' . $request->no_pr_sap . 'telah sebelumnya di input di kode pengadaan ' . $existing_pr->ticket->code);
-                }
-
-                if ($existing_po) {
-                    throw new \Exception('Nomor PO SAP ' . $request->no_po_sap . 'telah sebelumnya di input di kode pengadaan ' . $existing_po->ticket->code);
-                }
-
-                $po->sender_address         = $request->sender_address;
-                $po->send_address           = $request->send_address;
-                $po->payment_days           = $request->payment_days;
-                $po->no_pr_sap              = $request->no_pr_sap;
-                $po->no_po_sap              = $request->no_po_sap;
-                $po->supplier_pic_name      = $request->supplier_pic_name;
-                $po->supplier_pic_position  = $request->supplier_pic_position;
-                $po->notes                  = $request->notes;
-                $po->start_date             = $request->start_date;
-                $po->end_date               = $request->end_date;
-                $po->created_by             = Auth::user()->id;
-                $po->status                 = 0;
-                $po->save();
-
-                foreach ($request->po_detail as $po_detail) {
-                    $detail = PoDetail::findOrFail($po_detail['id']);
-                    $detail->delivery_notes = $po_detail['delivery_notes'];
-                    $detail->save();
-                }
-
-                foreach ($po->po_authorization as $author) {
-                    $author->delete();
-                }
-                $authorization = Authorization::findOrFail($request->authorization_id);
-                foreach ($authorization->authorization_detail as $authorization) {
-                    $po_authorization                       = new PoAuthorization;
-                    $po_authorization->po_id                = $po->id;
-                    $po_authorization->employee_id          = $authorization->employee_id;
-                    $po_authorization->employee_name        = $authorization->employee->name;
-                    $po_authorization->as                   = $authorization->sign_as;
-                    $po_authorization->employee_position    = $authorization->employee_position->name;
-                    $po_authorization->level                = $authorization->level;
-                    $po_authorization->save();
-                }
+                return view('Operational.ticketingform', compact('ticket', 'available_salespoints', 'indirect_salespoints', 'budget_category_items', 'vendors', 'filecategories', 'trashed_ticket_vendors', 'maintenance_budgets', 'ho_budgets', 'fri_authorization', 'armada_types'));
             }
-
-            if ($po->ticket_id != null) {
-                $monitor = new TicketMonitoring;
-                $monitor->ticket_id      = $po->ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menerbitkan PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->armada_ticket_id != null) {
-                $monitor = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id      = $po->armada_ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menerbitkan PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->security_ticket_id != null) {
-                $monitor = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id      = $po->security_ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menerbitkan PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            DB::commit();
-            return back()->with('success', 'Berhasil Menerbitkan PO');
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal Menerbitkan PO ' . $ex->getMessage());
+        } else {
+            return redirect('/ticketing')->with('error', 'Form tidak ditemukan');
         }
     }
 
-    public function submitPO(Request $request)
+    public function addNewPO(Request $request)
+    {
+        $user_location_access  = Auth::user()->location_access->pluck('salespoint_id');
+        $available_salespoints = SalesPoint::whereIn('id', $user_location_access)->get();
+        $available_salespoints = $available_salespoints->groupBy('region');
+
+        // active customer
+        $customers = Customer::where('status', 0)->get();
+        // product
+        $product = Product::whereNull('deleted_at')->get();
+        // authorization
+        $request_type = $request->request_type;
+
+        if ($request->request_type == '1') {
+            return view('Operational.Sales.posewadetail', compact('available_salespoints', 'customers', 'product', 'request_type'));
+        }
+        if ($request->request_type == '2') {
+            return view('Operational.Sales.pojualdetail', compact('available_salespoints', 'customers', 'product', 'request_type'));
+        }
+        if ($request->request_type == '3') {
+            return view('Operational.Sales.pocustomdetail', compact('available_salespoints', 'customers', 'product', 'request_type'));
+        }
+        return back()->with('error', 'Terjadi Kesalahan silahkan mencoba lagi');
+    }
+
+    public function deleteTicket(Request $request)
+    {
+        $ticket = Ticket::where('code', $request->code)->first();
+        if ($ticket) {
+            $ticket->delete();
+            return redirect('/ticketing')->with('success', 'Berhasil Menghapus Ticket');
+        } else {
+            return redirect('/ticketing')->with('error', 'Gagal Menghapus Ticket');
+        }
+    }
+
+    public function addTicket(Request $request)
     {
         try {
             // dd($request);
             DB::beginTransaction();
-            $po = Po::findOrFail($request->po_id);
-            if ($po->status != -1) {
-                throw new \Exception("PO sudah di proses sebelumnya oleh " . $po->created_by_employee->name . ' pada ' . $po->created_at->translatedFormat('d F Y (H:i)'));
+            if (!isset($request->salespoint)) {
+                return back()->with('error', 'SalesPoint harus dipilih');
             }
-            if ($request->has_reminder) {
-                if (Carbon::parse($request->start_date) > Carbon::parse($request->end_date)) {
-                    throw new \Exception('Start date harus sebelum atau sama dengan end date');
-                }
-            }
-            $po->sender_address         = $request->sender_address;
-            $po->send_address           = $request->send_address;
-            // $po->payment_days           = $request->payment_days;
-            $po->supplier_pic_name      = $request->supplier_pic_name;
-            $po->supplier_pic_position  = $request->supplier_pic_position;
-            $po->has_ppn                = ($request->has_ppn) ? true : false;
-            $po->ppn_percentage         = $request->ppn_percentage ?? null;
-            $po->notes                  = $request->notes;
-            if ($request->has_reminder) {
-                $po->start_date     = $request->start_date;
-                $po->end_date       = $request->end_date;
+            $ticket = Ticket::find($request->id);
+            $isnew = true;
+            if ($ticket == null) {
+                $ticket = new Ticket;
             } else {
-                $po->start_date     = null;
-                $po->end_date       = null;
+                $isnew = false;
             }
-            $po->created_by             = Auth::user()->id;
-            $po->status                 = 0;
-            $po->save();
+            $ticket->requirement_date   = $request->requirement_date;
+            $ticket->salespoint_id      = $request->salespoint;
+            $ticket->authorization_id   = $request->authorization;
+            $ticket->item_type          = $request->item_type;
+            $ticket->request_type       = $request->request_type;
+            $ticket->is_it              = $request->is_it;
+            $ticket->budget_type        = $request->budget_type;
+            $ticket->division           = $request->division;
+            $ticket->over_budget_reason    = $request->reason_over_budget;
+            $ticket->is_over_budget        = $request->is_over_budget;
 
-            // foreach($request->po_detail as $po_detail){
-            //     $detail = PoDetail::findOrFail($po_detail['id']);
-            //     $detail->delivery_notes = $po_detail['delivery_notes'];
-            //     $detail->save();
-            // }
+            if ($ticket->division == "Indirect") {
+                $ticket->indirect_salespoint_id        = $request->indirect_salespoint_id;
+            } else {
+                $ticket->indirect_salespoint_id        = null;
+            }
+            $ticket->reason             = $request->reason;
+            $ticket->save();
+            if ($ticket->code == null) {
+                $ticket->code = 'draft_' . date('ymdHi') . $ticket->id;
+            }
+            if ($request->ba_vendor_name != null && $request->ba_vendor_file != null) {
+                $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
+                $ext = pathinfo($request->ba_vendor_name, PATHINFO_EXTENSION);
+                $ticket->ba_vendor_filename = "berita_acara_vendor_" . $salespointname . '.' . $ext;
+                $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/' . $ticket->ba_vendor_filename;
 
-            foreach ($po->po_authorization as $author) {
-                $author->delete();
-            }
-            $authorization = Authorization::findOrFail($request->authorization_id);
-            foreach ($authorization->authorization_detail as $authorization) {
-                $po_authorization                       = new PoAuthorization;
-                $po_authorization->po_id                = $po->id;
-                $po_authorization->employee_id          = $authorization->employee_id;
-                $po_authorization->employee_name        = $authorization->employee->name;
-                $po_authorization->as                   = $authorization->sign_as;
-                $po_authorization->employee_position    = $authorization->employee_position->name;
-                $po_authorization->level                = $authorization->level;
-                $po_authorization->save();
-            }
-
-            if ($po->ticket_id != null) {
-                $monitor = new TicketMonitoring;
-                $monitor->ticket_id      = $po->ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menerbitkan PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->armada_ticket_id != null) {
-                $monitor = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id      = $po->armada_ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menerbitkan PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->security_ticket_id != null) {
-                $monitor = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id      = $po->security_ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menerbitkan PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            DB::commit();
-            return back()->with('success', 'Berhasil Menerbitkan PO');
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal Menerbitkan PO ' . $ex->getMessage() . '(' . $ex->getLine() . ')');
-        }
-    }
-
-    public function printPO(Request $request)
-    {
-        try {
-            $po = Po::where('no_po_sap', $request->input('code'))->first();
-            if (!$po) {
-                throw new \Exception('PO tidak ditemukan');
-            }
-            $pdf = PDF::loadView('pdf.popdf', compact('po'))->setPaper('legal', 'portrait');
-            return $pdf->stream('PO (' . $po->no_po_sap . ').pdf');
-            // return $pdf->download('invoice.pdf');
-        } catch (\Exception $ex) {
-            return back()->with('error', 'Gagal Mencetak PO ' . $ex->getMessage() . $ex->getLine());
-        }
-    }
-
-    public function cancelVendorConfirmation(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            $po                       = Po::findOrFail($request->id);
-            $po_upload_request        = $po->po_upload_request;
-
-            $po->status               = 3;
-            $po->po_upload_request_id = null;
-            $po->save();
-            $po_upload_request->delete();
-
-            $isComplete = false;
-            if ($po->ticket_id != null) {
-            }
-            if ($po->armada_ticket_id != null) {
-                $armada_ticket              = $po->armada_ticket;
-                $armada_ticket->po_number   = $po->no_po_sap;
-                // untuk kasus setelah revisi po kalau pengadaan udah selesai gausah reset pengadaan ulang
-                if ($armada_ticket->status < 5) {
-                    $armada_ticket->status      = 5;
+                if (!str_contains($request->ba_vendor_file, 'base64,')) {
+                    // url
+                    $file = Storage::disk('public')->get(explode('storage', $request->ba_vendor_file)[1]);
+                    Storage::disk('public')->put($path, $file);
+                } else {
+                    // base 64 data
+                    $file = explode('base64,', $request->ba_vendor_file)[1];
+                    Storage::disk('public')->put($path, base64_decode($file));
                 }
-                $armada_ticket->save();
-
-                // START CASE
-                // Jika armada perpanjangan, setelah confirm PO langsung otomatis verifikasi PO (tanpa harus dari area)
-                if ($armada_ticket->type() == "Perpanjangan") {
-                    $newrequest = new Request;
-                    $newrequest->replace([
-                        'armada_ticket_id' => $armada_ticket->id,
-                    ]);
-                    $response = app('App\Http\Controllers\Operational\ArmadaTicketingController')->verifyPO($newrequest, "api");
-                    $isComplete = true;
-                }
-                // END CASE
+                $ticket->ba_vendor_filepath = $path;
+            } else {
+                $ticket->ba_vendor_filename = null;
+                $ticket->ba_vendor_filepath = null;
             }
-            if ($po->security_ticket_id != null) {
-                $security_ticket              = $po->security_ticket;
-                $security_ticket->po_number   = $po->no_po_sap;
+            $ticket->save();
+            $salespoint = $ticket->salespoint;
 
-                // cek status seluruh po apakah sudah selesai
-                if ($security_ticket->po->where('status', '<', 3)->count() == 0) {
-                    if ($security_ticket->status < 5) {
-                        $security_ticket->status      = 5;
+            // remove old data
+            if ($ticket->ticket_item->count() > 0) {
+                // get deleted new data
+                $registered_id = collect($request->item)->pluck('id')->filter(function ($item) {
+                    if ($item != "undefined") {
+                        return true;
+                    } else {
+                        return false;
                     }
-                    $security_ticket->save();
-                    // START CASE
-                    // Jika security perpanjangan, setelah confirm PO langsung otomatis selesai pengadaan (tanpa LPB Area)
-                    if ($security_ticket->type() == "Perpanjangan") {
-                        $newrequest = new Request;
-                        $newrequest->replace([
-                            'security_ticket_id' => $security_ticket->id,
-                        ]);
-                        $response = app('App\Http\Controllers\Operational\SecurityTicketingController')->uploadSecurityLPB($newrequest, "api");
-                        $isComplete = true;
+                });
+                $deleted_item = [];
+                if ($ticket->ticket_item->count() > 0) {
+                    $deleted_item = $ticket->ticket_item->whereNotIn('id', $registered_id);
+                }
+                foreach ($deleted_item as $deleted) {
+                    $deleted->delete();
+                }
+            }
+            // get all registered file id on ticket
+            $registered_file_id = [];
+            foreach ($ticket->ticket_item as $t_item) {
+                if ($t_item->ticket_item_file_requirement->count() > 0) {
+                    foreach ($t_item->ticket_item_file_requirement as $t_item_file) {
+                        array_push($registered_file_id, $t_item_file->id);
                     }
-                    // END CASE
+                }
+            }
+            // get all files from request
+            $allfiles = [];
+            if (count($request->item ?? []) > 0) {
+                foreach ($request->item as $item) {
+                    if (isset($item['files'])) {
+                        foreach ($item['files'] as $file) {
+                            if ($file['id'] != "undefined") {
+                                array_push($allfiles, $file);
+                            }
+                        }
+                    }
+                }
+            }
+            $deleted_files = array_diff($registered_file_id, collect($allfiles)->pluck('id')->toArray());
+            foreach ($deleted_files as $del) {
+                $r = TicketItemFileRequirement::find($del);
+                // TODO delete the file from the storage
+                $r->delete();
+            }
+            // update registered files with new data if updated
+            foreach ($allfiles as $afiles) {
+                $tfile = TicketItemFileRequirement::find($afiles['id']);
+                $ext = pathinfo($afiles['name'], PATHINFO_EXTENSION);
+                $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
+                $name = $tfile->file_completement->filename . '_' . $salespointname . '.' . $ext;
+                $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $tfile->ticket_item->id . '/files/' . $name;
+                if (str_contains($afiles['file'], 'base64,')) {
+                    $file = explode('base64,', $afiles['file'])[1];
+                    $tfile->path = $path;
+                    $tfile->name = $name;
+                    $tfile->save();
+                    Storage::disk('public')->put($path, base64_decode($file));
+                }
+            }
+
+            // add ticket item that not registered
+            $newitems = collect($request->item)->where('id', 'undefined');
+            if (isset($newitems)) {
+                foreach ($newitems as $key => $item) {
+                    $newTicketItem                        = new TicketItem;
+                    $newTicketItem->ticket_id             = $ticket->id;
+                    if ($item['budget_pricing_id'] != "undefined" && is_numeric($item['budget_pricing_id'])) {
+                        $newTicketItem->budget_pricing_id = $item['budget_pricing_id'];
+                    }
+                    if ($item['maintenance_budget_id'] != "undefined" && is_numeric($item['maintenance_budget_id'])) {
+                        $newTicketItem->maintenance_budget_id = $item['maintenance_budget_id'];
+                    }
+                    if ($item['ho_budget_id'] != "undefined" && is_numeric($item['ho_budget_id'])) {
+                        $newTicketItem->ho_budget_id = $item['ho_budget_id'];
+                    }
+                    $newTicketItem->name                  = $item['name'];
+                    $newTicketItem->brand                 = $item['brand'];
+                    $newTicketItem->type                  = $item['type'];
+                    $newTicketItem->price                 = $item['price'];
+                    $newTicketItem->count                 = $item['count'];
+
+                    if (
+                        $request->is_over_budget == 1 && $item['price'] > $item['item_max_price'] ||
+                        $ticket->is_over_budget == 1 && $item['price'] > $item['item_max_price']
+                    ) {
+                        $newTicketItem->nilai_budget_over_budget = $item['item_max_price'];
+                        $newTicketItem->nilai_ajuan_over_budget  = $item['price'];
+                        $selisih_over_budget_item = $item['item_max_price'] - $item['price'];
+                        $selisih_over_budget_item_remove_minus = str_replace('-', '', $selisih_over_budget_item);
+                        $newTicketItem->selisih_over_budget      = $selisih_over_budget_item_remove_minus;
+                    } else {
+                        $newTicketItem->nilai_budget_over_budget = null;
+                        $newTicketItem->nilai_ajuan_over_budget  = null;
+                        $newTicketItem->selisih_over_budget      = null;
+                    }
+
+                    $newTicketItem->save();
+                    if (isset($item["attachments"])) {
+                        foreach ($item["attachments"] as $attachment) {
+                            $newAttachment = new TicketItemAttachment;
+                            $newAttachment->ticket_item_id = $newTicketItem->id;
+                            $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
+                            $filename = pathinfo($attachment['filename'], PATHINFO_FILENAME);
+                            $ext = pathinfo($attachment['filename'], PATHINFO_EXTENSION);
+                            $newAttachment->name = $filename . '_' . $salespointname . '.' . $ext;
+                            $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $newTicketItem->id . '/' . $newAttachment->name;
+                            if (!str_contains($attachment['file'], 'base64,')) {
+                                $file = Storage::disk('public')->get(explode('storage', $attachment['file'])[1]);
+                                Storage::disk('public')->put($path, $file);
+                            } else {
+                                // base 64 data
+                                $file = explode('base64,', $attachment['file'])[1];
+                                Storage::disk('public')->put($path, base64_decode($file));
+                            }
+                            $newAttachment->path = $path;
+                            $newAttachment->save();
+                        }
+                    }
+                    if (isset($item['files'])) {
+                        foreach ($item["files"] as $filereq) {
+                            $ext = pathinfo($filereq['name'], PATHINFO_EXTENSION);
+                            $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
+                            $filecompletement = FileCompletement::find($filereq['file_completement_id']);
+                            $name = $filecompletement->filename . '_' . $salespointname . '.' . $ext;
+
+                            $newfile                        = new TicketItemFileRequirement;
+                            $newfile->ticket_item_id        = $newTicketItem->id;
+                            $newfile->file_completement_id  = $filereq['file_completement_id'];
+                            $newfile->name                  = $name;
+                            $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $newTicketItem->id . '/files/' . $name;
+                            if (!str_contains($filereq['file'], 'base64,')) {
+                                $file = Storage::disk('public')->get(explode('storage', $filereq['file'])[1]);
+                                Storage::disk('public')->put($path, $file);
+                            } else {
+                                // base 64 data
+                                $file = explode('base64,', $filereq['file'])[1];
+                                Storage::disk('public')->put($path, base64_decode($file));
+                            }
+                            $newfile->path                  = $path;
+                            $newfile->save();
+                        }
+                    }
+                }
+            }
+
+            $registereditem = collect($request->item)->filter(function ($oitem) {
+                if ($oitem['id'] != "undefined") {
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+            foreach ($registereditem as $reg) {
+                if (isset($reg['files'])) {
+                    foreach ($reg['files'] as $regfile) {
+                        if ($regfile['id'] == "undefined") {
+                            $filecompletement = FileCompletement::find($regfile['file_completement_id']);
+                            $ext = pathinfo($regfile['name'], PATHINFO_EXTENSION);
+                            $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
+                            $name = $filecompletement->filename . '_' . $salespointname . '.' . $ext;
+
+                            $newfile                        = new TicketItemFileRequirement;
+                            $newfile->ticket_item_id        = $reg['id'];
+                            $newfile->file_completement_id  = $regfile['file_completement_id'];
+                            $newfile->name                  = $name;
+                            $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $reg['id'] . '/files/' . $name;
+                            if (str_contains($regfile['file'], 'base64,')) {
+                                // base 64 data
+                                $newfile->path = $path;
+                                $newfile->save();
+                                $file = explode('base64,', $regfile['file'])[1];
+                                Storage::disk('public')->put($path, base64_decode($file));
+                            }
+                        }
+                    }
+                }
+            }
+            // ticket vendor
+            if ($ticket->ticket_vendor->count() > 0) {
+                $registered_id = collect($request->vendor)->pluck('id')->filter(function ($item) {
+                    if ($item != "undefined") {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                });
+                $deleted_item = [];
+                if ($ticket->ticket_vendor->count() > 0) {
+                    $deleted_item = $ticket->ticket_vendor->whereNotIn('id', $registered_id);
+                }
+                foreach ($deleted_item as $deleted) {
+                    $deleted->deleted_by = Auth::user()->id;
+                    $deleted->delete_reason = null;
+                    $deleted->delete();
+                }
+            }
+
+            // add ticket vendor that not registered yet
+            $newitems = collect($request->vendor)->where('id', 'undefined');
+            if (isset($newitems)) {
+                foreach ($newitems as $list) {
+                    $vendor = Vendor::find($list['vendor_id']);
+                    $newTicketVendor = new TicketVendor;
+                    $newTicketVendor->ticket_id         = $ticket->id;
+                    if ($vendor) {
+                        $newTicketVendor->vendor_id     = $vendor->id;
+                        $newTicketVendor->name          = $vendor->name;
+                        $newTicketVendor->salesperson   = $vendor->salesperson;
+                        // hide phone on order (personal for purhasing team)
+                        $newTicketVendor->phone         = '';
+                        $newTicketVendor->type          = 0;
+                    } else {
+                        $newTicketVendor->vendor_id     = null;
+                        $newTicketVendor->name          = $list['name'];
+                        $newTicketVendor->salesperson   = $list['sales'];
+                        $newTicketVendor->phone         = $list['phone'];
+                        $newTicketVendor->type          = 1;
+                    }
+                    $newTicketVendor->save();
+                }
+            }
+
+            // ticket authorization
+            if (isset($ticket->ticket_authorization)) {
+                if ($ticket->ticket_authorization->count() > 0) {
+                    foreach ($ticket->ticket_authorization as $auth) {
+                        $auth->delete();
+                    }
+                }
+            }
+
+            $authorization_over_budget_area = Authorization::where('form_type', 14)->first();
+            $authorization_over_budget_ho = Authorization::where('form_type', 15)->first();
+
+            $authorizations = Authorization::find($request->authorization);
+
+            if (isset($authorizations)) {
+                foreach ($authorizations->authorization_detail as $detail) {
+                    $newTicketAuthorization                     = new TicketAuthorization;
+                    $newTicketAuthorization->ticket_id          = $ticket->id;
+                    $newTicketAuthorization->employee_id        = $detail->employee_id;
+                    $newTicketAuthorization->employee_name      = $detail->employee->name;
+                    $newTicketAuthorization->as                 = $detail->sign_as;
+                    $newTicketAuthorization->employee_position  = $detail->employee_position->name;
+                    $newTicketAuthorization->level              = $detail->level;
+                    $newTicketAuthorization->save();
+                }
+
+                if ($request->is_over_budget == 1 || $ticket->is_over_budget == 1) {
+                    if ($request->salespoint != 251 || $request->salespoint != 252) {
+                        foreach ($authorization_over_budget_area->authorization_detail as $detail) {
+                            $newTicketAuthorization                     = new TicketAuthorization;
+                            $newTicketAuthorization->ticket_id          = $ticket->id;
+                            $newTicketAuthorization->employee_id        = $detail->employee_id;
+                            $newTicketAuthorization->employee_name      = $detail->employee->name;
+                            $newTicketAuthorization->as                 = $detail->sign_as;
+                            $newTicketAuthorization->employee_position  = $detail->employee_position->name;
+                            $newTicketAuthorization->level              = $detail->level;
+                            $newTicketAuthorization->save();
+                        }
+                    } else {
+                        foreach ($authorization_over_budget_ho->authorization_detail as $detail) {
+                            $newTicketAuthorization                     = new TicketAuthorization;
+                            $newTicketAuthorization->ticket_id          = $ticket->id;
+                            $newTicketAuthorization->employee_id        = $detail->employee_id;
+                            $newTicketAuthorization->employee_name      = $detail->employee->name;
+                            $newTicketAuthorization->as                 = $detail->sign_as;
+                            $newTicketAuthorization->employee_position  = $detail->employee_position->name;
+                            $newTicketAuthorization->level              = $detail->level;
+                            $newTicketAuthorization->save();
+                        }
+                    }
+                }
+            }
+
+            // optional attachment
+            if ($ticket->ticket_additional_attachment->count() > 0) {
+                foreach ($ticket->ticket_additional_attachment as $attach) {
+                    $attach->delete();
+                }
+            }
+            if (isset($request->opt_attach)) {
+                foreach ($request->opt_attach as $attach) {
+                    $path = '/attachments/ticketing/barangjasa/' . $ticket->code . '/optional_attachment/' . $attach['name'];
+                    if (!str_contains($attach['file'], 'base64,')) {
+                        // url
+                        $replaced = str_replace('%20', ' ', explode('storage', $attach['file'])[1]);;
+                        $file = Storage::disk('public')->get($replaced);
+                        Storage::disk('public')->put($path, $file);
+                    } else {
+                        // base 64 data
+                        $file = explode('base64,', $attach['file'])[1];
+                        Storage::disk('public')->put($path, base64_decode($file));
+                    }
+                    $newAttachment = new TicketAdditionalAttachment;
+                    $newAttachment->ticket_id = $ticket->id;
+                    $newAttachment->name = $attach['name'];
+                    $newAttachment->path = $path;
+                    $newAttachment->save();
+                }
+            }
+
+            // if IT create FRI Form
+            $ticket->refresh();
+            if ($ticket->is_it) {
+                if ($ticket->fri_forms->count() > 0) {
+                    $fri_form = $ticket->fri_forms->first();
+                } else {
+                    $fri_form             = new FRIForm;
+                    $fri_form->ticket_id  = $ticket->id;
+                }
+                $fri_form->date_request         = $ticket->created_at->format('Y-m-d');
+                $fri_form->date_use             = $ticket->requirement_date;
+                $fri_form->work_location        = $request->work_location;
+                $fri_form->salespoint_id        = $ticket->salespoint_id;
+                $fri_form->salespoint_name      = $ticket->salespoint->name;
+
+                $username_position = null;
+                $user_email_address = null;
+                if (isset($ticket->ticket_authorization) && $ticket->ticket_authorization->count() > 0) {
+                    $first_author = $ticket->ticket_authorization->sortBy('level')->first();
+                    $username_position = $first_author->employee_name . " | " . $first_author->employee_position;
+                    $user_email_address = $first_author->employee->email;
+                }
+                $fri_form->username_position    = $username_position;
+
+                $fri_form->division_department  = $request->division_department;
+                $fri_form->contact_number       = $request->contact_number;
+                $fri_form->email_address        = $user_email_address;
+
+                $fri_form->hardware_details     = json_encode(array_values($request->hardware_details));
+
+                $application_details = json_encode(array_values(array_filter(array_unique($request->application_details))));
+                $fri_form->application_details  = $application_details;
+
+                $fri_form->created_by           = Auth::user()->id;
+                $fri_form->save();
+
+                // fri authorization
+                if (isset($fri_form->authorizations)) {
+                    if ($fri_form->authorizations->count() > 0) {
+                        foreach ($fri_form->authorizations as $auth) {
+                            $auth->delete();
+                        }
+                    }
+                }
+
+                // Otorisasi FRI ambil 2 author pertatma dari ticketing + otorisasi TIM IT
+                $level = 1;
+                if (isset($ticket->ticket_authorization)) {
+                    foreach ($ticket->ticket_authorization->sortBy('level')->take(2) as $ticket_authorization) {
+                        $newFRIAuthorization                     = new FRIFormAuthorization;
+                        $newFRIAuthorization->fri_form_id        = $fri_form->id;
+                        $newFRIAuthorization->employee_id        = $ticket_authorization->employee_id;
+                        $newFRIAuthorization->employee_name      = $ticket_authorization->employee_name;
+                        $newFRIAuthorization->as                 = $ticket_authorization->as;
+                        $newFRIAuthorization->employee_position  = $ticket_authorization->employee_position;
+                        $newFRIAuthorization->level              = $level;
+                        $newFRIAuthorization->save();
+                        $level++;
+                    }
+                }
+                $fri_authorization = Authorization::find($request->fri_authorization);
+                if (isset($fri_authorization)) {
+                    foreach ($fri_authorization->authorization_detail->sortBy('level') as $detail) {
+                        $newFRIAuthorization                     = new FRIFormAuthorization;
+                        $newFRIAuthorization->fri_form_id        = $fri_form->id;
+                        $newFRIAuthorization->employee_id        = $detail->employee_id;
+                        $newFRIAuthorization->employee_name      = $detail->employee->name;
+                        $newFRIAuthorization->as                 = $detail->sign_as;
+                        $newFRIAuthorization->employee_position  = $detail->employee_position->name;
+                        $newFRIAuthorization->level              = $level;
+                        $newFRIAuthorization->save();
+                        $level++;
+                    }
+                }
+            } else {
+                if ($ticket->fri_forms->count() > 0) {
+                    if (isset($ticket->fri_forms->first()->authorizations)) {
+                        if ($ticket->fri_forms->first()->authorizations->count() > 0) {
+                            foreach ($fri_form->authorizations as $auth) {
+                                $auth->delete();
+                            }
+                        }
+                    }
+                    $ticket->fri_forms->first()->forceDelete();
                 }
             }
             DB::commit();
-
-            return back()->with('success', 'Berhasil Cancel Konfirmasi Vendor');
+            if ($request->type == 1) {
+                // start authorization
+                $ticket = Ticket::find($ticket->id);
+                return $this->startAuthorization($ticket);
+            } else {
+                if ($isnew) {
+                    return redirect('/ticketing/' . $ticket->code)->with('success', 'Berhasil menambah form pengadaan kedalam draft. Silahkan melakukan review kembali');
+                } else {
+                    return back()->with('success', 'Berhasil update form pengadaan');
+                }
+            }
         } catch (\Exception $ex) {
             DB::rollback();
-            return back()->with('error', 'Gagal Cancel Konfirmasi Vendor' . $ex->getMessage() . $ex->getLine());
+            return back()->with('error', 'Gagal menyimpan tiket "' . $ex->getMessage() . '"');
         }
     }
 
-    public function confirmVendorConfirmation(Request $request)
+    public function startAuthorization($ticket)
     {
-        try {
-            DB::beginTransaction();
-            $po                       = Po::findOrFail($request->id);
-            $po->status               = 0;
-            $po->save();
-
-            DB::commit();
-            return back()->with('success', 'Berhasil Confirm Konfirmasi Vendor, Silahkan Upload FIle Ulang dan Ceklis Konfirmasi Vendor');
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal Upload File ' . $ex->getMessage() . $ex->getLine());
-        }
-    }
-
-    public function uploadInternalSignedFile(Request $request)
-    {
-        // dd($request->file('internal_signed_file'), $request->file('additional_po_file'));
         $emailflag = true;
         $emailmessage = "";
+
         try {
             DB::beginTransaction();
-            $po = Po::findOrFail($request->po_id);
-            if ($po->ticket_id != null) {
-                $ticket = $po->ticket;
-                $type = 'barangjasa';
+            $validate = $this->validateticket($ticket);
+            if ($validate['error']) {
+                return redirect('/ticketing/' . $ticket->code)->with('error', implode("\r\n", $validate['messages']));
             }
-            if ($po->armada_ticket_id != null) {
-                $ticket = $po->armada_ticket;
-                $type = 'armada';
+            // ambil tipe pengadaan barang atau jasa
+            if ($ticket->item_type == 0) {
+                $code_type = 'P01';
+            } else {
+                $code_type = 'P02';
             }
-            if ($po->security_ticket_id != null) {
-                $ticket = $po->security_ticket;
-                $type = 'security';
-            }
-            $salespointname = str_replace(' ', '_', $ticket->salespoint->name);
-            // Internal File Signed
-            $ext = pathinfo($request->file('internal_signed_file')->getClientOriginalName(), PATHINFO_EXTENSION);
-            $name = $po->no_po_sap . "_INTERNAL_SIGNED_" . $salespointname . '.' . $ext;
-            $path = "/attachments/ticketing/" . $type . "/" . $ticket->code . '/po/' . $name;
-            $file = pathinfo($path);
-            if (Storage::exists($path)) {
-                Storage::delete($path);
-            }
-            $path = $request->file('internal_signed_file')->storeAs($file['dirname'], $file['basename'], 'public');
-            $po->internal_signed_filepath = $path;
+            // ambil kode inisial salespoint
+            $code_salespoint_initial = strtoupper($ticket->salespoint->initial);
 
-            // Additional File PO
-            if (!$request->file('additional_po_file')) {
-                $po->additional_po_filepath = null;
-                $po->upload_additional_po_signed_by = null;
-                $po->upload_additional_po_signed_at = null;
-            }
-            else {
-                $ext = pathinfo($request->file('additional_po_file')->getClientOriginalName(), PATHINFO_EXTENSION);
-                $name = $po->no_po_sap . "_ADDITIONAL_FILE_PO_" . $salespointname . '.' . $ext;
-                $path = "/attachments/ticketing/" . $type . "/" . $ticket->code . '/po/' . $name;
-                $file = pathinfo($path);
-                $path = $request->file('additional_po_file')->storeAs($file['dirname'], $file['basename'], 'public');
-                $po->additional_po_filepath = $path;
-                $po->upload_additional_po_signed_by = Auth::user()->id;
-                $po->upload_additional_po_signed_at = now();
+            // ambil jumlah urutan ticketing d terkait dalam bulan dan tahun ini
+            $armada_ticket_count = ArmadaTicket::whereBetween('created_at', [
+                Carbon::now()->startOfMonth(),
+                Carbon::now()->endOfMonth(),
+            ])
+                ->withTrashed()
+                ->count();
+
+            $security_ticket_count = SecurityTicket::whereBetween('created_at', [
+                Carbon::now()->startOfMonth(),
+                Carbon::now()->endOfMonth(),
+            ])
+                ->withTrashed()
+                ->count();
+
+            $barang_ticket_count = Ticket::whereBetween('created_at', [
+                Carbon::now()->startOfMonth(),
+                Carbon::now()->endOfMonth(),
+            ])
+                ->where('status', '>', 0)
+                ->withTrashed()
+                ->count();
+
+            $code_total_count = $armada_ticket_count + $security_ticket_count + $barang_ticket_count;
+            do {
+                $code = $code_type . "-" . $code_salespoint_initial . "-" . now()->translatedFormat('dmy') . str_repeat("0", 4 - strlen($code_total_count + 1)) . ($code_total_count + 1);
+                $code_total_count++;
+                $checkbarang = Ticket::where('code', $code)->first();
+                $checkarmada = ArmadaTicket::where('code', $code)->first();
+                $checksecurity = SecurityTicket::where('code', $code)->first();
+                ($checkbarang != null || $checkarmada != null) ? $flag = false : $flag = true;
+            } while (!$flag);
+            $old_code               = $ticket->code;
+            $ticket->code           = $code;
+            $ticket->created_at     = Carbon::now()->translatedFormat('Y-m-d H:i:s');
+            $ticket->created_by     = Auth::user()->id;
+            $ticket->status = 1;
+            // cari oper semua path kode lama ke kode baru
+            $oldpath = '/attachments/ticketing/barangjasa/' . $old_code;
+            $newpath = '/attachments/ticketing/barangjasa/' . $code;
+            if ($ticket->ba_vendor_filepath != null) {
+                $ticket->ba_vendor_filepath = str_replace($oldpath, $newpath, $ticket->ba_vendor_filepath);
+                $ticket->save();
             }
 
-            $po->save();
+            $ticket_item_attachments = TicketItemAttachment::where('path', 'LIKE', $oldpath . '%')->get();
+            foreach ($ticket_item_attachments as $attachment) {
+                $attachment->path = str_replace($oldpath, $newpath, $attachment->path);
+                $attachment->save();
+            }
 
-            if ($request->needVendorConfirmation) {
-                $po_upload_request               = new POUploadRequest;
-                $po_upload_request->id           = (string) Str::uuid();
-                $po_upload_request->po_id        = $po->id;
-                if (strtolower(trim($po->sender_name)) == 'one time vendor') {
-                    $po_upload_request->vendor_name  = $po->sender_address;
+            $ticket_file_item_requirements = TicketItemFileRequirement::where('path', 'LIKE', $oldpath . '%')->get();
+            foreach ($ticket_file_item_requirements as $requirement) {
+                $requirement->path = str_replace($oldpath, $newpath, $requirement->path);
+                $requirement->save();
+            }
+            // end cari oper semua path kode
+            $oldpath = 'storage' . $oldpath;
+            $newpath = 'storage' . $newpath;
+
+            if (is_dir($oldpath)) {
+                Storage::disk('public')->deleteDirectory(str_replace('storage', '', $newpath));
+                rename($oldpath, $newpath);
+            }
+            $ticket->save();
+
+            // tambahkan info budget id ke dalam tiket
+            if ($ticket->budget_type == 0) {
+                if ($ticket->item_type == 0 || $ticket->item_type == 1) {
+                    // barang , jasa
+                    $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'inventory')
+                        ->where('year', '=', Carbon::now()->year)
+                        ->first();
+                } else if ($ticket->item_type == 2) {
+                    // maintenance
+                    $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'assumption')
+                        ->where('year', '=', Carbon::now()->year)
+                        ->first();
                 } else {
-                    $po_upload_request->vendor_name  = $po->sender_name;
+                    $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'ho')
+                        ->where('division', $ticket->division)
+                        ->where('year', '=', Carbon::now()->year)
+                        ->first();
                 }
-                $po_upload_request->vendor_pic   = $po->supplier_pic_name ?? "";
-                $po_upload_request->save();
-
-                $po->po_upload_request_id = $po_upload_request->id;
-                $po->save();
+                $ticket->budget_upload_id = $budget->id;
+                $ticket->save();
             }
 
-            if (count($this->email_text_to_array($request->email)) < 1) {
-                throw new \Exception("Minimal satu email yang dibutuhkan untuk mengirim PO (" . $request->email . ")");
-            }
-            $mail_to = $this->email_text_to_array($request->email);
-            $ccs = $this->email_text_to_array($request->cc);
-            $mail_subject = $request->mail_subject;
-            $data = array(
-                'original_emails' => $mail_to,
-                'original_ccs' => $ccs,
-                'po' => $po,
-                'mail' => $mail_to,
-                'mail_subject' => $mail_subject,
-                'email_text' => $request->email_text,
-                'needVendorConfirmation' => $request->needVendorConfirmation,
-                'po_upload_request' => ($request->needVendorConfirmation) ? $po_upload_request : null,
-                'url' => ($request->needVendorConfirmation) ? url('/signpo/' . $po_upload_request->id) : null,
-            );
-            if (config('app.env') == 'local') {
-                $mail_to = [config('mail.testing_email')];
-                $ccs = [];
-            }
-
-            try {
-                Mail::to($mail_to)->cc($ccs)->send(new POMail($data, 'posignedrequest'));
-            } catch (\Exception $ex) {
-                $emailflag = false;
-            }
-            if (!$emailflag) {
-                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
-            }
-
-            $po->status = 1;
-            $po->last_mail_send_to  = $request->email;
-            $po->last_mail_cc_to    = $request->cc;
-            $po->last_mail_text     = $request->email_text;
-            $po->last_mail_subject  = $request->mail_subject;
-            $po->save();
-
-            if ($po->ticket_id != null) {
-                $monitor = new TicketMonitoring;
-                $monitor->ticket_id      = $po->ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                if ($po->additional_po_filepath = null) {
-                    $monitor->message        = 'Upload Internal Signed PO ' . $po->no_po_sap;
-                }
-                else {
-                    $monitor->message        = 'Upload Internal Signed PO & Addtional File PO ' . $po->no_po_sap;
-                }
-                $monitor->save();
-            }
-            if ($po->armada_ticket_id != null) {
-                $monitor = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id      = $po->armada_ticket->id;
-                $monitor->employee_id           = Auth::user()->id;
-                $monitor->employee_name         = Auth::user()->name;
-                if ($po->additional_po_filepath = null) {
-                    $monitor->message        = 'Upload Internal Signed PO ' . $po->no_po_sap;
-                }
-                else {
-                    $monitor->message        = 'Upload Internal Signed PO & Addtional File PO ' . $po->no_po_sap;
-                }
-                $monitor->save();
-            }
-            if ($po->security_ticket_id != null) {
-                $monitor = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id      = $po->security_ticket->id;
-                $monitor->employee_id             = Auth::user()->id;
-                $monitor->employee_name           = Auth::user()->name;
-                if ($po->additional_po_filepath = null) {
-                    $monitor->message        = 'Upload Internal Signed PO ' . $po->no_po_sap;
-                }
-                else {
-                    $monitor->message        = 'Upload Internal Signed PO & Addtional File PO ' . $po->no_po_sap;
-                }
-                $monitor->save();
-            }
-
-            // Start case (Tidak butuh konfirmasi vendor)
-            if (!$request->needVendorConfirmation) {
-                $po->status = 3;
-                $po->save();
-                $isComplete = false;
-                if ($po->ticket_id != null) {
-                }
-                if ($po->armada_ticket_id != null) {
-                    $armada_ticket              = $po->armada_ticket;
-                    $armada_ticket->po_number   = $po->no_po_sap;
-                    // untuk kasus setelah revisi po kalau pengadaan udah selesai gausah reset pengadaan ulang
-                    if ($armada_ticket->status < 5) {
-                        $armada_ticket->status      = 5;
-                    }
-                    $armada_ticket->save();
-
-                    // START CASE
-                    // Jika armada perpanjangan, setelah confirm PO langsung otomatis verifikasi PO (tanpa harus dari area)
-                    if ($armada_ticket->type() == "Perpanjangan") {
-                        $newrequest = new Request;
-                        $newrequest->replace([
-                            'armada_ticket_id' => $armada_ticket->id,
-                        ]);
-                        $response = app('App\Http\Controllers\Operational\ArmadaTicketingController')->verifyPO($newrequest, "api");
-                        $isComplete = true;
-                    }
-                    // END CASE
-                }
-                if ($po->security_ticket_id != null) {
-                    $security_ticket              = $po->security_ticket;
-                    $security_ticket->po_number   = $po->no_po_sap;
-
-                    // cek status seluruh po apakah sudah selesai
-                    if ($security_ticket->po->where('status', '<', 3)->count() == 0) {
-                        if ($security_ticket->status < 5) {
-                            $security_ticket->status      = 5;
-                        }
-                        $security_ticket->save();
-                        // START CASE
-                        // Jika security perpanjangan, setelah confirm PO langsung otomatis selesai pengadaan (tanpa LPB Area)
-                        if ($security_ticket->type() == "Perpanjangan") {
-                            $newrequest = new Request;
-                            $newrequest->replace([
-                                'security_ticket_id' => $security_ticket->id,
-                            ]);
-                            $response = app('App\Http\Controllers\Operational\SecurityTicketingController')->uploadSecurityLPB($newrequest, "api");
-                            $isComplete = true;
-                        }
-                        // END CASE
-                    }
-
-                    $monitor                          = new SecurityTicketMonitoring;
-                    $monitor->security_ticket_id      = $po->security_ticket->id;
-                    $monitor->employee_id             = Auth::user()->id;
-                    $monitor->employee_name           = Auth::user()->name;
-                    $monitor->message                 = 'Upload File Internal Signed untuk PO ' . $po->no_po_sap;
-                    $monitor->save();
-                }
-            }
-            DB::commit();
-            if ($po->status == 1) {
-                // bug implode on server
-                return back()->with('success', 'Berhasil Upload File Internal Signed untuk PO ' . $po->no_po_sap . ' File sudah dikirimkan ke email supplier (' . implode(",", $mail_to) . ') untuk ditandatangan' . $emailmessage);
-                // return back()->with('success','Berhasil Upload File Intenal Signed untuk PO '.$po->no_po_sap.' File sudah dikirimkan ke email supplier untuk ditandatangan'.$emailmessage);
-            }
-            if ($po->status == 3) {
-                return back()->with('success', 'Berhasil Upload File Intenal Signed untuk PO ' . $po->no_po_sap . $emailmessage);
-            }
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal Upload File ' . $ex->getMessage() . $ex->getLine());
-        }
-    }
-
-    public function confirmPosigned(Request $request)
-    {
-        $emailflag = true;
-        $emailmessage = "";
-        try {
-            DB::beginTransaction();
-            $po = Po::findOrFail($request->po_id);
-            $po->status = 3;
-
-            $po_upload_request = $po->po_upload_request;
-            $po_upload_request->status = 2;
-            $po_upload_request->save();
-
-            $po->external_signed_filepath = $po_upload_request->filepath;
-            $po->save();
-
-            // order purchase API E Log
-            if ($po->armada_ticket_id != null) {
-                $armadatickettt = $po->armada_ticket;
-                $check_vendor_e_log_sync = Vendor::where('code', '=', $po->vendor_code)->first()->e_log_sync;
-
-
-                if ($armadatickettt != null && $armadatickettt->ticketing_type == 0 && $check_vendor_e_log_sync == 1) {
-                    $external_id = $po->no_po_sap;
-                    $submission_date  = $po->created_at->format('Y-m-d');
-                    $start_date  = $po->start_date;
-                    $end_date  = $po->end_date;
-                    $salespoint_code  = Salespoint::where('name', '=', $po->send_name)->first()->code;
-                    $vehicle_model_id  = ArmadaTicket::where('id', '=', $po->armada_ticket_id)->first()->armada_type_id;
-                    $vendor_code  = $po->vendor_code;
-                    $external_id = $po->no_po_sap;
-
-                    $vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                        ->where('item_name', 'not like', '%Prorate%')
-                        ->first()->item_price;
-
-                    $qty_vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                        ->where('item_name', 'not like', '%Prorate%')
-                        ->first()->qty;
-
-                    $quantity_month = $qty_vehicle_price;
-
-                    $subtotal_vehicle_price = $vehicle_price * $qty_vehicle_price;
-                    $count_additional_price = PoDetail::where('po_id', '=', $po->id)->where('item_name', 'like', '%Prorate%')->get()->count();
-                    $additional_price = 0;
-
-                    if ($count_additional_price > 0) {
-                        $additional_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'like', '%Prorate%')
-                            ->first()->item_price;
-
-                        $qty_additional_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'like', '%Prorate%')
-                            ->first()->qty;
-
-                        $subtotal_additional_price = $additional_price * $qty_additional_price;
-
-                        $subtotal_price = $subtotal_vehicle_price + $subtotal_additional_price;
-                    } else {
-                        $additional_price = 0;
-                        $subtotal_price = $subtotal_vehicle_price;
-                    }
-
-                    if ($po->has_ppn) {
-                        $ppn = ($po->ppn_percentage / 100) * $subtotal_price;
-                        $ppn = round($ppn);
-                    } else {
-                        $ppn = 0;
-                    }
-
-                    $total_price = $subtotal_price + $ppn;
-                    $order_note  = 'Create Order Purchase From PODS. PO = ' . $external_id;
-
-                    $curl = curl_init();
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => 'https://dev-api.elog.co.id/openapi/pma/v1/rent/order',
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => '',
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 0,
-                        CURLOPT_FOLLOWLOCATION => true,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => 'POST',
-                        CURLOPT_POSTFIELDS => "external_id=$external_id&submission_date=$submission_date&start_date=$start_date&end_date=$end_date&quantity_month=$quantity_month&salespoint_code=$salespoint_code&vehicle_model_id=$vehicle_model_id&vendor_code=$vendor_code&vehicle_price=$vehicle_price&additional_price=$additional_price&subtotal_price=$subtotal_price&ppn=$ppn&total_price=$total_price&order_note=$order_note",
-                        CURLOPT_HTTPHEADER => array(
-                            'Content-Type: application/x-www-form-urlencoded',
-                            'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                        ),
-                    ));
-
-                    $response = curl_exec($curl);
-                    curl_close($curl);
-                    // dd($response);
-                }
-
-                // Get Order Rent By External_ID API E Log
-                $armadatickettt = $po->armada_ticket;
-                if ($armadatickettt != null) {
-                    $external_id  = $armadatickettt->po_reference_number;
-                } else {
-                    $external_id  = 0;
-                }
-                $curl = curl_init();
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => "https://dev-api.elog.co.id/openapi/pma/v1/rent/order/$external_id",
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => 'GET',
-                    CURLOPT_HTTPHEADER => array(
-                        'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                    ),
-                ));
-
-                $response = curl_exec($curl);
-                curl_close($curl);
-                $response = json_decode($response, true);
-                // dd($response);
-
-                // Perpanjangan API E Log
-
-                if ($response['status'] == 'success' && $armadatickettt != null && $armadatickettt->ticketing_type == 1 && $armadatickettt->perpanjangan_form != null && $armadatickettt->perpanjangan_form->form_type == 'perpanjangan' && $check_vendor_e_log_sync == 1) {
-                    $type = 0;
-                    $start_date  = $po->start_date;
-                    $end_date  = $po->end_date;
-
-                    $vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                        ->where('item_name', 'not like', '%Prorate%')
-                        ->first()->item_price;
-
-                    $qty_vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                        ->where('item_name', 'not like', '%Prorate%')
-                        ->first()->qty;
-
-                    $quantity_month = $qty_vehicle_price;
-                    $subtotal_vehicle_price = $vehicle_price * $qty_vehicle_price;
-                    $count_additional_price = PoDetail::where('po_id', '=', $po->id)->where('item_name', 'like', '%Prorate%')->get()->count();
-                    $additional_price = 0;
-
-                    if ($count_additional_price > 0) {
-                        $additional_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'like', '%Prorate%')
-                            ->first()->item_price;
-
-                        $qty_additional_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'like', '%Prorate%')
-                            ->first()->qty;
-
-                        $subtotal_additional_price = $additional_price * $qty_additional_price;
-
-                        $subtotal_price = $subtotal_vehicle_price + $subtotal_additional_price;
-                    } else {
-                        $additional_price = 0;
-                        $subtotal_price = $subtotal_vehicle_price;
-                    }
-
-                    if ($po->has_ppn) {
-                        $ppn = ($po->ppn_percentage / 100) * $subtotal_price;
-                        $ppn = round($ppn);
-                    } else {
-                        $ppn = 0;
-                    }
-
-                    $total_price = $subtotal_price + $ppn;
-                    $previous_external_id = $armadatickettt->po_reference_number;
-                    $external_id = $po->no_po_sap;
-
-                    $curl = curl_init();
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => "https://dev-api.elog.co.id/openapi/pma/v1/rent/order/$previous_external_id/contract",
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => '',
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 0,
-                        CURLOPT_FOLLOWLOCATION => true,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => 'PUT',
-                        CURLOPT_POSTFIELDS => "type=$type&start_date=$start_date&end_date=$end_date&quantity_month=$quantity_month&vehicle_price=$vehicle_price&additional_price=$additional_price&subtotal_price=$subtotal_price&ppn=$ppn&total_price=$total_price&external_id=$external_id",
-                        CURLOPT_HTTPHEADER => array(
-                            'Content-Type: application/x-www-form-urlencoded',
-                            'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                        ),
-                    ));
-
-                    $response = curl_exec($curl);
-                    curl_close($curl);
-                    // dd($response);
-                }
-
-                // Renewal API E Log
-
-                elseif ($response['status'] == 'success' && $armadatickettt != null && $armadatickettt->ticketing_type == 1 && $armadatickettt->perpanjangan_form != null && $armadatickettt->perpanjangan_form->stopsewa_reason == 'renewal' && $check_vendor_e_log_sync == 1) {
-                    $previous_external_id = $armadatickettt->po_reference_number;
-                    $external_id = $po->no_po_sap;
-                    $submission_date = $po->created_at;
-                    $start_date  = $po->start_date;
-                    $end_date  = $po->end_date;
-
-                    $vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                        ->where('item_name', 'not like', '%Prorate%')
-                        ->first()->item_price;
-
-                    $qty_vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                        ->where('item_name', 'not like', '%Prorate%')
-                        ->first()->qty;
-
-                    $quantity_month = $qty_vehicle_price;
-                    $subtotal_vehicle_price = $vehicle_price * $qty_vehicle_price;
-                    $count_additional_price = PoDetail::where('po_id', '=', $po->id)->where('item_name', 'like', '%Prorate%')->get()->count();
-                    $additional_price = 0;
-
-                    if ($count_additional_price > 0) {
-                        $additional_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'like', '%Prorate%')
-                            ->first()->item_price;
-
-                        $qty_additional_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'like', '%Prorate%')
-                            ->first()->qty;
-
-                        $subtotal_additional_price = $additional_price * $qty_additional_price;
-
-                        $subtotal_price = $subtotal_vehicle_price + $subtotal_additional_price;
-                    } else {
-                        $additional_price = 0;
-                        $subtotal_price = $subtotal_vehicle_price;
-                    }
-
-                    if ($po->has_ppn) {
-                        $ppn = ($po->ppn_percentage / 100) * $subtotal_price;
-                        $ppn = round($ppn);
-                    } else {
-                        $ppn = 0;
-                    }
-
-                    $total_price = $subtotal_price + $ppn;
-                    $stop_date = $armadatickettt->perpanjangan_form->stopsewa_date;
-                    $order_note  = 'Renewal dari PO ' . $previous_external_id;
-
-                    $get_delivery_notes_po_detail = PoDetail::where('po_id', '=', $po->id)
-                        ->where('item_name', 'not like', '%Prorate%')
-                        ->first()->delivery_notes;
-
-                    preg_match_all('/\d{4}-\d{2}-\d{2}/', $get_delivery_notes_po_detail, $matches, PREG_SET_ORDER, 0);
-
-                    $check_ETA_exists = [];
-                    if (isset($matches[0])) {
-                        $check_ETA_exists = DB::table('po_sap_e_log')
-                            ->where("data", "like", '%' . '"ebeln":"' . $po->no_po_sap . '"' . '%')
-                            ->where("date_eta",  '>', $matches[0][0])
-                            ->first();
-
-                        if ($check_ETA_exists) {
-                            $check_ETA_exists = $check_ETA_exists->date_eta;
-                        }
-                    }
-
-                    $curl = curl_init();
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => 'https://dev-api.elog.co.id/openapi/pma/v1/rent/order/renewal',
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => '',
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 0,
-                        CURLOPT_FOLLOWLOCATION => true,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => 'POST',
-                        CURLOPT_POSTFIELDS => "previous_external_id=$previous_external_id&external_id=$external_id&submission_date=$submission_date&start_date=$start_date&end_date=$end_date&quantity_month=$quantity_month&stop_date=$stop_date&vehicle_price=$vehicle_price&additional_price=$additional_price&subtotal_price=$subtotal_price&ppn=$ppn&total_price=$total_price&order_note=$order_note",
-                        CURLOPT_HTTPHEADER => array(
-                            'Content-Type: application/x-www-form-urlencoded',
-                            'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                        ),
-                    ));
-
-                    $response = curl_exec($curl);
-                    curl_close($curl);
-                    // dd($response);
-
-                    // Update Contract Estimation Return Date E Log
-
-                    if ($check_ETA_exists) {
-                        $previous_external_id = $armadatickettt->po_reference_number;
-                        $before_date = $matches[0][0];
-                        $after_date = $check_ETA_exists;
-
-                        $curl = curl_init();
-                        curl_setopt_array($curl, array(
-                            CURLOPT_URL => "https://dev-api.elog.co.id/openapi/pma/v1/rent/order/$previous_external_id/estimate_date",
-                            CURLOPT_RETURNTRANSFER => true,
-                            CURLOPT_ENCODING => '',
-                            CURLOPT_MAXREDIRS => 10,
-                            CURLOPT_TIMEOUT => 0,
-                            CURLOPT_FOLLOWLOCATION => true,
-                            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                            CURLOPT_CUSTOMREQUEST => 'PUT',
-                            CURLOPT_POSTFIELDS => "before_date=$before_date&after_date=$after_date",
-                            CURLOPT_HTTPHEADER => array(
-                                'Content-Type: application/x-www-form-urlencoded',
-                                'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                            ),
-                        ));
-
-                        $response = curl_exec($curl);
-                        curl_close($curl);
-                        // dd($response);
-                    }
-                }
-
-                // Stop Sewa API E Log (GX JADI DI PAKE)
-
-                // elseif ($response['status'] == 'success' && $armadatickettt->ticketing_type == 1 && $armadatickettt->perpanjangan_form != null && $armadatickettt->perpanjangan_form->stopsewa_reason == 'end' && $check_vendor_e_log_sync == 1) {
-                //     $type  = 1;
-                //     $stop_date  = $armadatickettt->perpanjangan_form->stopsewa_date;
-                //     $previous_external_id = $armadatickettt->po_reference_number;
-
-                //     $curl = curl_init();
-                //     curl_setopt_array($curl, array(
-                //         CURLOPT_URL => "https://dev-api.elog.co.id/openapi/pma/v1/rent/order/$previous_external_id/contract",
-                //         CURLOPT_RETURNTRANSFER => true,
-                //         CURLOPT_ENCODING => '',
-                //         CURLOPT_MAXREDIRS => 10,
-                //         CURLOPT_TIMEOUT => 0,
-                //         CURLOPT_FOLLOWLOCATION => true,
-                //         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                //         CURLOPT_CUSTOMREQUEST => 'PUT',
-                //         CURLOPT_POSTFIELDS => "type=$type&stop_date=$stop_date",
-                //         CURLOPT_HTTPHEADER => array(
-                //             'Content-Type: application/x-www-form-urlencoded',
-                //             'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                //         ),
-                //     ));
-
-                //     $response = curl_exec($curl);
-                //     curl_close($curl);
-                //     // dd($response);
-                // }
-
-                // Mutasi API E Log
-
-                elseif ($response['status'] == 'success' && $armadatickettt != null && $armadatickettt->ticketing_type == 2 && $armadatickettt->mutasi_form != null && $check_vendor_e_log_sync == 1) {
-                    $start_date  = $armadatickettt->mutasi_form->mutation_date;
-                    $start_date2 = date_create($start_date);
-                    $mutation_date = date_format($start_date2, "m-d-Y");
-
-                    $end_date  = $armadatickettt->mutasi_form->received_date;
-                    $end_date2 = date_create($end_date);
-                    $received_date = date_format($end_date2, "m-d-Y");
-
-                    $origin_salespoint_code  = Salespoint::where('id', '=', $armadatickettt->mutasi_form->salespoint_id)->first()->code;
-                    $destination_salespoint_code  = Salespoint::where('id', '=', $armadatickettt->mutasi_form->receiver_salespoint_id)->first()->code;
-                    $external_id = $po->no_po_sap;
-                    $previous_external_id = $armadatickettt->po_reference_number;
-
-                    $curl = curl_init();
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => "https://dev-api.elog.co.id/openapi/pma/v1/rent/order/$previous_external_id/mutation",
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => '',
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 0,
-                        CURLOPT_FOLLOWLOCATION => true,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => 'POST',
-                        CURLOPT_POSTFIELDS => "mutation_date=$mutation_date&received_date=$received_date&origin_salespoint_code=$origin_salespoint_code&destination_salespoint_code=$destination_salespoint_code&external_id=$external_id",
-                        CURLOPT_HTTPHEADER => array(
-                            'Content-Type: application/x-www-form-urlencoded',
-                            'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                        ),
-                    ));
-
-                    $response = curl_exec($curl);
-                    curl_close($curl);
-                    // dd($response);
-
-                    // Update Contract Pricing After Mutation by Vendor API E Log
-
-                    if (strpos(strtolower($po->notes), "sewa") !== false) {
-                        $vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'not like', '%Prorate%')
-                            ->first()->item_price;
-
-                        $qty_vehicle_price = PoDetail::where('po_id', '=', $po->id)
-                            ->where('item_name', 'not like', '%Prorate%')
-                            ->first()->qty;
-
-                        $subtotal_vehicle_price = $vehicle_price * $qty_vehicle_price;
-                        $count_additional_price = PoDetail::where('po_id', '=', $po->id)->where('item_name', 'like', '%Prorate%')->get()->count();
-                        $additional_price = 0;
-
-                        if ($count_additional_price > 0) {
-                            $additional_price = PoDetail::where('po_id', '=', $po->id)
-                                ->where('item_name', 'like', '%Prorate%')
-                                ->first()->item_price;
-
-                            $qty_additional_price = PoDetail::where('po_id', '=', $po->id)
-                                ->where('item_name', 'like', '%Prorate%')
-                                ->first()->qty;
-
-                            $subtotal_additional_price = $additional_price * $qty_additional_price;
-                            $subtotal_price = $subtotal_vehicle_price + $subtotal_additional_price;
-                        } else {
-                            $additional_price = 0;
-                            $subtotal_price = $subtotal_vehicle_price;
-                        }
-
-                        if ($po->has_ppn) {
-                            $ppn = ($po->ppn_percentage / 100) * $subtotal_price;
-                            $ppn = round($ppn);
-                        } else {
-                            $ppn = 0;
-                        }
-
-                        $total_price = $subtotal_price + $ppn;
-
-                        $price_po_notes = strtolower(str_replace('.', '', $po->notes));
-                        preg_match('/sewa.*$/m', $price_po_notes, $before_price, PREG_OFFSET_CAPTURE, 0);
-                        preg_match('/\d+/m', $before_price[0][0], $before_price, PREG_OFFSET_CAPTURE, 0);
-
-                        $before_subtotal_price = $before_price[0][0] * $qty_vehicle_price;
-
-                        if ($po->has_ppn) {
-                            $before_ppn = ($po->ppn_percentage / 100) * $before_subtotal_price;
-                            $before_ppn = round($before_ppn);
-                        } else {
-                            $before_ppn = 0;
-                        }
-
-                        $before_total_price = $before_subtotal_price + $before_ppn;
-                        $previous_external_id = $armadatickettt->po_reference_number;
-
-                        $curl = curl_init();
-                        curl_setopt_array($curl, array(
-                            CURLOPT_URL => "https://dev-api.elog.co.id/openapi/pma/v1/rent/order/$previous_external_id/pricing",
-                            CURLOPT_RETURNTRANSFER => true,
-                            CURLOPT_ENCODING => '',
-                            CURLOPT_MAXREDIRS => 10,
-                            CURLOPT_TIMEOUT => 0,
-                            CURLOPT_FOLLOWLOCATION => true,
-                            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                            CURLOPT_CUSTOMREQUEST => 'PUT',
-                            CURLOPT_POSTFIELDS => "before_subtotal_price=$before_subtotal_price&before_ppn=$before_ppn&before_total_price=$before_total_price&after_subtotal_price=$subtotal_price&after_ppn=$ppn&after_total_price=$total_price",
-                            CURLOPT_HTTPHEADER => array(
-                                'Content-Type: application/x-www-form-urlencoded',
-                                'Authorization: Basic cG1hLWVsb2ctZmFyaGFuOlhYQzEyMTI5OA=='
-                            ),
-                        ));
-
-                        $response = curl_exec($curl);
-                        curl_close($curl);
-                        // dd($response);
+            // Jika item IT tambahkan otorisasi Form FRI kedalam list otorisasi tiket
+            if ($ticket->is_it == true) {
+                $level = $ticket->ticket_authorization->sortByDesc('level')->first()->level + 1;
+                foreach ($ticket->fri_forms->first()->authorizations as $authorization) {
+                    $ticket->refresh();
+                    $check_if_author_exist = $ticket->ticket_authorization->where('employee_id', $authorization->employee_id)->first();
+                    if (!$check_if_author_exist) {
+                        $newAuthorization                     = new TicketAuthorization;
+                        $newAuthorization->ticket_id          = $ticket->id;
+                        $newAuthorization->employee_id        = $authorization->employee_id;
+                        $newAuthorization->employee_name      = $authorization->employee_name;
+                        $newAuthorization->as                 = $authorization->as;
+                        $newAuthorization->employee_position  = $authorization->employee_position;
+                        $newAuthorization->level              = $level;
+                        $newAuthorization->save();
+                        $level++;
                     }
                 }
             }
+            // TICKET MONITOR_LOG
+            $monitor = new TicketMonitoring;
+            $monitor->ticket_id      = $ticket->id;
+            $monitor->employee_id    = Auth::user()->id;
+            $monitor->employee_name  = Auth::user()->name;
+            $monitor->message        = 'Memulai Otorisasi Ticket';
+            $monitor->save();
 
-            // send email back to supplier and salespoint
-            if ($po->ticket_id != null) {
-                $salespoint_id = $po->ticket->salespoint_id;
-            }
-            if ($po->armada_ticket_id != null) {
-                $salespoint_id = $po->armada_ticket->salespoint_id;
-            }
-            if ($po->security_ticket_id != null) {
-                $salespoint_id = $po->security_ticket->salespoint_id;
-            }
-            $access = EmployeeLocationAccess::where('salespoint_id', $salespoint_id)->get();
-            $employee_salespoint_ids = $access->pluck('employee_id')->unique();
-            $employee_emails = [];
-            foreach ($employee_salespoint_ids as $id) {
-                $email = Employee::find($id)->email;
-                array_push($employee_emails, $email);
-            }
-            $isComplete = false;
-            if ($po->ticket_id != null) {
-                $monitor = new TicketMonitoring;
-                $monitor->ticket_id      = $po->ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Konfirmasi tanda tangan supplier PO ' . $po->no_po_sap;
-                $monitor->save();
-
-                // untuk case cit dan pest control punya po reference , ubah status ke closed;
-                if ($po->ticket->po_reference_number) {
-                    $po_reference = $po->ticket->po_reference;
-                    $po_reference->status = 4;
-                    $po_reference->save();
-                }
-
-                // Check If Perpanjangan Jasa Lainnya, Skip Upload and Status Done
-                $ticket_item = TicketItem::where('ticket_id', $po->ticket->id)->get();
-                foreach ($ticket_item as $item) {
-                    if (str_contains($item->name, 'CIT')) {
-                        $ticket = Ticket::where('id', $item->ticket_id)->first();
-                        if ($ticket->request_type == 3) {
-                            $ticket->finished_date = date('Y-m-d');
-                            $ticket->status = 7;
-                            $ticket->save();
-
-                            $monitor = new TicketMonitoring;
-                            $monitor->ticket_id      = $po->ticket->id;
-                            $monitor->employee_id    = Auth::user()->id;
-                            $monitor->employee_name  = Auth::user()->name;
-                            $monitor->message        = 'Melakukan Verifikasi PO';
-                            $monitor->save();
-
-                            $isComplete = true;
-                        }
-                    } elseif (str_contains($item->name, 'Pest Control')) {
-                        $ticket = Ticket::where('id', $item->ticket_id)->first();
-                        if ($ticket->request_type == 3) {
-                            $ticket->finished_date = date('Y-m-d');
-                            $ticket->status = 7;
-                            $ticket->save();
-
-                            $monitor = new TicketMonitoring;
-                            $monitor->ticket_id      = $po->ticket->id;
-                            $monitor->employee_id    = Auth::user()->id;
-                            $monitor->employee_name  = Auth::user()->name;
-                            $monitor->message        = 'Melakukan Verifikasi PO';
-                            $monitor->save();
-
-                            $isComplete = true;
-                        }
-                    } elseif (str_contains($item->name, 'Merchandiser')) {
-                        $ticket = Ticket::where('id', $item->ticket_id)->first();
-                        if ($ticket->request_type == 3) {
-                            $ticket->finished_date = date('Y-m-d');
-                            $ticket->status = 7;
-                            $ticket->save();
-
-                            $monitor = new TicketMonitoring;
-                            $monitor->ticket_id      = $po->ticket->id;
-                            $monitor->employee_id    = Auth::user()->id;
-                            $monitor->employee_name  = Auth::user()->name;
-                            $monitor->message        = 'Melakukan Verifikasi PO';
-                            $monitor->save();
-
-                            $isComplete = true;
-                        }
-                    }
-                }
-            }
-            if ($po->armada_ticket_id != null) {
-                $armada_ticket              = $po->armada_ticket;
-                $armada_ticket->po_number   = $po->no_po_sap;
-                // untuk kasus setelah revisi po kalau pengadaan udah selesai gausah reset pengadaan ulang
-                if ($armada_ticket->status < 5) {
-                    $armada_ticket->status      = 5;
-                }
-                $armada_ticket->save();
-
-                $monitor = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id      = $po->armada_ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Konfirmasi tanda tangan supplier PO ' . $po->no_po_sap;
-                $monitor->save();
-
-                // START CASE
-                // Jika armada perpanjangan, setelah confirm PO langsung otomatis verifikasi PO (tanpa harus dari area)
-                if ($armada_ticket->type() == "Perpanjangan") {
-                    $newrequest = new Request;
-                    $newrequest->replace([
-                        'armada_ticket_id' => $armada_ticket->id,
-                    ]);
-                    $response = app('App\Http\Controllers\Operational\ArmadaTicketingController')->verifyPO($newrequest, "api");
-                    $isComplete = true;
-                }
-                // END CASE
-            }
-            if ($po->security_ticket_id != null) {
-                $security_ticket              = $po->security_ticket;
-                $security_ticket->po_number   = $po->no_po_sap;
-
-                // cek status seluruh po apakah sudah selesai
-                if ($security_ticket->po->where('status', '<', 3)->count() == 0) {
-                    if ($security_ticket->status < 5) {
-                        $security_ticket->status      = 5;
-                    }
-                    $security_ticket->save();
-                    // START CASE
-                    // Jika security perpanjangan, setelah confirm PO langsung otomatis selesai pengadaan (tanpa LPB Area)
-                    if ($security_ticket->type() == "Perpanjangan") {
-                        $newrequest = new Request;
-                        $newrequest->replace([
-                            'security_ticket_id' => $security_ticket->id,
-                        ]);
-                        $response = app('App\Http\Controllers\Operational\SecurityTicketingController')->uploadSecurityLPB($newrequest, "api");
-                        $isComplete = true;
-                    }
-                    // END CASE
-                }
-
-                $monitor                          = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id      = $po->security_ticket->id;
-                $monitor->employee_id             = Auth::user()->id;
-                $monitor->employee_name           = Auth::user()->name;
-                $monitor->message                 = 'Konfirmasi tanda tangan supplier PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-
-            $mail_to = $po->last_mail_send_to;
-            $cc = $po->last_mail_cc_to ?? "";
-            $ccs = $this->email_text_to_array($cc);
+            // mail ke otorisasi pertama
+            $mail_to = $ticket->current_authorization()->employee->email;
+            $name_to = $ticket->current_authorization()->employee->name;
             $data = array(
                 'original_emails' => [$mail_to],
-                'original_ccs' => $ccs,
-                'po' => $po,
-                'mail' => $mail_to,
-                'external_signed_filepath' =>  $po_upload_request->filepath
+                'transaction_type' => 'Pengadaan',
+                'ticketing_type' => 'Barang Jasa',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => Auth::user()->name,
+                'to' => $name_to,
+                'code' => $ticket->code,
             );
             if (config('app.env') == 'local') {
                 $mail_to = [config('mail.testing_email')];
-                $ccs = [];
             }
 
             try {
-                Mail::to($mail_to)->cc($ccs)->send(new POMail($data, 'poconfirmed'));
+                Mail::to($mail_to)->send(new NotificationMail($data, 'ticketing_approval'));
             } catch (\Exception $ex) {
                 $emailflag = false;
             }
             if (!$emailflag) {
                 $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
             }
-
-            // dd($po, $isComplete, $check_vendor_e_log_sync);
-
             DB::commit();
-            if ($isComplete) {
-                if ($po->armada_ticket_id != null) {
-                    if ($check_vendor_e_log_sync == 1) {
-                        return back()->with('success', 'Berhasil melakukan konfirmasi tanda tangan Supplier untuk PO ' . $po->no_po_sap . ' . Pengadaan Selesai' . $emailmessage . '. Berhasil Kirim Data Ke E-Log');
-                    } elseif ($check_vendor_e_log_sync == 0) {
-                        return back()->with('success', 'Berhasil melakukan konfirmasi tanda tangan Supplier untuk PO ' . $po->no_po_sap . ' . Pengadaan Selesai' . $emailmessage . '. Gagal Kirim Data Ke E-Log');
-                    }
-                } else {
-                    return back()->with('success', 'Berhasil melakukan konfirmasi tanda tangan Supplier untuk PO ' . $po->no_po_sap . ' . Pengadaan Selesai' . $emailmessage);
-                }
-            } else {
-                if ($po->armada_ticket_id != null) {
-                    if ($check_vendor_e_log_sync == 1) {
-                        return back()->with('success', 'Berhasil melakukan konfirmasi tanda tangan Supplier untuk PO ' . $po->no_po_sap . ' dilanjutkan dengan penerimaan di salespoint/area bersangkutan' . '. Berhasil Kirim Data Ke E-Log' . $emailmessage);
-                    } elseif ($check_vendor_e_log_sync == 0) {
-                        return back()->with('success', 'Berhasil melakukan konfirmasi tanda tangan Supplier untuk PO ' . $po->no_po_sap . ' dilanjutkan dengan penerimaan di salespoint/area bersangkutan' . $emailmessage . '. Gagal Kirim Data Ke E-Log');
-                    }
-                } else {
-                    return back()->with('success', 'Berhasil melakukan konfirmasi tanda tangan Supplier untuk PO ' . $po->no_po_sap . ' dilanjutkan dengan penerimaan di salespoint/area bersangkutan' . $emailmessage);
-                }
-            }
+            // oper path
+
+            return redirect('/ticketing')->with('success', 'Berhasil memulai otorisasi untuk form ' . $ticket->code . $emailmessage);
         } catch (\Exception $ex) {
             DB::rollback();
-            return back()->with('error', 'Gagal Confirm Signed PO ' . $ex->getMessage() . ' - line ' . $ex->getLine());
+            return redirect('/ticketing')->with('error', 'Gagal memulai otorisasi ' . $ex->getMessage() . '(' . $ex->getLine() . ')');
         }
     }
 
-    // untuk purchasing reject dokumen yang uda di tandatangan vendor
-    public function rejectPosigned(Request $request)
+    public function validateticket($ticket)
+    {
+        $messages = array();
+        $flag = true;
+        if (empty($ticket->requirement_date)) {
+            $flag = false;
+            array_push($messages, 'Tanggal Pengadaan harus dipilih');
+        }
+        // validasi otorisasi
+        if (empty($ticket->authorization_id)) {
+            $flag = false;
+            array_push($messages, 'Otorisasi belum dipilih');
+        }
+        if ($ticket->item_type === null) {
+            $flag = false;
+            array_push($messages, 'Jenis Item belum dipilih');
+        }
+        if ($ticket->request_type === null) {
+            $flag = false;
+            array_push($messages, 'Jenis Pengadaan belum dipilih');
+        }
+        if ($ticket->is_it === null) {
+            $flag = false;
+            array_push($messages, 'Jenis IT belum dipilih');
+        }
+        if ($ticket->budget_type === null) {
+            $flag = false;
+            array_push($messages, 'Jenis Budget belum dipilih');
+        }
+        if ($ticket->item_type === "ho") {
+            if ($ticket->division === null) {
+                $flag = false;
+                array_push($messages, 'Divisi Harus dipilih untuk pengadaan HO');
+            }
+            if ($ticket->division === "Indirect") {
+                if ($ticket->indirect_salespoint_id === null) {
+                    $flag = false;
+                    array_push($messages, 'Divisi Harus dipilih untuk pengadaan HO');
+                }
+            }
+        }
+        // validate setiap item harus punya file penawaran untuk Jenis Pengadaan (Baru, Repear Order, Replace Existing)
+        if (in_array($ticket->request_type, [0, 1, 2])) {
+            foreach ($ticket->ticket_item as $item) {
+                $flaghavefile = false;
+                foreach ($item->ticket_item_file_requirement as $file) {
+                    $req = FileCompletement::find($file->file_completement_id);
+                    if (strpos(strtolower($req->name), "penawaran") !== false) {
+                        $flaghavefile = true;
+                    }
+                }
+                if (!$flaghavefile) {
+                    array_push($messages, "Item " . $item->name . " belum memiliki file penawaran, Minimal 1 file penawaran");
+                    $flag = false;
+                }
+            }
+        }
+        // jika Jenis item / item_type = HO / 3. maka validasi divisi harus dipih dan jika divisi yang dipilih indirect, maka salespoint indirect harus dipilih juga
+        if ($ticket->item_type == 3) {
+            if ($ticket->division == null) {
+                array_push($messages, "Divisi perlu dipilih untuk pengadaan dengan jenis item 'HO'");
+                $flag = false;
+            }
+            if (strtolower($ticket->division) == strtolower("Indirect") && $ticket->indirect_salespoint_id == null) {
+                array_push($messages, "Salespoint indirect belum dipilih untuk pilihan divisi indirect");
+                $flag = false;
+            }
+        }
+
+        if ($ticket->ticket_item->count() < 1) {
+            array_push($messages, "Jumlah permintaan item minimal 1");
+            $flag = false;
+        }
+        // maksimal 3 hanya untuk selain HO
+        if ($ticket->item_type != 3) {
+            if ($ticket->ticket_item->count() > 3) {
+                array_push($messages, "Jumlah permintaan item maksimal 3");
+                $flag = false;
+            }
+        }
+        // jika vendor 1 butuh berita acara
+        if ($ticket->ticket_vendor->count() == 1 && $ticket->ba_vendor_filepath == null) {
+            array_push($messages, "Untuk pemilihan hanya satu vendor membutuhkan berita acara vendor");
+            $flag = false;
+        }
+        // vendor gaboleh kosong
+        if ($ticket->ticket_vendor->count() == 0) {
+            array_push($messages, "Silahkan ajukan / pilih 2 vendor");
+            $flag = false;
+        }
+        // alasan harus diisi
+        if (empty($ticket->reason) || trim($ticket->reason) == "") {
+            array_push($messages, 'Alasan pengadaan barang atau jasa harus diisi');
+        }
+        // mapping validasi dengan budget sebelum mulai otorisasi
+        if ($ticket->budget_type == 0) {
+            if ($ticket->item_type == 0 || $ticket->item_type == 1) {
+                // barang / jasa / inventory
+                $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'inventory')
+                    ->where('year', '=', Carbon::now()->year)->first();
+            } else if ($ticket->item_type == 2) {
+                // maintenance / assumption
+                $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'assumption')
+                    ->where('year', '=', Carbon::now()->year)->first();
+            } else {
+                // ho budget
+                $budget = BudgetUpload::where('salespoint_id', $ticket->salespoint_id)->where('status', 1)->where('type', 'ho')
+                    ->where('division', $ticket->division)
+                    ->where('year', '=', Carbon::now()->year)->first();
+            }
+            if ($budget == null) {
+                $flag = false;
+                array_push($messages, 'Budget belum tersedia. harap melakukan request budget terlebih dahulu');
+            } else {
+                // validasi stock ambil jumlah stock setiap item
+                if ($ticket->item_type == 0 || $ticket->item_type == 1) {
+                    // Barang Jasa
+                    $ticket_items = TicketItem::join('budget_pricing', 'ticket_item.budget_pricing_id', '=', 'budget_pricing.id')
+                        ->where('ticket_item.ticket_id', $ticket->id)
+                        ->groupBy('ticket_item.budget_pricing_id')
+                        ->groupBy('ticket_item.name')
+                        ->groupBy('budget_pricing.code')
+                        ->groupBy('budget_pricing.name')
+                        ->select(DB::raw('sum(ticket_item.count) as total, ticket_item.budget_pricing_id, budget_pricing.code, ticket_item.name'))
+                        ->get();
+                } else if ($ticket->item_type == 2) {
+                    $ticket_items = TicketItem::join('maintenance_budget', 'ticket_item.maintenance_budget_id', '=', 'maintenance_budget.id')
+                        ->where('ticket_item.ticket_id', $ticket->id)
+                        ->groupBy('ticket_item.maintenance_budget_id')
+                        ->groupBy('ticket_item.name')
+                        ->groupBy('maintenance_budget.code')
+                        ->groupBy('maintenance_budget.name')
+                        ->select(DB::raw('sum(ticket_item.count) as total, ticket_item.maintenance_budget_id, maintenance_budget.code, ticket_item.name'))
+                        ->get();
+                } else {
+                    // HO Budget
+                    $ticket_items = TicketItem::join('ho_budget', 'ticket_item.ho_budget_id', '=', 'ho_budget.id')
+                        ->where('ticket_item.ticket_id', $ticket->id)
+                        ->groupBy('ticket_item.ho_budget_id')
+                        ->groupBy('ticket_item.name')
+                        ->groupBy('ho_budget.code')
+                        ->groupBy('ho_budget.name')
+                        ->select(DB::raw('sum(ticket_item.count) as total, ticket_item.ho_budget_id, ho_budget.code, ticket_item.name'))
+                        ->get();
+                }
+                foreach ($ticket_items as $item) {
+                    $code  = $item->code;
+                    $name  = $item->name;
+                    $selectedbudget = $budget->budget_detail->where('code', $code)->first();
+                    if ($selectedbudget != null) {
+                        if (in_array($ticket->item_type, [0, 1, 2])) {
+                            // barang, jasa, Maintenance
+                            $available_quota = $selectedbudget->qty - $selectedbudget->pending_quota - $selectedbudget->used_quota;
+                        } else {
+                            // HO
+                            $month = now()->month;
+                            $available_quota = $selectedbudget->getQty($month) - $selectedbudget->getPendingQuota($month) - $selectedbudget->getUsedQuota($month);
+                            // $available_quota =
+                        }
+                        if ($available_quota < $item->total) {
+                            $flag = false;
+                            array_push($messages, "Jumlah permintaan item " . $name . " tidak tersedia 'jumlah permintaan = " . $item->total . "| stock = " . $available_quota . "'");
+                        }
+                    } else {
+                        $flag = false;
+                        array_push($messages, "Item " . $name . " tidak tersedia di budget");
+                    }
+                }
+
+                // validasi harga per item apakah melebihi jumlah value di stock
+                foreach ($ticket->ticket_item as $item) {
+                    $name  = $item->name;
+                    if ($ticket->item_type == 0 || $ticket->item_type == 1) {
+                        $code = $item->budget_pricing->code;
+                    } else if ($ticket->item_type == 2) {
+                        $code = $item->maintenance_budget->code;
+                    } else {
+                        $code = $item->ho_budget->code;
+                    }
+
+                    $selectedbudget = $budget->budget_detail->where('code', $code)->first();
+                    if ($selectedbudget != null) {
+                        if (in_array($ticket->item_type, [0, 1, 2])) {
+                            // barang, jasa, Maintenance
+                            $max_price = $selectedbudget->value;
+                        } else {
+                            // HO
+                            $month = now()->month;
+                            $max_price = $selectedbudget->getValue($month);
+                        }
+                        // if ($max_price < $item->price) {
+                        //     $flag = false;
+                        //     array_push($messages, "Harga item " . $name . " melebih harga budget yang tersedia 'budget = " . $max_price . " ,request = " . $item->price . "'");
+                        // }
+                    } else {
+                        $flag = false;
+                        array_push($messages, "Item " . $name . " tidak tersedia di budget");
+                    }
+                }
+            }
+        }
+        // jika item IT maka harus ada satu form FRI
+        if ($ticket->is_it == true) {
+            if ($ticket->fri_forms->count() < 1) {
+                $flag = false;
+                array_push($messages, 'Pengajuan item Jenis IT membutuhkan FRI (Form Request Infrastruktur)');
+            } else {
+                $fri_form = $ticket->fri_forms->first();
+                if ($fri_form->date_request == null || $fri_form->date_request == "") {
+                    $flag = false;
+                    array_push($messages, 'Date Request belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->date_use == null || $fri_form->date_use == "") {
+                    $flag = false;
+                    array_push($messages, 'Date Use belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->work_location == null || $fri_form->work_location == "") {
+                    $flag = false;
+                    array_push($messages, 'Work Location belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->salespoint_name == null || $fri_form->salespoint_name == "") {
+                    $flag = false;
+                    array_push($messages, 'Area belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->username_position == null || $fri_form->username_position == "") {
+                    $flag = false;
+                    array_push($messages, 'User Name / Position belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->division_department == null || $fri_form->division_department == "") {
+                    $flag = false;
+                    array_push($messages, 'Div / Dept belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->contact_number == null || $fri_form->contact_number == "") {
+                    $flag = false;
+                    array_push($messages, 'Contact number belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->email_address == null || $fri_form->email_address == "") {
+                    $flag = false;
+                    array_push($messages, 'Email Address belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->hardware_details == null || $fri_form->hardware_details == "") {
+                    $flag = false;
+                    array_push($messages, 'Date Request belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                if ($fri_form->application_details == null || $fri_form->application_details == "") {
+                    $flag = false;
+                    array_push($messages, 'Date Request belum diisi pada FRI (Form Request Infrastruktur)');
+                }
+                // jika belum ada matriks otorisasi form fri di master
+                $fri_authorization = Authorization::where('form_type', 12)->first();
+                if (!isset($fri_authorization)) {
+                    $flag = false;
+                    array_push($messages, 'Matriks Otorisasi FRI (Form Request Infrastruktur) belum tersedia. Anda dapat menguhubungi admin terkiat issue berikut');
+                }
+            }
+        }
+        $data = collect([
+            "error" => !$flag,
+            "messages" => array_unique($messages)
+        ]);
+        return $data;
+    }
+
+    public function approveTicket(Request $request, $return_data_type = 'view')
     {
         $emailflag = true;
         $emailmessage = "";
         try {
             DB::beginTransaction();
-            $po = Po::findOrFail($request->po_id);
-            $po->status = 1;
-            $po->save();
+            $ticket = Ticket::findOrFail($request->id);
+            $updated_at = new Carbon($request->updated_at);
+            if ($updated_at == $ticket->updated_at) {
+                if ($ticket->is_cancel_end == 1) {
+                    $authorization = $ticket->current_cancel_authorization();
+                }
+                else {
+                    $authorization = $ticket->current_authorization();
+                }
+                if ($authorization->employee_id == Auth::user()->id) {
+                    // set status jadi approve
+                    $authorization->status = 1;
+                    $authorization->save();
 
-            $porequest = POUploadRequest::findOrFail($request->po_upload_request_id);
-            $porequest->reject_notes = $request->reason;
-            $porequest->isExpired = true;
-            $porequest->status = -1;
-            $porequest->save();
-
-            $po_upload_request               = new POUploadRequest;
-            $po_upload_request->id           = (string) Str::uuid();
-            $po_upload_request->po_id        = $po->id;
-            if (strtolower(trim($po->sender_name)) == 'one time vendor') {
-                $po_upload_request->vendor_name  = $po->sender_address;
-            } else {
-                $po_upload_request->vendor_name  = $po->sender_name;
-            }
-            $po_upload_request->vendor_pic   = $po->supplier_pic_name ?? "";
-            $po_upload_request->save();
-
-            $po->po_upload_request_id = $po_upload_request->id;
-            $po->save();
-
-            $mail_to = $this->email_text_to_array($po->last_mail_send_to);
-            $ccs = $this->email_text_to_array($po->last_mail_cc_to);
-            $data = array(
-                'original_emails' => $mail_to,
-                'original_ccs' => $ccs,
-                'reject_notes' => $request->reason,
-                'po' => $po,
-                'mail' => $mail_to,
-                'po_upload_request' => $po_upload_request,
-                'new_url' => url('/signpo/' . $po_upload_request->id)
-            );
-            if (config('app.env') == 'local') {
-                $mail_to = [config('mail.testing_email')];
-                $ccs = [];
-            }
-
-            try {
-                Mail::to($mail_to)->cc($ccs)->send(new POMail($data, 'posignedreject'));
-            } catch (\Exception $ex) {
-                $emailflag = false;
-            }
-            if (!$emailflag) {
-                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
-            }
-
-            if ($po->ticket_id != null) {
-                $monitor = new TicketMonitoring;
-                $monitor->ticket_id      = $po->ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menolak tanda tangan Supplier PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->armada_ticket_id != null) {
-                $monitor                 = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id      = $po->armada_ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Menolak tanda tangan Supplier PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->security_ticket_id != null) {
-                $monitor                    = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id         = $po->security_ticket->id;
-                $monitor->employee_id       = Auth::user()->id;
-                $monitor->employee_name     = Auth::user()->name;
-                $monitor->message           = 'Menolak tanda tangan Supplier PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-
-            DB::commit();
-            return back()->with('success', 'Berhasil melakukan penolakan tanda tangan PO ' . $po->no_po_sap . ' link baru telah dikirim ke email ' . implode(", ", $mail_to ?? []) . $emailmessage);
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal Reject Signed PO ' . $ex->getMessage() . $ex->getLine());
-        }
-    }
-
-    public function sendEmail(Request $request)
-    {
-        $emailflag = true;
-        $emailmessage = "";
-        try {
-            DB::beginTransaction();
-            $po = Po::findOrFail($request->po_id);
-
-            $old_po_upload_request = $po->po_upload_request;
-
-            if ($old_po_upload_request) {
-                $old_po_upload_request->isExpired = true;
-                $old_po_upload_request->save();
-                $old_po_upload_request->delete();
-            }
-
-            $po_upload_request               = new POUploadRequest;
-            $po_upload_request->id           = (string) Str::uuid();
-            $po_upload_request->po_id        = $po->id;
-            if (strtolower(trim($po->sender_name)) == 'one time vendor') {
-                $po_upload_request->vendor_name  = $po->sender_address;
-            } else {
-                $po_upload_request->vendor_name  = $po->sender_name;
-            }
-            if ($po->ticket_id != null) {
-                $po_upload_request->vendor_pic   = $po->supplier_pic_name ?? "";
-            }
-            if ($po->armada_ticket_id != null || $po->security_ticket_id != null) {
-                $po_upload_request->vendor_pic   = $po->sender_name;
-            }
-            $po_upload_request->save();
-
-            $po->po_upload_request_id = $po_upload_request->id;
-            $po->save();
-
-            if (count($this->email_text_to_array($request->email)) < 1) {
-                throw new \Exception("Minimal satu email yang dibutuhkan untuk mengirim PO (" . $request->email . ")");
-            }
-            $mail_to = $this->email_text_to_array($request->email);
-            $ccs = $this->email_text_to_array($request->cc);
-            $mail_subject = $request->mail_subject;
-            $data = array(
-                'original_emails' => $mail_to,
-                'original_ccs' => $ccs,
-                'po' => $po,
-                'mail' => $mail_to,
-                'mail_subject' => $mail_subject,
-                'email_text' => $request->email_text,
-                'po_upload_request' => $po_upload_request,
-                'needVendorConfirmation' => 1,
-                'url' => url('/signpo/' . $po_upload_request->id),
-            );
-            if (config('app.env') == 'local') {
-                $mail_to = [config('mail.testing_email')];
-                $ccs = [];
-            }
-
-            try {
-                Mail::to($mail_to)->cc($ccs)->send(new POMail($data, 'posignedrequest'));
-            } catch (\Exception $ex) {
-                throw new \Exception("Terjadi kesalahan dalam pengiriman email. Silahkan coba kembali / hubungi developer - " . $ex->getMessage() . $ex->getLine());
-                $emailflag = false;
-            }
-            if (!$emailflag) {
-                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
-            }
-
-            $po->status = 1;
-            $po->last_mail_send_to  = $request->email;
-            $po->last_mail_cc_to    = $request->cc;
-            $po->last_mail_text     = $request->email_text;
-            $po->last_mail_subject  = $request->mail_subject;
-            $po->save();
-            DB::commit();
-
-
-            if ($po->ticket_id != null) {
-                $monitor = new TicketMonitoring;
-                $monitor->ticket_id      = $po->ticket->id;
-                $monitor->employee_id    = Auth::user()->id;
-                $monitor->employee_name  = Auth::user()->name;
-                $monitor->message        = 'Mengirim ulang email untuk PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->armada_ticket_id != null) {
-                $monitor = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id      = $po->armada_ticket->id;
-                $monitor->employee_id           = Auth::user()->id;
-                $monitor->employee_name         = Auth::user()->name;
-                $monitor->message               = 'Mengirim ulang email untuk PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->security_ticket_id != null) {
-                $monitor = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id      = $po->security_ticket->id;
-                $monitor->employee_id             = Auth::user()->id;
-                $monitor->employee_name           = Auth::user()->name;
-                $monitor->message                 = 'Mengirim ulang email untuk PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            return back()->with('success', 'berhasil mengirim ulang email untuk po ' . $po->no_po_sap . ' ke email ' . implode(",", $mail_to) . $emailmessage);
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return back()->with('error', 'Gagal Mengirimkan email (' . $ex->getMessage() . ')');
-        }
-    }
-
-    public function poUploadRequestView($po_upload_request_id)
-    {
-        try {
-            $poupload = POUploadRequest::where('id', $po_upload_request_id)->where('isExpired', false)->first();
-            if (!$poupload) {
-                throw new \Exception('Document expired or not found');
-            }
-            $po = Po::find($poupload->po_id);
-            if ($po->status < 1) {
-                throw new \Exception('Document expired or not found');
-            }
-            $active_po = Po::find($poupload->po_id);
-            if ($active_po->po_upload_request_id != $poupload->id) {
-                throw new \Exception('Link invalid');
-            }
-            $poupload->isOpened = true;
-            $poupload->save();
-            return view('Operational.poupload', compact('poupload'));
-        } catch (\Exception $ex) {
-            return $ex->getMessage();
-        }
-    }
-
-    public function poUploadRequest(Request $request)
-    {
-        try {
-            DB::beginTransaction();
-            $pouploadrequest = POUploadRequest::findOrFail($request->po_upload_request_id);
-            if ($request->file()) {
-                $internal_signed_filepath = $pouploadrequest->po->internal_signed_filepath;
-                $filepath = str_replace('INTERNAL_SIGNED', 'EXTERNAL_SIGNED', $internal_signed_filepath);
-                $newext = pathinfo($request->file('file')->getClientOriginalName(), PATHINFO_EXTENSION);
-                $filepath = $this->replace_extension($filepath, $newext);
-                $file = pathinfo($filepath);
-                $path = $request->file('file')->storeAs($file['dirname'], $file['basename'], 'public');
-                $pouploadrequest->filepath = $path;
-                $pouploadrequest->status = 1;
-                $pouploadrequest->save();
-
-                $po = $pouploadrequest->po;
-                $po->status = 2;
-                $po->save();
-
-                if ($po->ticket_id != null) {
+                    // TICKET MONITOR_LOG
                     $monitor = new TicketMonitoring;
-                    $monitor->ticket_id      = $po->ticket->id;
-                    $monitor->employee_id    = -1;
-                    $monitor->employee_name  = $po->sender_name;
-                    $monitor->message        = 'Supplier ' . $po->sender_name . ' Melakukan Upload tanda tangan PO ' . $po->no_po_sap;
+                    $monitor->ticket_id      = $ticket->id;
+                    $monitor->employee_id    = Auth::user()->id;
+                    $monitor->employee_name  = Auth::user()->name;
+                    if ($ticket->is_cancel_end == 1) {
+                        $monitor->message        = 'Approval Cancel ' . $ticket->reason;
+                    }
+                    else {
+                        $monitor->message        = 'Approval Ticket Pengadaan';
+                    }
                     $monitor->save();
-                }
 
-                if ($po->armada_ticket_id != null) {
-                    $monitor = new ArmadaTicketMonitoring;
-                    $monitor->armada_ticket_id      = $po->armada_ticket->id;
-                    $monitor->employee_id           = -1;
-                    $monitor->employee_name         = $po->sender_name;
-                    $monitor->message                = 'Supplier ' . $po->sender_name . ' Melakukan Upload tanda tangan PO ' . $po->no_po_sap;
-                    $monitor->save();
+                    // jika item IT approve di form fri juga
+                    if ($ticket->fri_forms->count() > 0) {
+                        $fri_form = $ticket->fri_forms->first();
+                        $authors = $fri_form->authorizations->where('employee_id', Auth::user()->id);
+                        foreach ($authors as $author) {
+                            $author->status = 1;
+                            $author->save();
+                        }
+                        $fri_form->refresh();
+                        // kalau form fri dah full approval set formnya ke full approved
+                        if ($fri_form->authorizations->where('status', 0)->first() == null) {
+                            $fri_form->status = 1;
+                            $fri_form->save();
+                        }
+                    }
+
+                    // mail ke otorisasi selanjutnya
+                    if ($authorization != null) {
+                        $mail_to = $authorization->employee->email;
+                        $name_to = $authorization->employee->name;
+                        $data = array(
+                            'original_emails' => [$mail_to],
+                            'transaction_type' => 'Pengadaan',
+                            'ticketing_type' => 'Barang Jasa',
+                            'salespoint_name' => $ticket->salespoint->name,
+                            'from' => Auth::user()->name,
+                            'to' => $name_to,
+                            'code' => $ticket->code,
+                        );
+                        if (config('app.env') == 'local') {
+                            $mail_to = [config('mail.testing_email')];
+                        }
+
+                        try {
+                            Mail::to($mail_to)->send(new NotificationMail($data, 'ticketing_approval'));
+                        } catch (\Exception $ex) {
+                            $emailflag = false;
+                        }
+                        if (!$emailflag) {
+                            $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+                        }
+                    }
+                    $this->checkTicketApproval($ticket->id);
+                    $ticket->refresh();
+                    
+                    if ($ticket->is_cancel_end == 1) {
+                        $current_authorization = $ticket->current_cancel_authorization();
+                    }
+                    else {
+                        $current_authorization = $ticket->current_authorization();
+                    }
+
+                    if ($current_authorization) {
+                        $returnmessage = 'Berhasil melakukan approve ticket Otorisasi selanjutnya oleh ' . $current_authorization->employee_name;
+                    } 
+                    elseif (str_contains($ticket->reason, 'End Kontrak PEST Control')) {
+                        $returnmessage = 'Approval terkait ticketing dengan kode ticket ' . $ticket->code . ' sudah full approval. (Status tiket saat ini : ' . $ticket->status();
+                        
+                        if ($ticket->is_cancel_end == 1) {
+                            $returnmessage .= ' & Status PO '.$ticket->po_reference_number .' Open)';
+                        }
+                        else {
+                            $returnmessage .= ' & Status PO '.$ticket->po_reference_number .' Closed)';
+                        }
+                    }
+                    else {
+                        $returnmessage = 'Approval terkait ticketing dengan kode ticket ' . $ticket->code . ' sudah full approval. (Status tiket saat ini : ' . $ticket->status() . ')';
+                    }
+
+
+                    DB::commit();
+                    if ($return_data_type == 'api') {
+                        return response()->json([
+                            "error" => false,
+                            "message" => $returnmessage . $emailmessage
+                        ]);
+                    } else {
+                        return back()->with('success', $returnmessage . $emailmessage);
+                    }
+                } else {
+                    if ($return_data_type == 'api') {
+                        return response()->json([
+                            "error" => true,
+                            "message" => 'ID otorisasi tidak sesuai. Silahkan coba kembali'
+                        ]);
+                    } else {
+                        return back()->with('error', 'ID otorisasi tidak sesuai. Silahkan coba kembali');
+                    }
                 }
-                DB::commit();
-                return back()->with('success', 'Berhasil upload file');
             } else {
-                throw new \Exception("File tidak ditemukan");
+                if ($return_data_type == 'api') {
+                    return response()->json([
+                        "error" => true,
+                        "message" => 'Ticket sudah di approve sebelumnya' . $emailmessage
+                    ]);
+                } else {
+                    return back()->with('error', 'Ticket sudah di approve sebelumnya' . $emailmessage);
+                }
             }
         } catch (\Exception $ex) {
             DB::rollback();
-            return back()->with('error', $ex->getMessage());
+            if ($return_data_type == 'api') {
+                return response()->json([
+                    "error" => true,
+                    "message" => 'Gagal melakukan approve ticket (' . $ex->getMessage() . ') [' . $ex->getLine() . ']'
+                ]);
+            } else {
+                return back()->with('error', 'Gagal melakukan approve ticket (' . $ex->getMessage() . ') [' . $ex->getLine() . ']');
+            }
         }
     }
 
-    public function replace_extension($filename, $new_extension)
+    public function checkTicketApproval($ticket_id)
     {
-        $info = pathinfo($filename);
-        return $info['dirname'] . '/' . $info['filename'] . '.' . $new_extension;
-    }
-
-    public function getActivePO(Request $request)
-    {
-        // armada
-        if ($request->type == 'armada') {
-            // selain po yang mutasi
-            $salespoint_id = $request->salespoint_id;
-            $pos = Po::join('armada_ticket', 'po.armada_ticket_id', '=', 'armada_ticket.id')
-                ->leftJoin('armada', 'armada_ticket.armada_id', '=', 'armada.id')
-                ->leftJoin('mutasi_form', 'armada_ticket.id', '=', 'mutasi_form.armada_ticket_id')
-                ->leftJoin('vendor', 'po.vendor_code', '=', 'vendor.code')
-                ->where('po.status', 3)
-                ->where('armada_ticket.isNiaga', $request->isNiaga)
-                ->whereNotNull('po.start_date')
-                ->whereNotNull('po.end_date')
-                ->whereNotNull('armada_ticket.armada_id')
-                ->where(function ($query) use ($salespoint_id) {
-                    // pilih berdasarkan salespoint id dan jika dia ticketingnya mutasi salespoint id nya ambil dari form mutasi (receiver_salespoint_id)
-                    $query->where(function ($query) use ($salespoint_id) {
-                        $query->where('armada_ticket.salespoint_id', $salespoint_id)
-                            ->where('armada_ticket.ticketing_type', '!=', 2);
-                    })->orWhere(function ($query) use ($salespoint_id) {
-                        $query->where('mutasi_form.receiver_salespoint_id', $salespoint_id)
-                            ->where('armada_ticket.ticketing_type', 2);
-                    })->orWhere(function ($query) use ($salespoint_id) {
-                        $query->where('armada_ticket.mutation_salespoint_id', $salespoint_id)
-                            ->where('armada_ticket.ticketing_type', '!=', 2);
-                    });
-                })
-                ->select('po.no_po_sap AS po_number', 'armada.plate AS plate', 'armada_ticket.vendor_recommendation_name', 'armada_ticket.vendor_name', 'po.start_date as start_date', 'po.end_date as end_date', 'vendor.alias')
-                ->get();
-
-            foreach ($pos as $po) {
-                $po->vendor = ($po->vendor_name != null) ? $po->vendor_name : $po->alias;
-            }
-            // filter po yang sedang dalam proses di pengadaan
-            $pos = $pos->filter(function ($item) use ($request) {
-                $selected = Po::where('no_po_sap', $item->po_number)->first();
-                if ($selected->current_ticketing() == null) {
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-
-            $salespoint_name = SalesPoint::find($request->salespoint_id)->name;
-            $pomanual = PoManual::where('status', 3)
-                ->where('category_name', 'armada')
-                ->where('isNiaga', $request->isNiaga)
-                ->whereNotNull('start_date')
-                ->whereNotNull('end_date')
-                ->where('salespoint_name', trim(strtoupper($salespoint_name)))
-                ->select('po_number', 'gs_plate', 'gt_plate', 'vendor_name as vendor', 'start_date', 'end_date')
-                ->get();
-
-            // filter po yang sedang dalam proses di pengadaan
-            $pomanual = $pomanual->filter(function ($item) use ($request) {
-                $selected = PoManual::where('po_number', $item->po_number)->first();
-                if ($selected->current_ticketing() == null) {
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-
-            foreach ($pomanual as $item) {
-                $item->plate = ($item->gt_plate != "") ? $item->gt_plate : $item->gs_plate;
-                $manual = new \stdClass();
-                $manual->po_number    = $item->po_number;
-                $manual->plate        = $item->plate;
-                $manual->vendor       = $item->vendor;
-                $manual->start_date   = $item->start_date;
-                $manual->end_date     = $item->end_date;
-                $pos->push($manual);
-            }
-            if ($request->pengadaan_type == 4) {
-                // case percepatan
-                // jika percepatan end Kontrak tampilkan end date yang diatas h-30
-                $pos = $pos->filter(function ($po) {
-                    if (CarbonImmutable::parse($po->end_date)->subDays(30) > now()) {
-                        return true;
-                    } else {
-                        return false;
+        try {
+            $ticket = Ticket::findOrFail($ticket_id);
+            $flag = true;
+            if ($ticket->is_cancel_end == 1) {
+                foreach ($ticket->cancel_authorization as $cancelauthorization) {
+                    if ($cancelauthorization->status != 1) {
+                        $flag = false;
+                        break;
                     }
-                });
-            } else if ($request->pengadaan_type == 1) {
-                // case perpanjangan
-                $pos = $pos->filter(function ($po) {
-                    // tampilkan data yang h-30 / lebih dari end kontrak
-                    if (CarbonImmutable::parse($po->end_date)->subDays(30) <= now()) {
-                        return true;
-                    } else {
-                        return false;
+                }
+            }
+            else {
+                foreach ($ticket->ticket_authorization as $authorization) {
+                    if ($authorization->status != 1) {
+                        $flag = false;
+                        break;
                     }
-                });
-            } else {
+                }
             }
-            // converto from collection to array for proper json encoding
-            $pos = $pos->toArray();
-            return response()->json([
-                "data" => array_values($pos),
-            ]);
-        }
+            
+            if ($flag) {
+                if ($ticket->custom_settings != null) {
+                    $custom_settings = json_decode($ticket->custom_settings);
 
-        // security
-        if ($request->type == 'security') {
-            $pos = Po::join('security_ticket', 'po.security_ticket_id', '=', 'security_ticket.id')
-                ->where('po.status', 3)
-                ->where('security_ticket.salespoint_id', $request->salespoint_id)
-                ->whereNotNull('po.start_date')
-                ->whereNotNull('po.end_date')
-                ->select('po.no_po_sap AS po_number', 'security_ticket.code AS code', 'po.start_date as start_date', 'po.end_date as end_date')
-                ->get();
-            // filter po yang sedang dalam proses di pengadaan
-            $pos = $pos->filter(function ($item) use ($request) {
-                $selected = Po::where('no_po_sap', $item->po_number)->first();
-                if ($selected->current_ticketing() == null) {
-                    return true;
+                    if (in_array('bidding', $custom_settings->steps)) {
+                        $ticket->status = 2;
+                    } else if (in_array('pr_manual', $custom_settings->steps)) {
+                        $ticket->status = 3;
+                    } else if (in_array('po_sap', $custom_settings->steps)) {
+                        $ticket->status = 6;
+                    } else if (in_array('received_file_upload', $custom_settings->steps)) {
+                        $ticket->status = 6;
+                    } else {
+                        throw new \Exception("Terjadi kesalahan pada custom settings. Silahkan hubungi developer");
+                    }
                 } else {
-                    return false;
+                    if ($ticket->request_type == 3) {
+                        // perpanjangan (ubah status ke pr / po sap / skip bidding dan pr manual)
+                        $ticket->status = 6;
+                    } else if ($ticket->request_type == 4) {
+                        if (str_contains($ticket->reason, 'End Kontrak PEST Control')) {
+                            if ($ticket->is_cancel_end == 1) {
+                                // end kontrak (ubah status selesai)
+                                $ticket->status = -2;
+                                $po = Po::where('no_po_sap', $ticket->po_reference_number)->first();
+                                $pomanual = PoManual::where('po_number', $ticket->po_reference_number)->first();
+                                if ($po) {
+                                    $po->status = 3;
+                                    $po->save();
+                                }
+                                else if ($pomanual) {
+                                    $pomanual->status = 3;
+                                    $pomanual->save();
+                                }
+                            }
+                            else {
+                                // end kontrak (ubah status selesai)
+                                $ticket->status = 7;    
+                                // end kontrak (ubah status jadi closed)
+                                $po = Po::where('no_po_sap', $ticket->po_reference_number)->first();
+                                $pomanual = PoManual::where('po_number', $ticket->po_reference_number)->first();
+                                if ($po) {
+                                    $po->status = 4;
+                                    $po->save();
+                                }
+                                else if ($pomanual) {
+                                    $pomanual->status = 4;
+                                    $pomanual->save();
+                                }
+                            }
+                        }
+                    } else {
+                        // pengadaan baru / replace renewal (ubah status ke bidding)
+                        $ticket->status = 2;
+                    }
                 }
-            });
-            $salespoint_name = SalesPoint::find($request->salespoint_id)->name;
-            $pomanual = PoManual::where('status', 3)
-                ->where('category_name', 'SECURITY')
-                ->whereNotNull('start_date')
-                ->whereNotNull('end_date')
-                ->where('salespoint_name', 'LIKE', '%' . strtoupper($salespoint_name) . '%')
-                ->select('po_number', 'start_date', 'end_date')
-                ->get();
+                $ticket->save();
+                $ticket->refresh();
 
-            // filter po yang sedang dalam proses di pengadaan
-            $pomanual = $pomanual->filter(function ($item) use ($request) {
-                $selected = PoManual::where('po_number', $item->po_number)->first();
-                if ($selected->current_ticketing() == null) {
-                    return true;
-                } else {
-                    return false;
+                // Hapus approver kedua akhir form fri dari ticket (level 4,5)
+                if ($ticket->fri_forms->count()) {
+                    $take_count = $ticket->ticket_authorization->count() - 3;
+                    foreach ($ticket->ticket_authorization->sortByDesc('level')->take($take_count) as $author) {
+                            $author->delete();
+                    }
                 }
-            });
-            foreach ($pomanual as $item) {
-                $manual               = new \stdClass();
-                $manual->po_number    = $item->po_number;
-                $manual->code         = 'manual';
-                $manual->start_date   = $item->start_date;
-                $manual->end_date     = $item->end_date;
-                $pos->push($manual);
+
+                // mail ke tim purchasing bidding ready
+                if ($ticket->status == 2) {
+                    $ticket->refresh();
+                    $last_ticket_author = $ticket->ticket_authorization->sortByDesc('level')->first();
+                    $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)
+                        ->where('category', 'purchasing')->first()->emails ?? [];
+                    $region_purchasing_emails = json_decode($region_purchasing_emails);
+                    $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+                    $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+                    $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+                    $ccs = $ticket->additional_emails() ?? [];
+                    $data = array(
+                        'original_emails' => $mail_to,
+                        'original_ccs' => $ccs,
+                        'transaction_type' => 'Pengadaan',
+                        'ticketing_type' => 'Barang Jasa',
+                        'salespoint_name' => $ticket->salespoint->name,
+                        'from' => $last_ticket_author->employee_name,
+                        'to' => 'Purchasing Team',
+                        'code' => $ticket->code,
+                    );
+                    if (config('app.env') == 'local') {
+                        $mail_to = [config('mail.testing_email')];
+                        $ccs = [];
+                    }
+                    $emailflag = true;
+                    try {
+                        Mail::to($mail_to)->cc($ccs)
+                            ->send(new NotificationMail($data, 'ticketing_approved'));
+                    } catch (\Exception $ex) {
+                        $emailflag = false;
+                    }
+                    $emailmessage = "";
+                    if (!$emailflag) {
+                        $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+                    }
+                }
+                $ticket->refresh();
+
+                // TICKET MONITOR_LOG
+                $monitor = new TicketMonitoring;
+                $monitor->ticket_id      = $ticket->id;
+                $monitor->employee_id    = Auth::user()->id;
+                $monitor->employee_name  = Auth::user()->name;
+                $monitor->message        = 'Approval ticket selesai';
+                $monitor->save();
             }
-            // converto from collection to array for proper json encoding
-            $pos = $pos->toArray();
-            return response()->json([
-                "data" => array_values($pos),
-            ]);
-        }
-
-        if ($request->type == 'additional') {
-            $salespoint = SalesPoint::find($request->salespoint_id);
-            $pos = collect([]);
-            $pos = Po::join('ticket', 'ticket.id', '=', 'po.ticket_id')
-                ->join('ticket_item', 'ticket_item.ticket_id', '=', 'ticket.id')
-                ->leftJoin('vendor', 'po.vendor_code', '=', 'vendor.code')
-                ->leftJoin('salespoint', 'ticket.salespoint_id', '=', 'salespoint.id')
-                ->where('po.status', 3)
-                ->where('salespoint.id', $salespoint->id)
-                ->where('ticket_item.name', 'LIKE', $request->ticket_type . '%')
-                ->whereNotNull('po.start_date')
-                ->whereNotNull('po.end_date')
-                ->whereNotNull('ticket.id')
-                ->select('po.no_po_sap AS po_number', 'po.start_date as start_date', 'po.end_date as end_date', 'vendor.alias as vendor_name', 'salespoint.name as salespoint_name')
-                ->get();
-
-            // filter po yang sedang dalam proses di pengadaan
-            $pos = $pos->filter(function ($item) use ($request) {
-                $selected = Po::where('no_po_sap', $item->po_number)->first();
-                if ($selected->current_ticketing() == null) {
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-
-            $pomanual = PoManual::where('status', 3)
-                ->where('category_name', $request->ticket_type)
-                ->where('salespoint_name', $salespoint->name)
-                ->get();
-
-            // filter po yang sedang dalam proses di pengadaan
-            $pomanual = $pomanual->filter(function ($item) use ($request) {
-                $selected = PoManual::where('po_number', $item->po_number)->first();
-                if ($selected->current_ticketing() == null) {
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-
-            foreach ($pomanual as $item) {
-                $manual                  = new \stdClass();
-                $manual->po_number       = $item->po_number;
-                $manual->vendor_name     = $item->vendor_name;
-                $manual->salespoint_name = $item->salespoint_name;
-                $manual->code            = 'manual';
-                $pos->push($manual);
-            }
-            // converto from collection to array for proper json encoding
-            $pos = $pos->toArray();
-            return response()->json([
-                "data" => array_values($pos),
-            ]);
+        } catch (\Exception $ex) {
+            DB::rollback();
+            return back()->with('error', 'Approval checker error please contact admin ' . $ex->getMessage());
         }
     }
 
-    public function getPrSapbyTicketCode(Request $request)
+    public function rejectTicket(Request $request, $return_data_type = 'view')
     {
-        $pods_code = $request->ticket_code;
-        $parameters = [
-            'MANDT' => "client",
-            'BANFN' => "pr_number",
-            'BNFPO' => "item_pr",
-            'BSART' => "doc_type",
-            'LOEKZ' => "deletion_indicator",
-            'FRGZU' => "release_state",
-            'EKGRP' => "pur_group",
-            'ERNAM' => "created_by",
-            'AFNAM' => "requisitioner",
-            'MATNR' => "material_number",
-            'TXZ01' => "short_text",
-            'WERKS' => "plant",
-            'MATKL' => "material_group",
-            'MENGE' => "order_qty",
-            'MEINS' => "uom",
-            'LFDAT' => "delivery_date",
-            'PREIS' => "valuation_price",
-            'PEINH' => "price_unit",
-            'PSTYP' => "item_category",
-            'KNTTP' => "acct_ass_cat",
-            'DISPO' => "mrp_controller",
-            'EBELN' => "po_number",
-            'EBELP' => "po_item",
-            'BSMNG' => "qty_order",
-            'CREATIONDATE' => "create_date",
-            'CREATIONTIME' => "creation_time",
-            'LT_EBAN-TEXT' => "pr_web",
-            "TEXTNOTE" => "pods_code"
-        ];
-
-        // DB::table('pr_sap')->get()->toArray();
-        $data = DB::table('pr_sap')->get()->pluck('data')->toArray();
-        foreach ($data as $key => $item) {
-            $item = json_decode($item);
-            $item_in_array = (array) $item;
-            $formatted_item = [];
-            foreach ($item_in_array as $name => $value) {
-                $default_name = $name;
-                $formatted_name = $parameters[strtoupper($default_name)] ?? $default_name;
-                $formatted_item[$formatted_name] = $value;
-            }
-            array_push($data, (object)$formatted_item);
-        }
-        $data = collect($data);
-        // filter by pods code
-        $data = $data->filter(function ($item) use ($pods_code) {
-            // dd($item);
-            if (($item->pods_code ?? 'undefined') == $pods_code) {
-                return true;
-            } else {
-                return false;
-            }
-        });
-        return response()->json([
-            'error' => false,
-            'data' => array_values($data->toArray()),
-            'message' => "Menampilkan daftar pr untuk kode pengadaan " . $pods_code
-        ], 200);
-    }
-
-    public function getPoSap(Request $request)
-    {
-        $po_numbers = $request->po_numbers;
-        if ($po_numbers == null) {
-            return response()->json([
-                'error' => true,
-                'data' => [],
-                'message' => 'Nomor PO kosong'
-            ], 500);
-        }
-
-        $po_numbers = array_unique($po_numbers);
-
-        $parameters = [
-            'MANDT'      => "client",
-            'EBELN'      => "po_number",
-            'BUKRS'      => "co_code",
-            'BSTYP'      => "pur_doc_cat",
-            'BSART'      => "pur_doc_type",
-            'AEDAT'      => "create_on",
-            'ERNAM'      => "created_by",
-            'LIFNR'      => "vendor",
-            'ZTERM'      => "payment_term",
-            'EKORG'      => "pur_org",
-            'EKGRP'      => "pur_group",
-            'BEDAT'      => "doc_date",
-            'FRGZU'      => "rel_state",
-            'EBELP'      => "item_po",
-            'MATNR'      => "material_number",
-            'TXZ01'      => "material_short_text",
-            'WERKS'      => "plant",
-            'MATKL'      => "material_group",
-            'MENGE'      => "total_qty_requested",
-            'MENGE2'     => "scheduled_qty_requested",
-            'MEINS'      => "order_unit",
-            'NETPR'      => "net_order_price",
-            'PEINH'      => "price_unit",
-            'NETWR'      => "net_order_value",
-            'PSTYP'      => "item_category",
-            'KNTTP'      => "acct_ass_cat",
-            'BANFN'      => "pr_number",
-            'BNFPO'      => "item_pr",
-            'LOEKZ'      => "del_indicator",
-            'ELIKZ'      => "deliv_comp",
-            'EINDT'      => "delv_date",
-            'MAKTX'      => "material_desc",
-            'NAME1'      => "vendor_name",
-            'FRGKE'      => "release_indicator",
-            'TEXTNOTE1'  => "header_text_po",
-            'TEXTNOTE2'  => "item_text_po",
-            'STRAS'      => "vendor_addr",
-            'MCOD3'      => "vendor_city",
-            'PSTLZ'      => "vendor_post_code",
-            'TELF1'      => "vendor_tel",
-            'TELFX'      => "vendor_fax",
-            'LAND1'      => "vendor_country",
-            'WERKSNM1'   => "plant_name_1",
-            'WERKSNM2'   => "plant_name_2",
-            'WERKSSTR'   => "plant_addrs",
-            'WERKSCITY'  => "plant_city",
-            'WERKSPC'    => "plant_post_code",
-            'WERKSCNTRY' => "plant_country",
-            'WERKSREGIO' => "plant_region",
-            'ZBD1T'      =>    "payment_days"
-        ];
-        $data = [];
-        foreach ($po_numbers as $po_number) {
-            $po_data = DB::table('po_sap')
-                ->where("data", "like", '%' . '"ebeln":"' . $po_number . '"' . '%')
-                ->where("data", "like", '%' . '"frgke":"R"' . '%')
-                ->get()
-                ->pluck('data')
-                ->toArray();
-            foreach ($po_data as $key => $item) {
-                $item = json_decode($item);
-                $item_in_array = (array) $item;
-                $formatted_item = [];
-                foreach ($item_in_array as $name => $value) {
-                    $default_name = $name;
-                    $formatted_name = $parameters[strtoupper($default_name)] ?? $default_name;
-                    $formatted_item[$formatted_name] = $value;
-                }
-                $object_formatted_item = (object) $formatted_item;
-                if (!isset($object_formatted_item->del_indicator)) {
-                    array_push($data, $object_formatted_item);
-                }
-            }
-        }
-
-        $data = collect($data);
-        return response()->json([
-            'error' => false,
-            'data' => $data,
-            'message' => "Menampilkan daftar po dengan kode PO " . implode(",", $po_numbers)
-        ], 200);
-    }
-
-    public function email_text_to_array($text)
-    {
-        $emails = explode(',', $text);
-        foreach ($emails as $key => $email) {
-            // trim setiap email
-            $emails[$key] = strtolower(trim($email));
-        }
-        // jika ada email yang sama makan hapus sisain salah satu
-        $emails = array_unique($emails);
-        // validate apakah format email sesuai
-        $emails = array_filter($emails, function ($email) {
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return false;
-            } else {
-                return true;
-            }
-        });
-        // array_values fungsinya untuk ignore array keys yang bikin error saat json_encode
-        return array_values($emails);
-    }
-
-    // untuk vendor reject
-    public function poRejectSignedRequest(Request $request)
-    {
-        $emailflag = true;
-        $emailmessage = "";
         try {
             DB::beginTransaction();
-            $po_upload_request = POUploadRequest::find($request->po_upload_request_id);
-            $po = Po::find($request->po_id);
+            $ticket = Ticket::findOrFail($request->id);
+            $updated_at = new Carbon($request->updated_at);
+            if ($updated_at == $ticket->updated_at) {
+                $authorization = $ticket->current_authorization();
+                if ($authorization->employee_id == Auth::user()->id) {
+                    // balikin ke draft
+                    $ticket->status = 0;
+                    $ticket->terminated_by = Auth::user()->id;
+                    $ticket->termination_reason = $request->reason;
+                    $ticket->save();
 
-            $po_upload_request->isExpired = true;
-            $po_upload_request->reject_notes = $request->reject_reason;
-            $po_upload_request->rejected_at = now();
+                    // TICKET MONITOR_LOG
+                    $monitor                 = new TicketMonitoring;
+                    $monitor->ticket_id      = $ticket->id;
+                    $monitor->employee_id    = Auth::user()->id;
+                    $monitor->employee_name  = Auth::user()->name;
+                    $monitor->message        = 'Melakukan reject ticket pengadaan';
+                    $monitor->save();
 
-            if (Auth::user()) {
-                $po_upload_request->rejected_by = Auth::user()->name;
+                    // ambil semua otorisasi
+                    $employee_ids = $ticket->ticket_authorization->pluck('employee_id');
+                    $employee_emails = Employee::whereIn('id', $employee_ids)->get()->pluck('email');
+                    $mail_to = $employee_emails->toArray();
+                    $data = array(
+                        'original_emails' => $mail_to,
+                        'transaction_type' => 'Pengadaan',
+                        'ticketing_type' => 'Barang Jasa',
+                        'salespoint_name' => $ticket->salespoint->name,
+                        'from' => Auth::user()->name,
+                        'to' => 'Bapak/Ibu',
+                        'code' => $ticket->code,
+                    );
+                    if (config('app.env') == 'local') {
+                        $mail_to = [config('mail.testing_email')];
+                    }
+                    $emailflag = true;
+                    try {
+                        Mail::to($mail_to)->send(new NotificationMail($data, 'ticketing_reject'));
+                    } catch (\Exception $ex) {
+                        $emailflag = false;
+                    }
+                    $emailmessage = "";
+                    if (!$emailflag) {
+                        $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+                    }
+                    DB::commit();
+                    if ($return_data_type == 'api') {
+                        return response()->json([
+                            "error" => false,
+                            "message" => 'Berhasil membatalkan ticket' . $emailmessage
+                        ]);
+                    } else {
+                        return redirect('/ticketing')->with('success', 'Berhasil membatalkan ticket' . $emailmessage);
+                    }
+                } else {
+                    if ($return_data_type == 'api') {
+                        return response()->json([
+                            "error" => true,
+                            "message" => 'ID otorisasi tidak sesuai. Silahkan coba kembali'
+                        ]);
+                    } else {
+                        return back()->with('error', 'ID otorisasi tidak sesuai. Silahkan coba kembali');
+                    }
+                }
             } else {
-                $po_upload_request->rejected_by = $po_upload_request->vendor_name;
+                if ($return_data_type == 'api') {
+                    return response()->json([
+                        "error" => true,
+                        "message" => 'Ticket sudah dibatalkan sebelumnya'
+                    ]);
+                } else {
+                    return redirect('/ticketing')->with('error', 'Ticket sudah dibatalkan sebelumnya');
+                }
             }
-            $po_upload_request->save();
+        } catch (\Exception $ex) {
+            DB::rollback();
+            if ($return_data_type == 'api') {
+                return response()->json([
+                    "error" => true,
+                    "message" => 'Gagal membatalkan ticket ' . $ex->getMessage()
+                ]);
+            } else {
+                return back()->with('error', 'Gagal membatalkan ticket ' . $ex->getMessage());
+            }
+        }
+    }
 
-            $po->status       = -1;
-            $po->reject_notes = $po_upload_request->reject_notes;
-            $po->rejected_by  = $po_upload_request->rejected_by;
-            $po->save();
+    public function uploadFileRevision(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            if ($request->type == 'file') {
+                // file
+                $ticketitem = TicketItemFileRequirement::findOrFail($request->id);
+            } else if ($request->type == 'attachment') {
+                // attachment
+                $ticketitem = TicketItemAttachment::findOrFail($request->id);
+            } else {
+                // vendor
+                $ticket = Ticket::findOrFail($request->id);
+            }
+            if ($request->type == 'vendor') {
+                $ticket->ba_status      = 0;
+                $ticket->ba_revised_by  = Auth::user()->id;
+                $ticket->save();
 
-            $employee_ids = $po->po_authorization->pluck('employee_id')->unique()->toArray();
-            $employee_emails = Employee::whereIn('id', $employee_ids)->get()->pluck('email')->toArray();
+                // TICKET MONITOR_LOG
+                $monitor = new TicketMonitoring;
+                $monitor->ticket_id      = $ticket->id;
+                $monitor->employee_id    = Auth::user()->id;
+                $monitor->employee_name  = Auth::user()->name;
+                $monitor->message        = 'Upload Revisi File Kelengkapan ticket pengadaan';
+                $monitor->save();
 
-            $mail_to = $employee_emails;
-            $ccs = [];
-            // dd(url('/signpo/'.$po_upload_request->id));
+                $file = explode('base64,', $request->file)[1];
+                $newfilename = pathinfo($ticket->ba_vendor_filename, PATHINFO_FILENAME) . '.' . pathinfo($request->filename, PATHINFO_EXTENSION);
+                $path = str_replace($ticket->ba_vendor_filename, $newfilename, $ticket->ba_vendor_filepath);
+                $ticket->ba_vendor_filename = $newfilename;
+                $ticket->ba_vendor_filepath = $path;
+                $ticket->save();
+                Storage::disk('public')->put($ticket->ba_vendor_filepath, base64_decode($file));
+            } else {
+                $ticketitem->status = 0;
+                $ticketitem->revised_by = Auth::user()->id;
+                $ticketitem->save();
+
+                $monitor = new TicketMonitoring;
+                $monitor->ticket_id      = $ticketitem->ticket_item->ticket->id;
+                $monitor->employee_id    = Auth::user()->id;
+                $monitor->employee_name  = Auth::user()->name;
+                $monitor->message        = 'Upload Revisi File Kelengkapan ticket pengadaan';
+                $monitor->save();
+
+                $file = explode('base64,', $request->file)[1];
+                $newfilename = pathinfo($ticketitem->name, PATHINFO_FILENAME) . '.' . pathinfo($request->filename, PATHINFO_EXTENSION);
+                $path = str_replace($ticketitem->name, $newfilename, $ticketitem->path);
+                $ticketitem->name = $newfilename;
+                $ticketitem->path = $path;
+                $ticketitem->save();
+                Storage::disk('public')->put($ticketitem->path, base64_decode($file));
+            }
+            DB::commit();
+            return back()->with('success', 'Berhasil melakukan revisi upload file');
+        } catch (\Exception $ex) {
+            DB::rollback();
+            return back()->with('error', 'Gagal melakukan revisi upload file');
+        }
+    }
+
+    public function revisionConfirmationFile(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket_item = TicketItem::findOrFail($request->ticket_item_id);
+            $ticket = $ticket_item->ticket;
+            if ($ticket->custom_settings != null) {
+                for ($i = 0; $i < count($request->filename); $i++) {
+                    $original_filename              = $request->file('file')[$i]->getClientOriginalName();
+                    $newAttachment                  = new TicketItemAttachment;
+                    $newAttachment->ticket_item_id  = $ticket_item->id;
+                    $salespointname                 = str_replace(' ', '_', $ticket->salespoint->name);
+                    $filename                       = str_replace(' ', '_', trim($request->filename[$i]));
+                    $ext                            = pathinfo($original_filename, PATHINFO_EXTENSION);
+                    $newAttachment->name            = $filename . '_' . $salespointname . '.' . $ext;
+                    $path                           = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $ticket_item->id . '/' . $newAttachment->name;
+                    $file                           = pathinfo($path);
+                    $path                           = $request->file('file')[$i]->storeAs($file['dirname'], $file['basename'], 'public');
+                    $newAttachment->path            = $path;
+                    $newAttachment->save();
+                }
+            } else {
+                $lpbfile                        = $request->file('lpb');
+                $invoicefile                    = $request->file('invoice');
+
+                if ($lpbfile && $invoicefile) {
+                    $lpbfile                        = $request->file()['lpb'];
+                    $invoicefile                    = $request->file()['invoice'];
+                    $lpb_ext                        = pathinfo($lpbfile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $invoice_ext                    = pathinfo($invoicefile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/LPB_' . $salespointname . '.' . $lpb_ext;
+                    $info                           = pathinfo($path);
+                    $lpb_path                       = $lpbfile->storeAs($info['dirname'], $info['basename'], 'public');
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/INVOICE_' . $salespointname . '.' . $invoice_ext;
+                    $info                           = pathinfo($path);
+                    $invoice_path                   = $invoicefile->storeAs($info['dirname'], $info['basename'], 'public');
+
+                    $ticket_item->lpb_filepath      = $lpb_path;
+                    $ticket_item->invoice_filepath  = $invoice_path;
+                } elseif ($lpbfile) {
+                    $lpbfile                        = $request->file()['lpb'];
+                    $lpb_ext                        = pathinfo($lpbfile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/LPB_' . $salespointname . '.' . $lpb_ext;
+                    $info                           = pathinfo($path);
+                    $lpb_path                       = $lpbfile->storeAs($info['dirname'], $info['basename'], 'public');
+                    $ticket_item->lpb_filepath      = $lpb_path;
+                } elseif ($invoicefile) {
+                    $invoicefile                    = $request->file()['invoice'];
+                    $invoice_ext                    = pathinfo($invoicefile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/INVOICE_' . $salespointname . '.' . $invoice_ext;
+                    $info                           = pathinfo($path);
+                    $invoice_path                   = $invoicefile->storeAs($info['dirname'], $info['basename'], 'public');
+                    $ticket_item->invoice_filepath  = $invoice_path;
+                }
+            }
+            $ticket_item->save();
+
+            DB::commit();
+
+            return back()->with('success', 'Berhasil Revisi Dokumen');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal melakukan Revisi Dokumen' . $ex->getMessage());
+        }
+    }
+
+    public function uploadMissingFile(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket_item = TicketItem::findOrFail($request->id);
+
+            $missingfile                         = $request->file()['file_kekurangan_berkas'];
+            $missingfile_ext                     = pathinfo($missingfile->getClientOriginalName(), PATHINFO_EXTENSION);
+            $salespoint                          = $ticket_item->ticket->salespoint;
+            $salespointname                      = str_replace(' ', '_', $salespoint->name);
+            $code                                = $ticket_item->ticket->code;
+
+            $path                                = 'attachments/ticketing/barangjasa/' . $code . '/File_kekurangan_berkas_' . $salespointname . '.' . $missingfile_ext;
+            $info                                = pathinfo($path);
+            $missingfile_path                    = $missingfile->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket_item->file_missing_name_file = $request->name_file;
+            $ticket_item->file_missing_filepath  = $missingfile_path;
+            $ticket_item->file_missing_reason    = $request->reason;
+            $ticket_item->file_missing_status    = 0;
+
+            $ticket_item->save();
+
+            DB::commit();
+
+            return back()->with('success', 'Berhasil Upload Kekurangan Berkas');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Kekurangan Berkas' . $ex->getMessage());
+        }
+    }
+
+    public function revisionMissingFile(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket_item = TicketItem::findOrFail($request->id);
+
+            $revisionmissingfile                  = $request->file()['revision_missing_file'];
+            $revisionmissingfile_ext              = pathinfo($revisionmissingfile->getClientOriginalName(), PATHINFO_EXTENSION);
+            $salespoint                           = $ticket_item->ticket->salespoint;
+            $salespointname                       = str_replace(' ', '_', $salespoint->name);
+            $code                                 = $ticket_item->ticket->code;
+
+            $path                                 = 'attachments/ticketing/barangjasa/' . $code . '/File_kekurangan_berkas_' .  $salespointname . '.' . $revisionmissingfile_ext;
+            $info                                 = pathinfo($path);
+            $revisionmissingfile_path             = $revisionmissingfile->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket_item->file_missing_filepath   = $revisionmissingfile_path;
+            $ticket_item->file_missing_status     = 0;
+            $ticket_item->file_missing_revised_by = Auth::user()->id;
+
+            $ticket_item->save();
+
+            DB::commit();
+
+            return back()->with('success', 'Berhasil Revisi Kekurangan Berkas');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Revisi Kekurangan Berkas' . $ex->getMessage());
+        }
+    }
+
+    public function uploadConfirmationFile(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket_item = TicketItem::findOrFail($request->ticket_item_id);
+            $ticket = $ticket_item->ticket;
+            if ($ticket->custom_settings != null) {
+                for ($i = 0; $i < count($request->filename); $i++) {
+                    $original_filename              = $request->file('file')[$i]->getClientOriginalName();
+                    $newAttachment                  = new TicketItemAttachment;
+                    $newAttachment->ticket_item_id  = $ticket_item->id;
+                    $salespointname                 = str_replace(' ', '_', $ticket->salespoint->name);
+                    $filename                       = str_replace(' ', '_', trim($request->filename[$i]));
+                    $ext                            = pathinfo($original_filename, PATHINFO_EXTENSION);
+                    $newAttachment->name            = $filename . '_' . $salespointname . '.' . $ext;
+                    $path                           = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $ticket_item->id . '/' . $newAttachment->name;
+                    $file                           = pathinfo($path);
+                    $path                           = $request->file('file')[$i]->storeAs($file['dirname'], $file['basename'], 'public');
+                    $newAttachment->path            = $path;
+                    $newAttachment->save();
+
+                    $ticket_item->isFinished        = true;
+                    $ticket_item->confirmed_by      = Auth::user()->id;
+                    $ticket_item->save();
+
+                    $monitor = new TicketMonitoring;
+                    $monitor->ticket_id      = $ticket_item->ticket->id;
+                    $monitor->employee_id    = Auth::user()->id;
+                    $monitor->employee_name  = Auth::user()->name;
+                    $monitor->message        = 'Upload File LPB dan Invoice untuk item ' . $ticket_item->name;
+                    $monitor->save();
+
+                    $ticket = $ticket_item->ticket;
+                    $isTicketFinished = $this->isTicketFinished($ticket->id);
+                    if ($isTicketFinished) {
+                        $ticket->status = 7;
+                        $ticket->finished_date = now()->format('Y-m-d');
+                        $ticket->save();
+                    }
+                    DB::commit();
+                    if ($ticket->status == 7 && $ticket->item_type == 4) {
+                        return back()->with('success', 'Pengadaan disposal selesai');
+                    } elseif ($ticket->status == 7) {
+                        return back()->with('success', 'Berhasil konfirmasi barang, Pengadaan selesai');
+                    } else {
+                        return back()->with('success', 'Berhasil konfirmasi barang');
+                    }
+                }
+            } else {
+                $lpbfile                        = $request->file('lpb');
+                $invoicefile                    = $request->file('invoice');
+
+                if ($lpbfile && $invoicefile) {
+                    $lpbfile                        = $request->file()['lpb'];
+                    $invoicefile                    = $request->file()['invoice'];
+                    $lpb_ext                        = pathinfo($lpbfile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $invoice_ext                    = pathinfo($invoicefile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/LPB_' . $salespointname . '.' . $lpb_ext;
+                    $info                           = pathinfo($path);
+                    $lpb_path                       = $lpbfile->storeAs($info['dirname'], $info['basename'], 'public');
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/INVOICE_' . $salespointname . '.' . $invoice_ext;
+                    $info                           = pathinfo($path);
+                    $invoice_path                   = $invoicefile->storeAs($info['dirname'], $info['basename'], 'public');
+
+                    $ticket_item->lpb_filepath      = $lpb_path;
+                    $ticket_item->invoice_filepath  = $invoice_path;
+
+                    $ticket_item->isFinished        = true;
+                    $ticket_item->confirmed_by      = Auth::user()->id;
+                    $ticket_item->save();
+
+                    $monitor = new TicketMonitoring;
+                    $monitor->ticket_id      = $ticket_item->ticket->id;
+                    $monitor->employee_id    = Auth::user()->id;
+                    $monitor->employee_name  = Auth::user()->name;
+                    $monitor->message        = 'Upload File LPB dan Invoice untuk item ' . $ticket_item->name;
+                    $monitor->save();
+
+                    $ticket = $ticket_item->ticket;
+                    $isTicketFinished = $this->isTicketFinished($ticket->id);
+                    if ($isTicketFinished) {
+                        $ticket->status = 7;
+                        $ticket->finished_date = now()->format('Y-m-d');
+                        $ticket->save();
+                    }
+                    DB::commit();
+                    if ($ticket->status == 7 && $ticket->item_type == 4) {
+                        return back()->with('success', 'Pengadaan disposal selesai');
+                    } elseif ($ticket->status == 7) {
+                        return back()->with('success', 'Berhasil konfirmasi barang, Pengadaan selesai');
+                    } else {
+                        return back()->with('success', 'Berhasil konfirmasi barang');
+                    }
+                } elseif ($lpbfile && $ticket_item->invoice_filepath == '') {
+                    $lpbfile                        = $request->file()['lpb'];
+                    $lpb_ext                        = pathinfo($lpbfile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/LPB_' . $salespointname . '.' . $lpb_ext;
+                    $info                           = pathinfo($path);
+                    $lpb_path                       = $lpbfile->storeAs($info['dirname'], $info['basename'], 'public');
+                    $ticket_item->lpb_filepath      = $lpb_path;
+
+                    $ticket_item->confirmed_by      = Auth::user()->id;
+                    $ticket_item->save();
+
+                    DB::commit();
+                    return back()->with('success', 'Berhasil Upload File LPB');
+                } elseif ($lpbfile && $ticket_item->invoice_filepath != '') {
+                    $lpbfile                        = $request->file()['lpb'];
+                    $lpb_ext                        = pathinfo($lpbfile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/LPB_' . $salespointname . '.' . $lpb_ext;
+                    $info                           = pathinfo($path);
+                    $lpb_path                       = $lpbfile->storeAs($info['dirname'], $info['basename'], 'public');
+                    $ticket_item->lpb_filepath      = $lpb_path;
+
+                    $ticket_item->isFinished        = true;
+                    $ticket_item->confirmed_by      = Auth::user()->id;
+                    $ticket_item->save();
+
+                    $monitor = new TicketMonitoring;
+                    $monitor->ticket_id      = $ticket_item->ticket->id;
+                    $monitor->employee_id    = Auth::user()->id;
+                    $monitor->employee_name  = Auth::user()->name;
+                    $monitor->message        = 'Upload File LPB dan Invoice untuk item ' . $ticket_item->name;
+                    $monitor->save();
+
+                    $ticket = $ticket_item->ticket;
+                    $isTicketFinished = $this->isTicketFinished($ticket->id);
+                    if ($isTicketFinished) {
+                        $ticket->status = 7;
+                        $ticket->finished_date = now()->format('Y-m-d');
+                        $ticket->save();
+                    }
+                    DB::commit();
+                    if ($ticket->status == 7 && $ticket->item_type == 4) {
+                        return back()->with('success', 'Pengadaan disposal selesai');
+                    } elseif ($ticket->status == 7) {
+                        return back()->with('success', 'Berhasil konfirmasi barang, Pengadaan selesai');
+                    } else {
+                        return back()->with('success', 'Berhasil konfirmasi barang');
+                    }
+                } elseif ($invoicefile && $ticket_item->lpb_filepath == '') {
+                    $invoicefile                    = $request->file()['invoice'];
+                    $invoice_ext                    = pathinfo($invoicefile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/INVOICE_' . $salespointname . '.' . $invoice_ext;
+                    $info                           = pathinfo($path);
+                    $invoice_path                   = $invoicefile->storeAs($info['dirname'], $info['basename'], 'public');
+                    $ticket_item->invoice_filepath  = $invoice_path;
+
+                    $ticket_item->confirmed_by      = Auth::user()->id;
+                    $ticket_item->save();
+
+                    DB::commit();
+
+                    return back()->with('success', 'Berhasil Upload File Invoice');
+                } elseif ($invoicefile && $ticket_item->lpb_filepath != '') {
+                    $invoicefile                    = $request->file()['invoice'];
+                    $invoice_ext                    = pathinfo($invoicefile->getClientOriginalName(), PATHINFO_EXTENSION);
+                    $salespoint                     = $ticket_item->ticket->salespoint;
+                    $salespointname                 = str_replace(' ', '_', $salespoint->name);
+                    $code                           = $ticket_item->ticket->code;
+
+                    $path                           = 'attachments/ticketing/barangjasa/' . $code . '/item' . $ticket_item->id . '/INVOICE_' . $salespointname . '.' . $invoice_ext;
+                    $info                           = pathinfo($path);
+                    $invoice_path                   = $invoicefile->storeAs($info['dirname'], $info['basename'], 'public');
+                    $ticket_item->invoice_filepath  = $invoice_path;
+
+                    $ticket_item->isFinished        = true;
+                    $ticket_item->confirmed_by      = Auth::user()->id;
+                    $ticket_item->save();
+
+                    $monitor = new TicketMonitoring;
+                    $monitor->ticket_id      = $ticket_item->ticket->id;
+                    $monitor->employee_id    = Auth::user()->id;
+                    $monitor->employee_name  = Auth::user()->name;
+                    $monitor->message        = 'Upload File LPB dan Invoice untuk item ' . $ticket_item->name;
+                    $monitor->save();
+
+                    $ticket = $ticket_item->ticket;
+                    $isTicketFinished = $this->isTicketFinished($ticket->id);
+                    if ($isTicketFinished) {
+                        $ticket->status = 7;
+                        $ticket->finished_date = now()->format('Y-m-d');
+                        $ticket->save();
+                    }
+                    DB::commit();
+                    if ($ticket->status == 7 && $ticket->item_type == 4) {
+                        return back()->with('success', 'Pengadaan disposal selesai');
+                    } elseif ($ticket->status == 7) {
+                        return back()->with('success', 'Berhasil konfirmasi barang, Pengadaan selesai');
+                    } else {
+                        return back()->with('success', 'Berhasil konfirmasi barang');
+                    }
+                }
+            }
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal melakukan konfirmasi penerimaan barang ' . $ex->getMessage());
+        }
+    }
+
+    public function uploadFileLegal(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $perjanjian_file            = $request->file()['file_perjanjian_legal'];
+            $tor_file                   = $request->file()['file_tor_legal'];
+            $sph_file                   = $request->file()['file_sph_legal'];
+
+            $perjanjian_ext             = pathinfo($perjanjian_file->getClientOriginalName(), PATHINFO_EXTENSION);
+            $tor_ext                    = pathinfo($tor_file->getClientOriginalName(), PATHINFO_EXTENSION);
+            $sph_ext                    = pathinfo($sph_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_Perjanjian_COP_' . $salespointname . '.' . $perjanjian_ext;
+            $info                       = pathinfo($path);
+            $perjanjian_path            = $perjanjian_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_TOR_COP_' . $salespointname . '.' . $tor_ext;
+            $info                       = pathinfo($path);
+            $tor_path                   = $tor_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_SPH_COP_' . $salespointname . '.' . $sph_ext;
+            $info                       = pathinfo($path);
+            $sph_path                   = $sph_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->agreement_filepath = $perjanjian_path;
+            $ticket->tor_filepath       = $tor_path;
+            $ticket->sph_filepath       = $sph_path;
+
+            $ticket->is_over_plafon     = $request->over_platform;
+            $ticket->agreement_filepath_status = 0;
+            $ticket->sph_filepath_status = 0;
+            $ticket->tor_filepath_status = 0;
+
+            $ticket->save();
+
+            DB::commit();
+
+            // mail ke tim purchasing file sudah di upload
+            $ticket->refresh();
+            $legal_uploader =  Auth::user()->name;
+            $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)->where('category', 'purchasing')->first()->emails ?? [];
+            $region_purchasing_emails = json_decode($region_purchasing_emails);
+            $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+            $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+            $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+            $ccs = $ticket->additional_emails() ?? [];
             $data = array(
                 'original_emails' => $mail_to,
                 'original_ccs' => $ccs,
-                'reject_notes' => $po->reject_notes,
-                'rejected_by' => $po->rejected_by,
-                'po_upload_request' => $po_upload_request,
-                'po' => $po,
+                'transaction_type' => 'Pengadaan',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $legal_uploader,
+                'to' => 'Purchasing Team',
+                'code' => $ticket->code,
             );
             if (config('app.env') == 'local') {
                 $mail_to = [config('mail.testing_email')];
                 $ccs = [];
             }
-
+            $emailflag = true;
             try {
-                Mail::to($mail_to)->cc($ccs)->send(new POMail($data, 'vendorposignedreject'));
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'legal_upload_file'));
             } catch (\Exception $ex) {
                 $emailflag = false;
             }
-
+            $emailmessage = "";
             if (!$emailflag) {
-                $emailmessage = "\n (Email sedang bermasalah)";
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
             }
+            $ticket->refresh();
 
-            if ($po->ticket_id != null) {
-                $monitor                  = new TicketMonitoring;
-                $monitor->ticket_id       = $po->ticket->id;
-                $monitor->employee_id     = -1;
-                $monitor->employee_name   = $po_upload_request->rejected_by;
-                $monitor->message         = 'Vendor menolak  PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->armada_ticket_id != null) {
-                $monitor                    = new ArmadaTicketMonitoring;
-                $monitor->armada_ticket_id  = $po->armada_ticket->id;
-                $monitor->employee_id       = -1;
-                $monitor->employee_name     = $po_upload_request->rejected_by;
-                $monitor->message           = 'Vendor menolak  PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            if ($po->security_ticket_id != null) {
-                $monitor                     = new SecurityTicketMonitoring;
-                $monitor->security_ticket_id = $po->security_ticket->id;
-                $monitor->employee_id        = -1;
-                $monitor->employee_name      = $po_upload_request->rejected_by;
-                $monitor->message            = 'Vendor menolak  PO ' . $po->no_po_sap;
-                $monitor->save();
-            }
-            DB::commit();
-            return "Berhasil melaporkan kesalahan dokumen dengan alasan. " . $request->reject_reason . ". Harap menunggu info untuk update kesalahan pada PO terkait. " . $emailmessage;
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload File Legal Berhasil');
         } catch (\Exception $ex) {
+            dd($ex);
             DB::rollback();
-            return "Terjadi Kesalahan : " . $ex->getMessage();
+            return back()->with('Gagal Upload File Legal ' . $ex->getMessage());
         }
     }
 
-    public function poCompareView($ticket_code)
-    {
-        $code = $ticket_code;
-        $ticket = Ticket::where('code', $ticket_code)->first();
-        $armadaticket = ArmadaTicket::where('code', $ticket_code)->first();
-        $securityticket = SecurityTicket::where('code', $ticket_code)->first();
-        if ($ticket) {
-            return view('Operational.compareview', compact('ticket', 'code'));
-        }
-        if ($armadaticket) {
-            return view('Operational.compareview', compact('armadaticket', 'code'));
-        }
-        if ($securityticket) {
-            return view('Operational.compareview', compact('securityticket', 'code'));
-        }
-        return back()->with('error', 'Kode tiket tidak ditemukan');
-    }
-
-    public function poReminderUpdate(Request $request)
+    public function reUploadAgreementFileCop(Request $request, $id)
     {
         try {
-            $po = PO::find($request->po_id);
-            if (!$po) {
-                throw new \Exception('PO ID tidak ditemukan.');
-            }
-            if ($request->has_reminder) {
-                if (Carbon::parse($request->start_date) > Carbon::parse($request->end_date)) {
-                    throw new \Exception('Start date harus sebelum atau sama dengan end date');
-                }
-            }
-
             DB::beginTransaction();
-            if ($request->has_reminder) {
-                $po->start_date = $request->start_date;
-                $po->end_date = $request->end_date;
-                $po->save();
+            $ticket = Ticket::findOrFail($id);
+
+            $perjanjian_file            = $request->file()['upload_ulang_file_agreement_cop'];
+            $perjanjian_ext             = pathinfo($perjanjian_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_Perjanjian_COP_' . $salespointname . '.' . $perjanjian_ext;
+            $info                       = pathinfo($path);
+            $perjanjian_path            = $perjanjian_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->agreement_filepath = $perjanjian_path;
+            $ticket->agreement_filepath_status = 0;
+
+            $ticket->save();
+
+            // mail ke tim purchasing file sudah di upload
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)->where('category', 'purchasing')->first()->emails ?? [];
+            $region_purchasing_emails = json_decode($region_purchasing_emails);
+            $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+            $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+            $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Upload Ulang File Perjanjian Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Purchasing Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reupload_agreement_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload Ulang File Perjanjian (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Ulang File Perjanjian (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function reUploadTorFileCop(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $tor_file                   = $request->file()['upload_ulang_file_tor_cop'];
+            $tor_ext                    = pathinfo($tor_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_TOR_COP_' . $salespointname . '.' . $tor_ext;
+            $info                       = pathinfo($path);
+            $tor_path                   = $tor_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->tor_filepath       = $tor_path;
+            $ticket->tor_filepath_status = 0;
+            $ticket->save();
+
+            // mail ke tim purchasing file sudah di upload
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)->where('category', 'purchasing')->first()->emails ?? [];
+            $region_purchasing_emails = json_decode($region_purchasing_emails);
+            $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+            $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+            $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Upload Ulang File TOR Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Purchasing Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reupload_tor_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload Ulang File File TOR Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Ulang File File TOR ' . $ex->getMessage());
+        }
+    }
+
+    public function reUploadSphFileCop(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $sph_file                   = $request->file()['upload_ulang_file_sph_cop'];
+            $sph_ext                    = pathinfo($sph_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_SPH_COP_' . $salespointname . '.' . $sph_ext;
+            $info                       = pathinfo($path);
+            $sph_path                   = $sph_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->sph_filepath       = $sph_path;
+            $ticket->sph_filepath_status = 0;
+
+            $ticket->save();
+
+            // mail ke tim purchasing file sudah di upload
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)->where('category', 'purchasing')->first()->emails ?? [];
+            $region_purchasing_emails = json_decode($region_purchasing_emails);
+            $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+            $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+            $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Upload Ulang File SPH Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Purchasing Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reupload_sph_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload Ulang File SPH Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Ulang File SPH Legal ' . $ex->getMessage());
+        }
+    }
+
+    public function reUploadUserAgreementFileCop(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $perjanjian_file            = $request->file()['upload_ulang_file_user_agreement_cop'];
+            $perjanjian_ext             = pathinfo($perjanjian_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_Perjanjian_User_COP_' . $salespointname . '.' . $perjanjian_ext;
+            $info                       = pathinfo($path);
+            $perjanjian_path            = $perjanjian_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->user_agreement_filepath = $perjanjian_path;
+            $ticket->user_agreement_filepath_status = 0;
+            $ticket->save();
+
+            // mail ke tim purchasing file sudah di upload
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)->where('category', 'purchasing')->first()->emails ?? [];
+            $region_purchasing_emails = json_decode($region_purchasing_emails);
+            $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+            $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+            $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Upload Ulang File Perjanjian User Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Purchasing Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reupload_user_agreement_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload Ulang File Perjanjian User Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Ulang File Perjanjian User ' . $ex->getMessage());
+        }
+    }
+
+    public function userUploadFileAggrementTicket(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $perjanjian_file            = $request->file()['file_perjanjian_user'];
+            $perjanjian_ext             = pathinfo($perjanjian_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/File_Perjanjian_User_COP_' . $salespointname . '.' . $perjanjian_ext;
+            $info                       = pathinfo($path);
+            $perjanjian_path            = $perjanjian_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->user_agreement_filepath = $perjanjian_path;
+            $ticket->user_agreement_filepath_status = 0;
+
+            $ticket->save();
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload File Perjanjian Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Perjanjian Legal ' . $ex->getMessage());
+        }
+    }
+
+    public function reUploadBastkFileCop(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $bastk_file                 = $request->file()['upload_ulang_file_bastk_cop'];
+            $bastk_ext                  = pathinfo($bastk_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/BASTK_COP_' . $salespointname . '.' . $bastk_ext;
+            $info                       = pathinfo($path);
+            $bastk_path                 = $bastk_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->bastk_cop_filepath   = $bastk_path;
+            $ticket->save();
+
+            DB::commit();
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload Ulang File BASTK COP Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Ulang File BASTK COP ' . $ex->getMessage());
+        }
+    }
+
+    public function uploadEvidanceRransferOverPlatform(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $over_plafon_file           = $request->file()['file_over_platform'];
+            $over_plafon_ext            = pathinfo($over_plafon_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/Over_Plafon_COP_' . $salespointname . '.' . $over_plafon_ext;
+            $info                       = pathinfo($path);
+            $over_plafon_path           = $over_plafon_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->over_plafon_filepath = $over_plafon_path;
+            $ticket->over_plafon_status = 0;
+
+            $ticket->save();
+
+            // mail ke tim purchasing file sudah di upload
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)->where('category', 'purchasing')->first()->emails ?? [];
+            $region_purchasing_emails = json_decode($region_purchasing_emails);
+            $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+            $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+            $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'User upload bukti transfer overplafond',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Purchasing Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'user_upload_evidance_overplafond'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            DB::commit();
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload Bukti Transfer Over Plafon Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload Bukti Transfer Over Plafon ' . $ex->getMessage());
+        }
+    }
+
+    public function uploadBastkCop(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $master_armada = Armada::where('plate', $request->nopol)->first();
+
+            $bastk_file                 = $request->file()['file_bastk'];
+            $bastk_ext                  = pathinfo($bastk_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/BASTK_COP_' . $salespointname . '.' . $bastk_ext;
+            $info                       = pathinfo($path);
+            $bastk_path                 = $bastk_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->bastk_cop_filepath   = $bastk_path;
+            $ticket->save();
+
+            if ($master_armada) {
+                $master_armada->booked_by = $request->booked_by;
+                $master_armada->save();
+
+                $ticket->cop_plate = $request->nopol;
+                $ticket->save();
             } else {
-                $po->start_date = null;
-                $po->end_date = null;
-                $po->save();
+                $new_master_armada = new Armada;
+                $new_master_armada->armada_type_id = $request->armada_type_id;
+                $new_master_armada->status = 1;
+                $new_master_armada->vehicle_year = $request->vehicle_year . '-01-01';
+                $new_master_armada->plate = $request->nopol;
+                $new_master_armada->booked_by = $request->booked_by;
+                $ticket->cop_plate = $request->nopol;
+
+                $new_master_armada->save();
+                $ticket->save();
             }
             DB::commit();
-            return back()->with('success', "Berhasil update reminder terkait PO " . $po->no_po_sap);
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Upload BASTK COP Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Upload File Legal ' . $ex->getMessage());
+        }
+    }
+
+    public function approveOverPlafonTicket(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->over_plafon_status = 1;
+            $ticket->save();
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Approve Over Plafon Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Approve Over Plafon ' . $ex->getMessage());
+        }
+    }
+
+    public function rejectOverPlafonTicket(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->over_plafon_status = -1;
+            $ticket->over_plafon_reject_notes = $request->reason;
+
+            $ticket->save();
+
+            // mail ke pembuat tiket
+            $ticket->refresh();
+            $mail_to = $ticket->created_by_employee->email;
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Reject bukti tranfser overplafond',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => Auth::user()->name,
+                'to' => 'Bapak/Ibu',
+                'code' => $ticket->code,
+            );
+
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reject_evidance_overplafond'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Reject Over Plafon Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Reject Over Plafon ' . $ex->getMessage());
+        }
+    }
+
+    public function revisionOverPlafonTicket(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+
+            $code                       = $ticket->code;
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/Over_Plafon_COP_' . $salespointname;
+            File::delete($path);
+
+            $over_plafon_file           = $request->file()['file_over_plafon_revision'];
+            $over_plafon_ext            = pathinfo($over_plafon_file->getClientOriginalName(), PATHINFO_EXTENSION);
+
+            $salespoint                 = $ticket->salespoint;
+            $salespointname             = str_replace(' ', '_', $salespoint->name);
+            $code                       = $ticket->code;
+
+            $path                       = 'attachments/ticketing/barangjasa/' . $code . '/COP'  . '/Over_Plafon_COP_' . $salespointname . '.' . $over_plafon_ext;
+            $info                       = pathinfo($path);
+            $over_plafon_path           = $over_plafon_file->storeAs($info['dirname'], $info['basename'], 'public');
+
+            $ticket->over_plafon_filepath = $over_plafon_path;
+            $ticket->over_plafon_status = 0;
+            $ticket->over_plafon_reject_notes = '';
+
+            $ticket->save();
+
+            // mail ke tim purchasing file sudah di upload
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $region_purchasing_emails = EmailAdditional::where('type', $ticket->salespoint->region_type)->where('category', 'purchasing')->first()->emails ?? [];
+            $region_purchasing_emails = json_decode($region_purchasing_emails);
+            $national_purchasing_emails = EmailAdditional::where('type', 'national')->where('category', 'purchasing')->first()->emails ?? [];
+            $national_purchasing_emails = json_decode($national_purchasing_emails);
+
+            $mail_to = array_unique(array_merge($national_purchasing_emails, $region_purchasing_emails));
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'User upload bukti transfer overplafond',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Purchasing Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'user_reupload_evidance_overplafond'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Revisi Upload Bukti Transfer Over Plafon Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Re Upload Bukti Transfer Over Plafon ' . $ex->getMessage());
+        }
+    }
+
+    public function uploadArmadaTypeCop(Request $request, $id)
+    {
+        try {
+            $ticket = Ticket::findOrFail($id);
+            $armadatype = ArmadaType::where('name', $request->nama_jenis_kendaraan)->first();
+            if ($armadatype) {
+                throw new \Exception('Nama Jenis Kendaraan sudah ada');
+            }
+            $newArmadatype = new ArmadaType;
+            $newArmadatype->name = $request->nama_jenis_kendaraan;
+            $newArmadatype->brand_name = $request->nama_merk;
+            $newArmadatype->alias = $request->nama_alias ?? null;
+            $newArmadatype->isNiaga = 2;
+            $newArmadatype->save();
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Berhasil Menambah Jenis Armada');
+        } catch (\Exception $ex) {
+            return back()->with('error', 'Gagal Menambahkan Jenis Kendaraan (' . $ex->getMessage() . ')');
+        }
+    }
+
+    public function isTicketFinished($ticket_id)
+    {
+        $ticket = Ticket::findOrFail($ticket_id);
+        $unfisinished_count = 0;
+        // cek semua item yang nggak status cancelled
+        foreach ($ticket->ticket_item->where('isCancelled', 0) as $item) {
+            if (!$item->isFinished) $unfisinished_count++;
+        }
+        if ($unfisinished_count > 0) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public function issuePO(Request $request)
+    {
+        if ($request->sumInvoice == "smaller") {
+            return back()->with('error', 'Jika total invoice lebih kecil dari PO tidak perlu melakukan revisi PO');
+        }
+        try {
+            DB::beginTransaction();
+            $po = Po::where('no_po_sap', $request->po_number)->first();
+            $po->status = 0;
+            $po->save();
+
+            $newIssuedPO             = new IssuePO;
+            $newIssuedPO->po_number  = $request->po_number;
+            $newIssuedPO->sumInvoice = $request->sumInvoice;
+            $newIssuedPO->notes      = $request->notes;
+
+            $ticket = $po->ticket;
+            $ext = pathinfo($request->file('ba_file')->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name = "BA_RevisePO_" . $request->po_number . '.' . $ext;
+            $path = "/attachments/ticketing/barangjasa/" . $ticket->code . '/' . $name;
+            $file = pathinfo($path);
+            $path = $request->file('ba_file')->storeAs($file['dirname'], $file['basename'], 'public');
+
+            $newIssuedPO->ba_file = $path;
+            $newIssuedPO->save();
+
+            $monitor                        = new TicketMonitoring;
+            $monitor->ticket_id             = $ticket->id;
+            $monitor->employee_id           = Auth::user()->id;
+            $monitor->employee_name         = Auth::user()->name;
+            $monitor->message               = 'Upload BA issue PO ' . $request->po_number . ' dengan alasan : ' . $request->notes;
+            $monitor->save();
+            DB::commit();
+            return back()->with('success', 'PO berhasil di issued');
         } catch (\Exception $ex) {
             DB::rollback();
-            return back()->with('error', "Gagal update reminder (" . $ex->getMessage() . ")");
+            return back()->with('error', 'Gagal issuePO (' . $ex->getMessage() . ')');
+        }
+    }
+
+    public function printFRIForm($fri_form_id, $method = 'stream')
+    {
+        try {
+            $fri_form = FRIForm::findOrFail($fri_form_id);
+            $ticket = $fri_form->ticket;
+            if (!$fri_form) {
+                return 'fri form for this ticket is unavailable';
+            }
+            if ($fri_form->status < 1) {
+                return 'fri form unavaiable / incomplete';
+            }
+
+            $pdf = PDF::loadView('pdf.friformpdf', compact('fri_form'))->setPaper('tabloid', 'portrait');
+            if ($method == 'stream') {
+                return $pdf->stream('FRI (' . $ticket->code . ')' . $fri_form->id . '.pdf');
+            } elseif ($method == 'path') {
+                $path = "/temporary/FRIform/FRI (" . $ticket->code . ")" . $fri_form->id . ".pdf";
+                Storage::disk('public')->put($path, $pdf->output());
+                return $path;
+            }
+        } catch (\Exception $ex) {
+            return back()->with('error', 'Gagal Mencetak FRI (Form Request Infrastruktur) ' . $ex->getMessage() . '(' . $ex->getLine() . ')');
+        }
+    }
+
+    public function terminateTicket(Request $request)
+    {
+        // Superadmin Only
+        if (
+            Auth::user()->id != 1 &&
+            Auth::user()->id != 115 &&
+            Auth::user()->id != 116 &&
+            Auth::user()->id != 117 &&
+            Auth::user()->id != 197 &&
+            Auth::user()->id != 118 &&
+            Auth::user()->id != 717
+        ) {
+            return back()->with('error', 'Hanya Admin dan Purchasing yang dapat membatalkan tiket');
+        }
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($request->ticket_id);
+            $ticket->status = -1;
+            $ticket->terminated_by = Auth::user()->id;
+            $ticket->termination_reason = $request->reason;
+            $ticket->save();
+
+            $monitor = new TicketMonitoring;
+            $monitor->ticket_id      = $ticket->id;
+            $monitor->employee_id    = Auth::user()->id;
+            $monitor->employee_name  = Auth::user()->name;
+            $monitor->message        = 'Membatalkan Ticket Pengadaan';
+            $monitor->save();
+            DB::commit();
+            return back()->with('success', 'Berhasil membatalkan pengadaan ' . $ticket->code);
+        } catch (\Exception $ex) {
+            DB::rollback();
+            return back()->with('error', 'Gagal membatalkan pengadaan ' . $ex->getMessage());
+        }
+    }
+
+    public function changeOverPlafonTicket(Request $request, $id)
+    {
+        try {
+            // Superadmin & Purchasing Team Only
+            if (
+                Auth::user()->id == 1 ||
+                Auth::user()->id == 115 ||
+                Auth::user()->id == 117 ||
+                Auth::user()->id == 197 ||
+                Auth::user()->id == 116
+            ) {
+                DB::beginTransaction();
+                $ticket = Ticket::findOrFail($id);
+                $ticket->is_over_plafon = 0;
+                $ticket->save();
+                DB::commit();
+                return back()->with('success', 'Berhasil ubah status tiket (tidak jadi over plafon) ');
+            } else {
+                return back()->with('error', 'Hanya Admin dan tim purchasing yang dapat mengubah status tiket (over plafon)');
+            }
+        } catch (\Exception $ex) {
+            DB::rollback();
+            return back()->with('error', 'Gagal ubah status tiket (status tiket masih over plafon)' . $ex->getMessage());
+        }
+    }
+
+    public function approveAgreementCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->agreement_filepath_status = 1;
+            $ticket->save();
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Approve File Agreement COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Approve File Agreement COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function approveTorCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->tor_filepath_status = 1;
+            $ticket->save();
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Approve File TOR COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Approve File TOR COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function approveSphCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->sph_filepath_status = 1;
+            $ticket->save();
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Approve File SPH COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Approve File SPH COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function approveUserAgreementCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->user_agreement_filepath_status = 1;
+            $ticket->save();
+            DB::commit();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Approve File Perjanjian User COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Approve File Perjanjian User COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function rejectAgreementCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->agreement_filepath_status = -1;
+            $ticket->agreement_filepath_reject_notes = $request->reason;
+
+            $ticket->save();
+            DB::commit();
+
+            // mail ke tim legal
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $legal_emails = EmailAdditional::where('type', 'COP')->where('category', 'legal')->first()->emails ?? [];
+            $legal_emails = json_decode($legal_emails);
+
+            $mail_to = array_unique(array_merge($legal_emails));
+
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Reject File Perjanjian Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Legal Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reject_agreement_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Reject File Agreement COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Reject File Agreement COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function rejectTorCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->tor_filepath_status = -1;
+            $ticket->tor_filepath_reject_notes = $request->reason;
+
+            $ticket->save();
+            DB::commit();
+
+            // mail ke tim legal
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $legal_emails = EmailAdditional::where('type', 'COP')->where('category', 'legal')->first()->emails ?? [];
+            $legal_emails = json_decode($legal_emails);
+
+            $mail_to = array_unique(array_merge($legal_emails));
+
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Reject File TOR Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Legal Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reject_tor_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Reject File TOR COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Reject File TOR COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function rejectSphCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->sph_filepath_status = -1;
+            $ticket->sph_filepath_reject_notes = $request->reason;
+
+            $ticket->save();
+            DB::commit();
+
+            // mail ke tim legal
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $legal_emails = EmailAdditional::where('type', 'COP')->where('category', 'legal')->first()->emails ?? [];
+            $legal_emails = json_decode($legal_emails);
+
+            $mail_to = array_unique(array_merge($legal_emails));
+
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Reject File SPH Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Legal Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reject_sph_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Reject File SPH COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Reject File SPH COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function rejectUserAgreementCOP(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($id);
+            $ticket->user_agreement_filepath_status = -1;
+            $ticket->user_agreement_filepath_reject_notes = $request->reason;
+
+            $ticket->save();
+            DB::commit();
+
+            // mail ke tim legal
+            $ticket->refresh();
+            $user =  Auth::user()->name;
+            $legal_emails = EmailAdditional::where('type', 'COP')->where('category', 'legal')->first()->emails ?? [];
+            $legal_emails = json_decode($legal_emails);
+
+            $mail_to = array_unique(array_merge($legal_emails));
+
+            $ccs = $ticket->additional_emails() ?? [];
+            $data = array(
+                'original_emails' => $mail_to,
+                'original_ccs' => $ccs,
+                'transaction_type' => 'Reject File Perjanjian User Tim Legal COP',
+                'ticketing_type' => 'COP',
+                'salespoint_name' => $ticket->salespoint->name,
+                'from' => $user,
+                'to' => 'Legal Team',
+                'code' => $ticket->code,
+            );
+            if (config('app.env') == 'local') {
+                $mail_to = [config('mail.testing_email')];
+                $ccs = [];
+            }
+            $emailflag = true;
+            try {
+                Mail::to($mail_to)->cc($ccs)
+                    ->send(new NotificationMail($data, 'reject_user_agreement_legal'));
+            } catch (\Exception $ex) {
+                $emailflag = false;
+            }
+            $emailmessage = "";
+            if (!$emailflag) {
+                $emailmessage = "\n (" . config('customvariable.fail_email_text') . ")";
+            }
+            $ticket->refresh();
+
+            return redirect('/ticketing/' . $ticket->code)->with('success', 'Reject File User Agreement COP (Legal) Berhasil');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Reject File User Agreement COP (Legal) ' . $ex->getMessage());
+        }
+    }
+
+    public function uploadRevisionLpbCop(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket_item = TicketItem::findOrFail($request->id);
+            $ticket_attachment = TicketItemAttachment::where('ticket_item_id', '=', $request->id)->where('name', 'like', '%LPB_HO_TANGERANG%')->first();
+            $ticket = $ticket_item->ticket;
+
+            $lpb_file                   = $request->file()['file_revision_lpb_cop'];
+            $lpb_ext                    = pathinfo($lpb_file->getClientOriginalName(), PATHINFO_EXTENSION);
+            $name                       = 'LPB_HO_TANGERANG' . '.' . $lpb_ext;
+            $path                       = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $ticket_item->id . '/' . $name;
+            $info                       = pathinfo($path);
+            $lpb_path                   = $lpb_file->storeAs($info['dirname'], $info['basename'], 'public');
+            $ticket_attachment->path    = $lpb_path;
+            $ticket_attachment->save();
+
+            DB::commit();
+
+            return back()->with('success', 'Berhasil Revisi LPB COP, Pengadaan selesai');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal melakukan Revisi LPB COP ' . $ex->getMessage());
+        }
+    }
+
+    public function uploadLpbCop(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket_item = TicketItem::findOrFail($request->id);
+            $ticket = $ticket_item->ticket;
+
+            $original_filename              = $request->file('file_lpb_cop')->getClientOriginalName();
+            $newAttachment                  = new TicketItemAttachment;
+            $newAttachment->ticket_item_id  = $ticket_item->id;
+            $ext                            = pathinfo($original_filename, PATHINFO_EXTENSION);
+            $newAttachment->name            = 'LPB_HO_TANGERANG' . '.' . $ext;
+            $path                           = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $ticket_item->id . '/' . $newAttachment->name;
+            $file                           = pathinfo($path);
+            $path                           = $request->file('file_lpb_cop')->storeAs($file['dirname'], $file['basename'], 'public');
+            $newAttachment->path            = $path;
+            $newAttachment->save();
+
+            $ticket_item->isFinished        = true;
+            $ticket_item->confirmed_by      = Auth::user()->id;
+            $ticket_item->save();
+
+            $monitor = new TicketMonitoring;
+            $monitor->ticket_id      = $ticket_item->ticket->id;
+            $monitor->employee_id    = Auth::user()->id;
+            $monitor->employee_name  = Auth::user()->name;
+            $monitor->message        = 'Upload File LPB dan Invoice untuk item ' . $ticket_item->name;
+            $monitor->save();
+
+            $ticket = $ticket_item->ticket;
+            $isTicketFinished = $this->isTicketFinished($ticket->id);
+            if ($isTicketFinished) {
+                $ticket->status = 7;
+                $ticket->show_lpb_cop = 0;
+                $ticket->finished_date = now()->format('Y-m-d');
+                $ticket->save();
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'Berhasil Upload LPB COP, Pengadaan selesai');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal melakukan Upload LPB COP ' . $ex->getMessage());
+        }
+    }
+
+    public function showLpbCop(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $ticket = Ticket::findOrFail($request->id);
+            $ticket->show_lpb_cop = 1;
+            $ticket->save();
+
+            DB::commit();
+
+            return back()->with('success', 'Berhasil Show LPB COP');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('Gagal Show LPB COP ' . $ex->getMessage());
+        }
+    }
+
+    // Custom Ticket
+    public function createTicket(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $customticketing = DB::table('custom_ticketing')->where('id', $request->custom_ticketing_id)->first();
+            $settings = json_decode($customticketing->settings);
+
+            $ticket                         = new Ticket;
+            $ticket->budget_upload_id       = null;
+            $ticket->po_reference_number    = $request->po_number ?? null;
+            $ticket->requirement_date       = $request->requirement_date;
+
+            if ($settings->ticket_name == 'Pengadaan Fasilitas Karyawan COP') {
+                $ticket->salespoint_id      = 251;
+            } else {
+                $ticket->salespoint_id      = $request->salespoint_id;
+            }
+
+            $ticket->authorization_id       = $request->authorization_id;
+            $item_type = '';
+            if ($settings->item_type == "barang") {
+                $item_type = 0;
+            } elseif ($settings->item_type == "jasa") {
+                $item_type = 1;
+            } else {
+                $item_type = 4;
+            }
+
+            $ticket->item_type              = $item_type;
+
+            $ticket->request_type           = 0;
+            $ticket->budget_type            = $request->budget_type;
+            $ticket->reason                 = "";
+            $ticket->custom_settings        = $customticketing->settings;
+            $ticket->created_by             = Auth::user()->id;
+            $ticket->save();
+
+            $code_type = '';
+            if ($item_type == 0) {
+                $code_type = "P01";
+            } elseif ($item_type == 1) {
+                $code_type = "P02";
+            } else {
+                $code_type = "P03";
+            }
+
+            // ambil kode inisial salespoint
+            $code_salespoint_initial = strtoupper($ticket->salespoint->initial);
+
+            // ambil jumlah urutan ticketing d terkait dalam bulan dan tahun ini
+            $armada_ticket_count = ArmadaTicket::whereBetween('created_at', [
+                Carbon::now()->startOfMonth(),
+                Carbon::now()->endOfMonth(),
+            ])->withTrashed()->count();
+
+            $security_ticket_count = SecurityTicket::whereBetween('created_at', [
+                Carbon::now()->startOfMonth(),
+                Carbon::now()->endOfMonth(),
+            ])->withTrashed()->count();
+
+            $barang_ticket_count = Ticket::whereBetween('created_at', [
+                Carbon::now()->startOfMonth(),
+                Carbon::now()->endOfMonth(),
+            ])->where('status', '>', 0)->withTrashed()->count();
+
+            $code_total_count = $armada_ticket_count + $security_ticket_count + $barang_ticket_count;
+            do {
+                $code = $code_type . "-" . $code_salespoint_initial . "-" . now()->translatedFormat('dmy') . str_repeat("0", 4 - strlen($code_total_count + 1)) . ($code_total_count + 1);
+                $code_total_count++;
+                $checkbarang = Ticket::where('code', $code)->first();
+                $checkarmada = ArmadaTicket::where('code', $code)->first();
+                $checksecurity = SecurityTicket::where('code', $code)->first();
+                ($checkbarang != null || $checkarmada != null) ? $flag = false : $flag = true;
+            } while (!$flag);
+            $ticket->code           = $code;
+            $ticket->save();
+
+            $salespoint = $ticket->salespoint;
+
+            $ticket_item = $settings->ticket_item_name;
+            $qty = 1;
+            $value = 0;
+            // tambahin ke ticket item default nama itemnya
+            $newTicketItem                        = new TicketItem;
+            $newTicketItem->ticket_id             = $ticket->id;
+            $newTicketItem->budget_pricing_id     = -1;
+            $newTicketItem->name                  = $ticket_item;
+            $newTicketItem->brand                 = "";
+            $newTicketItem->type                  = "";
+            $newTicketItem->price                 = $value;
+            $newTicketItem->count                 = $qty;
+            $newTicketItem->save();
+
+            // set upload file ke ticket item di atas
+            for ($i = 0; $i < count($request->filename); $i++) {
+                $original_filename              = $request->file('file')[$i]->getClientOriginalName();
+                $newAttachment                  = new TicketItemAttachment;
+                $newAttachment->ticket_item_id  = $newTicketItem->id;
+                $salespointname                 = str_replace(' ', '_', $ticket->salespoint->name);
+                $filename                       = str_replace(' ', '_', trim($request->filename[$i]));
+                $ext                            = pathinfo($original_filename, PATHINFO_EXTENSION);
+                $newAttachment->name            = $filename . '_' . $salespointname . '.' . $ext;
+                $path                           = "/attachments/ticketing/barangjasa/" . $ticket->code . '/item' . $newTicketItem->id . '/' . $newAttachment->name;
+                $file                           = pathinfo($path);
+                $path                           = $request->file('file')[$i]->storeAs($file['dirname'], $file['basename'], 'public');
+                $newAttachment->path            = $path;
+                $newAttachment->save();
+            }
+
+            // Pengadaan Baru ubah status ke draft untuk mengisi vendor, attachment, alasan pengadaan
+            $authorizations = Authorization::find($request->authorization_id);
+            foreach ($authorizations->authorization_detail as $detail) {
+                $newTicketAuthorization                     = new TicketAuthorization;
+                $newTicketAuthorization->ticket_id          = $ticket->id;
+                $newTicketAuthorization->employee_id        = $detail->employee_id;
+                $newTicketAuthorization->employee_name      = $detail->employee->name;
+                $newTicketAuthorization->as                 = $detail->sign_as;
+                $newTicketAuthorization->employee_position  = $detail->employee_position->name;
+                $newTicketAuthorization->level              = $detail->level;
+                $newTicketAuthorization->save();
+            }
+            $ticket->reason = "Pengadaan Baru";
+            $ticket->status = 1;
+            $ticket->save();
+            DB::commit();
+            return redirect('/ticketing')->with('success', 'Berhasil menambah custom ticket. Silahkan Melakukan Otorisasi');
+        } catch (\Exception $ex) {
+            dd($ex);
+            DB::rollback();
+            return back()->with('error', 'Gagal membuat tiket. Harap mencoba kembali"' . $ex->getMessage() . '"');
         }
     }
 }
