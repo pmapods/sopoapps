@@ -13,5 +13,12 @@ class PoItem extends Model
     protected $table = 'po_item';
     protected $primaryKey = 'id';
 
+    public function product(){
+        if($this->customer_id != null){
+            return Customer::find($this->customer_id);
+        }
+        return null;
+    }
+
     
 }

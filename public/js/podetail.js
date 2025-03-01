@@ -215,7 +215,7 @@ function addCustomer(el) {
     table_customer.find('tbody').append('<tr class="customer_list" data-customer_id="' + id + '" data-customer_code="' + code + '" data-customer_name="' + name + '" data-customer_namemanager="' + nameManager + '" data-customer_emailmanager="' + emailManager + '" data-customer_phonemanager="' + phoneManager + '"><td>' + code + '</td><td>' + name + '</td><td>' + nameManager + '</td><td>' + emailManager + '</td><td>' + phoneManager + '</td><td>' + type + '</td><td><i class="fa fa-trash text-danger" onclick="removeCustomer(this)" aria-hidden="true"></i></td></tr>');
     select_customer.val('');
     select_customer.trigger('change');
-    tableCustomerRefreshed(select_customer);
+    tableCustomerRefreshed(el);
 }
 
 // remove vendor

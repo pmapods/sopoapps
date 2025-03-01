@@ -152,50 +152,34 @@ class POController extends Controller
 
     public function poDetailView($code)
     {
-        // dd(base64_decode($code));
-
-        $ticket = Ticket::where('code', $code)->first();
+        $po = Po::where('code', $code)->first();
         // validate budget detail has akses area
         $user_location_access  = Auth::user()->location_access->pluck('salespoint_id');
         $has_access = false;
-        $armada_types = ArmadaType::all();
-        if ($user_location_access->contains($ticket->salespoint_id)) {
+        if ($user_location_access->contains($po->salespoint_id)) {
             $has_access = true;
         }
-        // jika ticket fri dan ada user yang ada di approval fri boleh akses tiket
-        if ($ticket->fri_forms->count() > 0) {
-            $check_if_author_exist = $ticket->fri_forms->first()->authorizations->where('employee_id', Auth::user()->id)->first();
-            if ($check_if_author_exist) {
-                $has_access = true;
-            }
-        }
         if (!$has_access) {
-            return redirect('/ticketing')->with('error', 'Anda tidak memiliki akses untuk tiket berikut. Tidak memiliki akses salespoint "' . $ticket->salespoint->name . '"');
+            return redirect('/po')->with('error', 'Anda tidak memiliki akses untuk po berikut. Tidak memiliki akses salespoint "' . $po->salespoint->name . '"');
         }
-        if ($ticket) {
+        if ($po) {
             $available_salespoints = SalesPoint::whereIn('id', $user_location_access)->get();
             $available_salespoints = $available_salespoints->groupBy('region');
 
-            $indirect_salespoints = SalesPoint::where('region', 19)->get();
-
-            $budget_category_items = BudgetPricingCategory::all();
-            $maintenance_budgets = MaintenanceBudget::all()->groupBy('category_name');
-            $ho_budgets = HOBudget::all()->groupBy('category_name');
-
-            // active vendors
-            $vendors = Vendor::where('status', 0)->get();
+            // active customers
+            $customers = Customer::where('status', 0)->get();
 
             // trashed ticket vendor
-            $trashed_ticket_vendors = TicketVendor::where('ticket_id', $ticket->id)->onlyTrashed()->get();
+            $trashed_po_vendors = PoVendor::where('po_id', $po->id)->onlyTrashed()->get();
 
-            // show file completement data
-            $filecategories = FileCategory::all();
+            // product
+            $product = Product::whereNull('deleted_at')->get();
 
-            // fri_authorization
-            $fri_authorization = Authorization::where('form_type', 12)->first();
-            if ($ticket->status == 0) {
+            $request_type = $po->request_type;
+
+            if ($po->status == 0) {
                 // if draft make it editable
-                return view('Operational.ticketingdetail', compact('ticket', 'available_salespoints', 'indirect_salespoints', 'budget_category_items', 'vendors', 'filecategories', 'trashed_ticket_vendors', 'maintenance_budgets', 'ho_budgets', 'fri_authorization'));
+                return view('Operational.Sales.posewadetail', compact('po', 'available_salespoints', 'customers', 'trashed_po_vendors', 'request_type', 'product'));
             } else {
                 return view('Operational.ticketingform', compact('ticket', 'available_salespoints', 'indirect_salespoints', 'budget_category_items', 'vendors', 'filecategories', 'trashed_ticket_vendors', 'maintenance_budgets', 'ho_budgets', 'fri_authorization', 'armada_types'));
             }
@@ -268,6 +252,7 @@ class POController extends Controller
             }
             $po->save();
 
+            
             // remove old data
             if ($po->po_item->count() > 0) {
                 // get deleted new data
@@ -278,9 +263,10 @@ class POController extends Controller
                         return false;
                     }
                 });
+                dd($registered_id);
                 $deleted_item = [];
                 if ($po->po_item->count() > 0) {
-                    $deleted_item = $po->po_item->whereNotIn('id', $registered_id);
+                    $deleted_item = $po->po_item->whereIn('id', $registered_id);
                 }
                 foreach ($deleted_item as $deleted) {
                     $deleted->delete();
@@ -290,6 +276,7 @@ class POController extends Controller
             foreach ($request->item as $key => $item) {
                 $newPoItem                    = new PoItem;
                 $newPoItem->po_id             = $po->id;
+                $newPoItem->code              = $item['code'];
                 $newPoItem->name              = $item['name'];
                 $newPoItem->price             = $item['price'];
                 $newPoItem->qty               = $item['count'];
@@ -305,10 +292,8 @@ class POController extends Controller
                 $newPoItem->save();
             }
 
-            
-
             if ($po->po_vendor->count() > 0) {
-                $registered_id = collect($request->customer)->pluck('id')->filter(function ($item) {
+                $registered_id = collect($request->customer)->pluck('customer_id')->filter(function ($item) {
                     if ($item != "undefined") {
                         return true;
                     } else {
@@ -317,7 +302,7 @@ class POController extends Controller
                 });
                 $deleted_item = [];
                 if ($po->po_vendor->count() > 0) {
-                    $deleted_item = $po->po_vendor->whereNotIn('id', $registered_id);
+                    $deleted_item = $po->po_vendor->whereIn('id', $registered_id);
                 }
                 foreach ($deleted_item as $deleted) {
                     $deleted->deleted_by = Auth::user()->id;

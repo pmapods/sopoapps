@@ -40,8 +40,8 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-sm-6">
-                    <h1 class="m-0 text-dark">PO Sewa @isset($ticket)
-                            ({{ $ticket->code }})
+                    <h1 class="m-0 text-dark">PO Sewa @isset($po)
+                            ({{ $po->code }})
                         @else
                             Baru
                         @endisset
@@ -51,8 +51,8 @@
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item">Sales</li>
                         <li class="breadcrumb-item">PO/Quotation</li>
-                        <li class="breadcrumb-item active">PO Sewa @isset($ticket)
-                                ({{ $ticket->code }})
+                        <li class="breadcrumb-item active">PO Sewa @isset($po)
+                                ({{ $po->code }})
                             @else
                                 Baru
                             @endisset
@@ -268,10 +268,103 @@
 @endsection
 @section('local-js')
     <script src="/js/podetail.js?ver={{ now()->format('Ymd') }}"></script>
+    @if (Request::is('po/*'))
     <script>
+        $(document).ready(function() {
+                $('#loading_modal').modal('show');
+                let user = @json(Auth::user());
+                let current_auth = @json($po->current_authorization());
+                let po = @json($po);
+                let po_items = @json($po->po_items());    
+                let po_vendors = @json($po->po_vendors());            
+
+                $('.ticket_id').val(po["id"]);
+                $('.ticket_code').val(po["code"]);
+                $('.updated_at').val(po["updated_at"]);
+                if (po["requirement_date"]) {
+                    $('.requirement_date').val(po["requirement_date"]);
+                }
+                if (po['salespoint_id']) {
+                    $('.salespoint_select2').val(po['salespoint_id']);
+                    $('.salespoint_select2').trigger('change');
+                }
+
+                setTimeout(function() {
+                    if (po['authorization_id']) {
+                        $('.authorization_select2').val(po['authorization_id']);
+                        $('.authorization_select2').trigger('change');
+                    }
+                    if (po_items.length > 0) {
+                        $('.salespoint_select2').prop('disabled', true);
+                        $('.request_type').prop('disabled', true);
+                        $('.is_it').prop('disabled', true);
+                        $('.item_type').prop('disabled', true);
+                        $('.budget_type').prop('disabled', true);
+                    }
+                    $('#loading_modal').modal('hide');
+                }, 2500);
+                if (po_items.length > 0) {
+                    $('.table_item tbody:eq(0)').empty();
+                }
+                po_items.forEach(function(item, index) {                    
+                    let naming = item.name;
+                    // get is it and it alias
+                    let stringtext = '<tr class="item_list" ';
+
+                    stringtext += 'data-id="' + item.id + '" ';
+                    stringtext += 'data-code="' + item.code + '" ';
+                    stringtext += 'data-name="' + item.name + '" ';
+                    stringtext += 'data-price="' + item.price + '" ';
+                    stringtext += 'data-count="' + item.qty + '" ';
+                    stringtext += 'data-subtotal="' + item.sub_tot + '" ';
+                    stringtext += 'data-uom="' + item.uom + '" ';
+                    stringtext += 'data-dimension="' + item.dimension + '">';
+                    stringtext += '<td>' + naming + '</td>'
+                    stringtext += '<td>' + item.qty + '</td>'
+                    stringtext += '<td>' + item.price + '</td>'
+                    stringtext += '<td class="text-nowrap">' + setRupiah(item.qty * item.price) + '</td>'
+                    stringtext += '<td class="text-nowrap"><i class="fa fa-trash text-danger remove_list mr-3" onclick="removeList(this)" aria-hidden="true"></i></tr>';
+                        
+                    $('.table_item tbody:eq(0)').append(stringtext);
+                });
+
+                if (po_vendors.length > 0) {
+                    $('.table_customer').find('tbody').empty();
+                }
+                po_vendors.forEach(function(customer, index) {                    
+                    let stringtext = '<tr class="customer_list" ';
+
+                    stringtext += 'data-id="' + customer.id + '" ';
+                    stringtext += 'data-customer_id="' + customer.customer_id + '" ';
+                    stringtext += 'data-customer_code="' + customer.code + '" ';
+                    stringtext += 'data-customer_name="' + customer.name + '" ';
+                    stringtext += 'data-customer_namemanager="' + customer.manager_name + '" ';
+                    stringtext += 'data-customer_emailmanager="' + customer.email + '" ';
+                    stringtext += 'data-customer_phonemanager="' + customer.phone + '">';
+                    stringtext += '<td>' + customer.code + '</td>'
+                    stringtext += '<td>' + customer.name + '</td>'
+                    stringtext += '<td>' + customer.manager_name + '</td>'
+                    stringtext += '<td>' + customer.email + '</td>'
+                    stringtext += '<td>' + customer.phone + '</td>'
+                    stringtext += '<td>' + customer.type + '</td>'
+                    stringtext += '<td class="text-nowrap"><i class="fa fa-trash text-danger remove_list mr-3" onclick="removeCustomer(this)" aria-hidden="true"></i></tr>';
+                        
+                    $('.table_customer tbody:eq(0)').append(stringtext);
+
+                    // console.log($('.table_customer tbody:eq(0)'));
+
+                    // $('.table_customer').find('tbody').append('<tr class="customer_item_list" data-customer_id="' +
+                    //     customer.customer_id + '" data-id="' + customer.id + '" data-customer_name="' + customer.name + '" data-customer_namemanager="' + customer.manager_name + '" data-customer_emailmanager="' + customer.email + '" data-customer_phonemanager="' + customer.phone + '"><td>' + customer.code + '</td><td>' +
+                    //     customer.name + '</td><td>' + customer.manager_name + '</td><td>' + customer.email +
+                    //     '</td><td>' + customer.phone + '</td><td>' + customer.type + '</td><td><i class="fa fa-trash text-danger" onclick="removeCustomer(this)" aria-hidden="true"></i></td></tr>'
+                    // );
+                });
+            });
+        
         function deleteTicket() {
             $('#deleteform').submit();
         }
     </script>
+    @endif
     @yield('fri-js')
 @endsection

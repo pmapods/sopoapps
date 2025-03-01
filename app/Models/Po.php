@@ -190,4 +190,39 @@ class Po extends Model
         $texts .= "Staff" . "\n";
         return $texts;
     }
+
+    public function po_items()
+    {
+        $data = array();
+        foreach ($this->po_item as $item) {
+            $item->po_id        = $item->po_id;
+            $item->name         = $item->name;
+            $item->price        = $item->price;
+            $item->qty          = $item->qty;
+            $item->uom          = $item->uom;
+            $item->sub_tot      = $item->sub_tot;
+            $item->dimension    = $item->dimension;
+
+            array_push($data, $item);
+        }
+        return $data;
+    }
+
+    public function po_vendors()
+    {
+        $data = array();
+        foreach ($this->po_vendor as $customers) {
+            $customers->po_id        = $customers->po_id;
+            $customers->customer_id  = $customers->customer_id;
+            $customers->code         = $customers->customer()["code"];
+            $customers->name         = $customers->name;
+            $customers->manager_name = $customers->manager_name;
+            $customers->phone        = $customers->phone;
+            $customers->email        = $customers->email;
+            $customers->type         = $customers->type;
+
+            array_push($data, $customers);
+        }
+        return $data;
+    }
 }
