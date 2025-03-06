@@ -42,7 +42,6 @@ class POController extends Controller
     public function poData(Request $request)
     {
         $search_value = $request->search["value"];
-        if ($request->type == "posewa") { 
             $employee_access = Auth::user()->location_access_list();
             $posewa =  PO::leftJoin('salespoint', 'salespoint.id', '=', 'po.salespoint_id')
                 ->leftJoin('po_item', 'po_item.po_id', '=', 'po.id')
@@ -147,7 +146,6 @@ class POController extends Controller
                 "recordsFiltered" => $posewa->count(),
                 "recordsTotal" => $posewa->count(),
             ]);
-        }
     }
 
     public function poDetailView($code)
@@ -177,7 +175,7 @@ class POController extends Controller
 
             $request_type = $po->request_type;
 
-            if ($po->status == 0) {
+            if ($po->status == 0 && $request_type == 1) {
                 // if draft make it editable
                 return view('Operational.Sales.posewadetail', compact('po', 'available_salespoints', 'customers', 'trashed_po_vendors', 'request_type', 'product'));
             } else {
@@ -240,10 +238,17 @@ class POController extends Controller
             }
 
             $po->requirement_date       = $request->requirement_date;
+            $po->requirement_enddate    = $request->requirement_enddate;
             $po->po_number              = '-';
             $po->salespoint_id          = $request->salespoint;
             $po->authorization_id       = $request->authorization;
             $po->request_type           = $request->request_type;
+
+            $po->is_dp                  = $request->is_dp;
+            $po->tot_dp                 = $request->isit_dp_history;
+            $po->is_disc                = $request->is_disc;
+            $po->disc_tot               = $request->isit_disc;
+            $po->tot_price              = $request->tot_price_history2;
             $po->created_by             = Auth::user()->id;
             $po->save();
 
@@ -263,7 +268,7 @@ class POController extends Controller
                         return false;
                     }
                 });
-                dd($registered_id);
+                
                 $deleted_item = [];
                 if ($po->po_item->count() > 0) {
                     $deleted_item = $po->po_item->whereIn('id', $registered_id);
@@ -279,7 +284,9 @@ class POController extends Controller
                 $newPoItem->code              = $item['code'];
                 $newPoItem->name              = $item['name'];
                 $newPoItem->price             = $item['price'];
-                $newPoItem->qty               = $item['count'];
+                $newPoItem->qty_day           = $item['count'];
+                $newPoItem->qty               = $item['countqty'];
+                $newPoItem->sub_tot           = $item['subtotal'];
                 
                 
                 $product = Product::where('code', $item['code'])->get();
@@ -287,13 +294,11 @@ class POController extends Controller
                     $newPoItem->uom               = $product->uom;
                     $newPoItem->dimension         = $product->dimension;
                 }
-
-                $newPoItem->sub_tot           = $item['price'] * $item['count'];
                 $newPoItem->save();
             }
 
             if ($po->po_vendor->count() > 0) {
-                $registered_id = collect($request->customer)->pluck('customer_id')->filter(function ($item) {
+                $registered_id = collect($request->customer)->pluck('id')->filter(function ($item) {
                     if ($item != "undefined") {
                         return true;
                     } else {
@@ -310,20 +315,20 @@ class POController extends Controller
                     $deleted->delete();
                 }
             }
-
+            
             foreach ($request->customer as $customer) {
                 $customer_master = Customer::where('code', $customer['customer_code'])->get();
-
+                
                 
                 $newPoVendor = new PoVendor;
-                $newPoVendor->po_id                 = $po->id;
+                $newPoVendor->po_id             = $po->id;
                 
                 $newPoVendor->customer_id       = $customer['customer_id'];
                 $newPoVendor->name              = $customer['customer_name'];
                 $newPoVendor->manager_name      = $customer['customer_nameManager'];
                 $newPoVendor->email             = $customer['customer_emailManager'];
                 $newPoVendor->phone             = $customer['customer_phoneManager'];
-            
+                
                 foreach ($customer_master as $customer_master) {
                     $newPoVendor->type          = $customer_master->type;
                 }

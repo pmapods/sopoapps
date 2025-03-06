@@ -77,23 +77,31 @@
             </div>
             <div class="col-md-4">
                 <div class="form-group">
-                    <label class="required_field">Tanggal Pengadaan</label>
+                    <label class="required_field">Tanggal Awal Sewa</label>
                     <input type="date" class="form-control requirement_date">
-                    <small class="text-danger">*Tanggal estimasi barang ready untuk di kirim</small>
+                    <small class="text-danger">*Tanggal awal sewa barang</small>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
-                    <label class="required_field">Pembuat Form</label>
-                    <input type="text" class="form-control form_creator" value="{{ Auth::user()->name }}" disabled>
-                    <small class="text-danger">* Pembuat form yang tercatat di sistem sesuai dengan identitas login saat
-                        memulai approval</small>
+                    <label class="required_field">Tanggal Akhir Sewa</label>
+                    <input type="date" class="form-control requirement_enddate">
+                    <small class="text-danger">*Tanggal akhir sewa barang</small>
                 </div>
             </div>
 
             <div class="col-md-3" hidden="hidden">
                 <div class="form-group">
                     <input type="hidden" name="request_type" class="request_type" value="{{ $request_type }}">
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label class="required_field">Pembuat Form</label>
+                    <input type="text" class="form-control form_creator" value="{{ Auth::user()->name }}" disabled>
+                    <small class="text-danger">* Pembuat form yang tercatat di sistem sesuai dengan identitas login saat
+                        memulai approval</small>
                 </div>
             </div>
 
@@ -141,7 +149,8 @@
                     <thead>
                         <tr>
                             <th>Nama Item</th>
-                            <th>Jumlah</th>
+                            <th>Jumlah Hari</th>
+                            <th>Qty</th>
                             <th>Harga Sewa Harian</th>
                             <th>Sub Total</th>
                             <th>Action</th>
@@ -179,7 +188,11 @@
                     </div>
                     <div class="form-group col-md-1 pl-1">
                         <label class="required_field">Hari Sewa</label>
-                        <input type="number" class="form-control count_item autonumber" min="1">
+                        <input type="number" class="form-control count_item autonumber" min="1" readonly>
+                    </div>
+                    <div class="form-group col-md-1 pl-1">
+                        <label class="required_field">Qty</label>
+                        <input type="number" class="form-control count_qty autonumber" min="1">
                     </div>
                     <div class="form-group col-md-3 pl-1">
                         <label class="required_field">Harga Item</label>
@@ -193,6 +206,32 @@
                         <label>&nbsp</label>
                         <button type="button" class="btn btn-primary form-control add_button"
                             onclick="addItem(this)">Tambah</button>
+                    </div>
+                </div>
+
+                <div class="row justify-content-start item_adder2">
+                    <div class="form-group col-md-2 pl-1">
+                        <label class="required_field">Is DP</label>
+                        <input type="checkbox" class="form-control mt-2 is_dp" id="is_dp" name="is_dp" value="is_dp" style="height: 20px">
+                    </div>
+                    <div class="form-group col-md-3 pl-1">
+                        <label class="required_field">DP/Full Bayar</label>
+                        <input class="form-control rupiah isit_dp" disabled>
+                        <input type="hidden" class="form-control isit_dp_history" disabled>
+                    </div>
+                    <div class="form-group col-md-1 pl-1">
+                        <label class="required_field">Is Discount</label>
+                        <input type="checkbox" class="form-control mt-2 is_disc" id="is_disc" name="is_disc" value="is_disc" style="height: 20px">
+                    </div>
+                    <div class="form-group col-md-2 pl-1">
+                        <label class="required_field">Discount (%)</label>
+                        <input type="number" class="form-control isit_disc" value="0" disabled>
+                    </div>
+                    <div class="form-group col-md-3 pl-1">
+                        <label class="required_field">Total Harga</label>
+                        <input class="form-control rupiah tot_price" readonly>
+                        <input type="hidden" class="form-control tot_price_history" readonly>
+                        <input type="hidden" class="form-control tot_price_history2" readonly>
                     </div>
                 </div>
             </div>
@@ -276,17 +315,49 @@
                 let current_auth = @json($po->current_authorization());
                 let po = @json($po);
                 let po_items = @json($po->po_items());    
-                let po_vendors = @json($po->po_vendors());            
+                let po_vendors = @json($po->po_vendors());   
+
+                let price_first = (po["tot_price"] * 100) / (100 - po["disc_tot"]);
 
                 $('.ticket_id').val(po["id"]);
                 $('.ticket_code').val(po["code"]);
                 $('.updated_at').val(po["updated_at"]);
+                $('.tot_price').val(po["tot_price"]);
+                $('.tot_price_history').val(price_first);
+                $('.tot_price_history2').val(po["tot_price"]);
                 if (po["requirement_date"]) {
                     $('.requirement_date').val(po["requirement_date"]);
+                    $('.requirement_date').trigger('change');
+                }
+                if (po["requirement_enddate"]) {
+                    $('.requirement_enddate').val(po["requirement_enddate"]);
+                    $('.requirement_enddate').trigger('change');
                 }
                 if (po['salespoint_id']) {
                     $('.salespoint_select2').val(po['salespoint_id']);
                     $('.salespoint_select2').trigger('change');
+                }
+                if (po['is_dp'] == 0) {
+                    $('input[type=checkbox][name=is_disc]').prop('checked', false);
+                    $('input[type=checkbox][name=is_disc]').trigger('change');
+                    $('.isit_dp').val(po["tot_price"]);
+                    $('.isit_dp_history').val(po["tot_price"]);
+                }
+                if (po['is_dp'] == 1) {
+                    $('input[type=checkbox][name=is_disc]').prop('checked', true);
+                    $('input[type=checkbox][name=is_disc]').trigger('change');
+                    $('.isit_dp').val(po["tot_dp"]);
+                    $('.isit_dp_history').val(po["tot_dp"]);
+                }
+                if (po['is_disc'] == 0) {
+                    $('input[type=checkbox][name=is_disc]').prop('checked', false);
+                    $('input[type=checkbox][name=is_disc]').trigger('change');
+                    $('.isit_disc').val(0);
+                }
+                if (po['is_disc'] == 1) {
+                    $('input[type=checkbox][name=is_disc]').prop('checked', true);
+                    $('input[type=checkbox][name=is_disc]').trigger('change');
+                    $('.isit_disc').val(po["disc_tot"]);
                 }
 
                 setTimeout(function() {
@@ -296,10 +367,8 @@
                     }
                     if (po_items.length > 0) {
                         $('.salespoint_select2').prop('disabled', true);
-                        $('.request_type').prop('disabled', true);
-                        $('.is_it').prop('disabled', true);
-                        $('.item_type').prop('disabled', true);
-                        $('.budget_type').prop('disabled', true);
+                        $('.requirement_date').prop('disabled', true);
+                        $('.requirement_enddate').prop('disabled', true);
                     }
                     $('#loading_modal').modal('hide');
                 }, 2500);
@@ -315,14 +384,16 @@
                     stringtext += 'data-code="' + item.code + '" ';
                     stringtext += 'data-name="' + item.name + '" ';
                     stringtext += 'data-price="' + item.price + '" ';
-                    stringtext += 'data-count="' + item.qty + '" ';
+                    stringtext += 'data-count="' + item.qty_day + '" ';
+                    stringtext += 'data-countqty="' + item.qty + '" ';
                     stringtext += 'data-subtotal="' + item.sub_tot + '" ';
                     stringtext += 'data-uom="' + item.uom + '" ';
                     stringtext += 'data-dimension="' + item.dimension + '">';
                     stringtext += '<td>' + naming + '</td>'
+                    stringtext += '<td>' + item.qty_day + '</td>'
                     stringtext += '<td>' + item.qty + '</td>'
-                    stringtext += '<td>' + item.price + '</td>'
-                    stringtext += '<td class="text-nowrap">' + setRupiah(item.qty * item.price) + '</td>'
+                    stringtext += '<td>' + setRupiah(item.price) + '</td>'
+                    stringtext += '<td class="text-nowrap">' + setRupiah(item.sub_tot) + '</td>'
                     stringtext += '<td class="text-nowrap"><i class="fa fa-trash text-danger remove_list mr-3" onclick="removeList(this)" aria-hidden="true"></i></tr>';
                         
                     $('.table_item tbody:eq(0)').append(stringtext);
@@ -350,14 +421,6 @@
                     stringtext += '<td class="text-nowrap"><i class="fa fa-trash text-danger remove_list mr-3" onclick="removeCustomer(this)" aria-hidden="true"></i></tr>';
                         
                     $('.table_customer tbody:eq(0)').append(stringtext);
-
-                    // console.log($('.table_customer tbody:eq(0)'));
-
-                    // $('.table_customer').find('tbody').append('<tr class="customer_item_list" data-customer_id="' +
-                    //     customer.customer_id + '" data-id="' + customer.id + '" data-customer_name="' + customer.name + '" data-customer_namemanager="' + customer.manager_name + '" data-customer_emailmanager="' + customer.email + '" data-customer_phonemanager="' + customer.phone + '"><td>' + customer.code + '</td><td>' +
-                    //     customer.name + '</td><td>' + customer.manager_name + '</td><td>' + customer.email +
-                    //     '</td><td>' + customer.phone + '</td><td>' + customer.type + '</td><td><i class="fa fa-trash text-danger" onclick="removeCustomer(this)" aria-hidden="true"></i></td></tr>'
-                    // );
                 });
             });
         

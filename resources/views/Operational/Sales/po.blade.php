@@ -309,8 +309,6 @@
                 table.draw();
             });
 
-            let pojualtable;
-            let securitytable;
             let selected_array = [];
             $('a[data-toggle="pill"]').on('shown.bs.tab', function(event) { 
                 if ($(event.target).attr('href') == "#pills-pojual" && !selected_array.includes(

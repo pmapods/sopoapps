@@ -28,8 +28,10 @@ $(document).ready(function () {
         emptyInputBehavior: "zero",
         minimumValue: 0,
         unformatOnSubmit: true,
-        modifyValueOnWheel: false
+        modifyValueOnWheel: false,
+        watchExternalChanges: true
     });
+
 
     // rupiah desimal formatter
     autoNumericDecimal_field = new AutoNumeric.multiple('.rupiahDecimal', {
@@ -43,6 +45,7 @@ $(document).ready(function () {
         modifyValueOnWheel: false,
         alwaysAllowDecimalCharacter: true,
         allowDecimalPadding: 'floats',
+        watchExternalChanges: true
     });
 
     // rupiahDecimaltext formatter
@@ -189,6 +192,7 @@ var autonum_setting = {
     emptyInputBehavior: "zero",
     minimumValue: 0,
     unformatOnSubmit: true,
+    watchExternalChanges: true
 };
 
 function getUrlVars() {
