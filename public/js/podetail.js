@@ -79,6 +79,7 @@ $(document).ready(function () {
         let start_date = $('.requirement_date').val();
 
         $('.requirement_enddate').prop('min', moment(start_date).add(1, 'days').format('YYYY-MM-DD'));
+        $('.requirement_enddate').prop('disabled', false);
         $('.requirement_enddate').trigger('change');
     });
 

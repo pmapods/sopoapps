@@ -46,6 +46,7 @@
                                 <th>#</th>
                                 <th>Kode</th>
                                 <th>Nama Barang</th>
+                                <th>UOM</th>
                                 <th>Total Stock</th>
                                 <th>Cabang</th>
                             </tr>
@@ -57,6 +58,7 @@
                                     <td>{{ $count++ }}</td>
                                     <td>{{ $material->code }}</td>
                                     <td>{{ $material->material }}</td>
+                                    <td>{{ $material->uom->uom }}</td>
                                     <td>{{ $material->tot_stock }}</td>
                                     <td>{{ $material->regency->name }}</td>
                                 </tr>
@@ -105,6 +107,17 @@
                             </div>
                             <div class="col-6">
                                 <div class="form-group">
+                                    <label class="required_field">UOM</label>
+                                    <select class="form-control select2 uom_select" name="uom">
+                                        <option value="">-- Pilih UOM --</option>
+                                        @foreach ($uom as $uom)
+                                                <option value="{{ $uom->id }}">{{ $uom->uom }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-group">
                                     <label class="required_field">Dimesi (M<sup>2</sup>)</label>
                                     <div class="input-group">
                                         <input type="number" min="1" class="form-control panjang" name="panjang"
@@ -112,6 +125,9 @@
                                         <label class="pt-2">&nbsp;X&nbsp;</label>
                                         <input type="number" min="1" class="form-control lebar" name="lebar"
                                         placeholder="Lebar" required>
+                                        <label class="pt-2">&nbsp;X&nbsp;</label>
+                                        <input type="number" min="1" class="form-control tinggi" name="tinggi"
+                                        placeholder="tinggi" required>
                                     </div>
                                 </div>
                             </div>
@@ -184,6 +200,17 @@
                         </div>
                         <div class="col-6">
                             <div class="form-group">
+                                <label class="required_field">UOM</label>
+                                <select class="form-control select2 uom_select" name="uom">
+                                    <option value="">-- Pilih UOM --</option>
+                                    @foreach ($uom2 as $uom)
+                                            <option value="{{ $uom->id }}">{{ $uom->uom }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group">
                                 <label class="required_field">Dimesi (M<sup>2</sup>)</label>
                                 <div class="input-group">
                                     <input type="number" min="1" class="form-control panjang" name="panjang"
@@ -191,6 +218,9 @@
                                     <label class="pt-2">&nbsp;X&nbsp;</label>
                                     <input type="number" min="1" class="form-control lebar" name="lebar"
                                     placeholder="Lebar" required>
+                                    <label class="pt-2">&nbsp;X&nbsp;</label>
+                                    <input type="number" min="1" class="form-control tinggi" name="tinggi"
+                                    placeholder="tinggi" required>
                                 </div>
                             </div>
                         </div>
@@ -249,22 +279,27 @@
                 let dimension = JSON.parse(data.dimension);
                 let panjang = modal.find('.panjang');
                 let lebar = modal.find('.lebar');
+                let tinggi = modal.find('.tinggi');
                 
                 dimension.forEach((item, index) => {
                     panjang.val(item.panjang);
                     lebar.val(item.lebar);
+                    tinggi.val(item.tinggi);
                 });
 
                 let kode = modal.find('.code');
                 let name = modal.find('.name');
                 let alias = modal.find('.alias');
                 let city = modal.find('select[name="city_id"]');
+                let uom = modal.find('select[name="uom"]');
 
                 kode.val(data['code']);
                 name.val(data['material']);
                 alias.val(data['alias']);
                 city.val(data['salespoint']);
                 city.trigger('change');
+                uom.val(data['uom_id']);
+                uom.trigger('change');
 
                 modal.modal('show');
             });
@@ -277,18 +312,24 @@
             let alias = modal.find('.alias').val();
             let panjang = modal.find('.panjang').val();
             let lebar = modal.find('.lebar').val();
+            let tinggi = modal.find('.tinggi').val();
             let city = modal.find('select[name="city_id"]').val();
+            let uom = modal.find('select[name="uom"]').val();
 
             let dimension = [];
             if (city == "") {
                 alert('Harap memilih kota/salespoint');
                 return;
             }
+            if (uom == "") {
+                alert('Harap memilih uom');
+                return;
+            }
                     
             dimension.push({
                 "panjang": panjang,
                 "lebar": lebar,
-                "UOM" : "M2"
+                "tinggi": tinggi
             })
             
             // form filling
@@ -301,6 +342,7 @@
             inputfield.append('<input type="hidden" name="alias" value="' + alias + '">');
             inputfield.append("<input type='hidden' name='dimension' value='" + JSON.stringify(dimension) + "'>");
             inputfield.append('<input type="hidden" name="city" value="' + city + '">');
+            inputfield.append('<input type="hidden" name="uom" value="' + uom + '">');
             form.submit();       
         }
 
@@ -311,13 +353,16 @@
             let alias = modal.find('.alias').val();
             let panjang = modal.find('.panjang').val();
             let lebar = modal.find('.lebar').val();
+            let tinggi = modal.find('.tinggi').val();
+            let city = modal.find('select[name="city_id"]').val();
+            let uom = modal.find('select[name="uom"]').val();
 
             let dimension = [];
                     
             dimension.push({
                 "panjang": panjang,
                 "lebar": lebar,
-                "UOM" : "M2"
+                "tinggi": tinggi
             })
 
             // form filling
@@ -329,6 +374,8 @@
             inputfield.append('<input type="hidden" name="nama" value="' + name + '">');
             inputfield.append('<input type="hidden" name="alias" value="' + alias + '">');
             inputfield.append("<input type='hidden' name='dimension' value='" + JSON.stringify(dimension) + "'>");
+            inputfield.append('<input type="hidden" name="city" value="' + city + '">');
+            inputfield.append('<input type="hidden" name="uom" value="' + uom + '">');
             form.submit();  
         }
 

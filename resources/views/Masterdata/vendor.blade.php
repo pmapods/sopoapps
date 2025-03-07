@@ -36,20 +36,6 @@
         </div>
     </div>
     <div class="content-body px-4">
-        {{-- <ul class="nav nav-pills flex-column flex-sm-row mb-3" id="pills-tab" role="tablist">
-            <li class="flex-sm-fill text-sm-center nav-item mr-1" role="presentation">
-                <a class="nav-link active" id="pills-barangjasa-tab" data-toggle="pill" href="#pills-barangjasa"
-                    role="tab" aria-controls="pills-barangjasa" aria-selected="true">Barang Jasa</a>
-            </li>
-            <li class="flex-sm-fill text-sm-center nav-item ml-1" role="presentation">
-                <a class="nav-link" id="pills-armada-tab" data-toggle="pill" href="#pills-armada" role="tab"
-                    aria-controls="pills-armada" aria-selected="false">Armada</a>
-            </li>
-            <li class="flex-sm-fill text-sm-center nav-item ml-1" role="presentation">
-                <a class="nav-link" id="pills-security-tab" data-toggle="pill" href="#pills-security" role="tab"
-                    aria-controls="pills-security" aria-selected="false">Security</a>
-            </li>
-        </ul> --}}
 
         <div class="tab-content" id="pills-tabContent">
             <div class="tab-pane fade show active" id="pills-barangjasa" role="tabpanel"
@@ -61,12 +47,13 @@
                                 <th>#</th>
                                 <th>Kode</th>
                                 <th>Nama</th>
-                                <th>Alias</th>
+                                <th>Alias/Brand</th>
                                 <th>Alamat</th>
                                 <th>Kota</th>
                                 <th>Sales Person</th>
                                 <th>Telfon</th>
                                 <th>Email</th>
+                                <th>Rekening</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -82,84 +69,13 @@
                                     <td>{{ $vendor->salesperson }}</td>
                                     <td>{{ $vendor->phone }}</td>
                                     <td>{{ implode(",\n", $vendor->emails()) }}</td>
+                                    <td>{{ $vendor->bank }} - {{ $vendor->no_rekening }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
-            {{-- <div class="tab-pane fade" id="pills-armada" role="tabpanel" aria-labelledby="pills-armada-tab">
-                <table id="vendorArmadaDT" class="table table-bordered table-striped dataTable" role="grid">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Kode</th>
-                            <th>Nama</th>
-                            <th>Alias</th>
-                            <th>Alamat</th>
-                            <th>Kota</th>
-                            <th>Sales Person</th>
-                            <th>Telfon</th>
-                            <th>Email</th>
-                            <th>E Log Sync</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $count = 1 @endphp
-                        @foreach ($vendors->where('type', 'armada') as $key => $vendor)
-                            <tr data-vendor="{{ $vendor }}">
-                                <td>{{ $count++ }}</td>
-                                <td>{{ $vendor->code }}</td>
-                                <td>{{ $vendor->name }}</td>
-                                <td>{{ $vendor->alias }}</td>
-                                <td>{{ $vendor->address }}</td>
-                                <td>{{ $vendor->regency->name }}</td>
-                                <td>{{ $vendor->salesperson }}</td>
-                                <td>{{ $vendor->phone }}</td>
-                                <td>{{ implode(",\n", $vendor->emails()) }}</td>
-                                @if ($vendor->e_log_sync == 1)
-                                    <td>Yes</td>
-                                @else
-                                    <td>No</td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            <div class="tab-pane fade" id="pills-security" role="tabpanel" aria-labelledby="pills-security-tab">
-                <table id="vendorSecurityDT" class="table table-bordered table-striped dataTable" role="grid">
-                    <thead>
-                        <tr role="row">
-                            <th>#</th>
-                            <th>Kode</th>
-                            <th>Nama</th>
-                            <th>Alias</th>
-                            <th>Alamat</th>
-                            <th>Kota</th>
-                            <th>Sales Person</th>
-                            <th>Telfon</th>
-                            <th>Email</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $count = 1 @endphp
-                        @foreach ($vendors->where('type', 'security') as $key => $vendor)
-                            <tr data-vendor="{{ $vendor }}">
-                                <td>{{ $count++ }}</td>
-                                <td>{{ $vendor->code }}</td>
-                                <td>{{ $vendor->name }}</td>
-                                <td>{{ $vendor->alias }}</td>
-                                <td>{{ $vendor->address }}</td>
-                                <td>{{ $vendor->regency->name }}</td>
-                                <td>{{ $vendor->salesperson }}</td>
-                                <td>{{ $vendor->phone }}</td>
-                                <td>{{ implode(",\n", $vendor->emails()) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div> --}}
         </div>
     </div>
     <form method="post" id="submitform">
@@ -246,6 +162,25 @@
                                     <textarea class="form-control" name="email" placeholder="Masukkan email vendor"></textarea>
                                 </div>
                             </div>
+                            <div class="col-6">
+                                <div class="form-group">
+                                    <label class="required_field">Bank</label>
+                                    <select class="form-control select2" name="bank">
+                                        <option value="">-- Pilih Bank --</option>
+                                        <option value="mandiri">Mandiri</option>
+                                        <option value="bca">BCA</option>
+                                        <option value="bri">BRI</option>
+                                        <option value="bni">BNI</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-group">
+                                    <label class="required_field">Rekening</label>
+                                    <input type="text" class="form-control rekening" name="rekening"
+                                        placeholder="Masukkan no rekening">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -291,7 +226,7 @@
                             </div>
                             <div class="col-6">
                                 <div class="form-group">
-                                    <label class="required_field">Alias</label>
+                                    <label class="required_field">Alias/Brand</label>
                                     <input type="text" class="form-control" name="alias"
                                         placeholder="Masukkan Alias" required>
                                 </div>
@@ -338,6 +273,25 @@
                                     <textarea class="form-control" name="email" placeholder="Masukkan email vendor"></textarea>
                                 </div>
                             </div>
+                            <div class="col-6">
+                                <div class="form-group">
+                                    <label class="required_field">Bank</label>
+                                    <select class="form-control select2" name="bank">
+                                        <option value="">-- Pilih Bank --</option>
+                                        <option value="mandiri">Mandiri</option>
+                                        <option value="bca">BCA</option>
+                                        <option value="bri">BRI</option>
+                                        <option value="bni">BNI</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-group">
+                                    <label class="required_field">Rekening</label>
+                                    <input type="text" class="form-control rekening" name="rekening"
+                                        placeholder="Masukkan no rekening">
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -374,10 +328,17 @@
                 modal.find('select[name="city_id"]').trigger('change');
                 modal.find('input[name="salesperson"]').val(data['salesperson']);
                 modal.find('input[name="phone"]').val(data['phone']);
+                modal.find('select[name="bank"]').val(data['bank']);
+                modal.find('select[name="bank"]').trigger('change');
+                modal.find('input[name="rekening"]').val(data['no_rekening']);
                 let emails = JSON.parse(data['email']);
                 let email_text = emails.join(',\n');
                 modal.find('textarea[name="email"]').val(email_text);
                 modal.modal('show');
+            });
+
+            $('.rekening').on('keyup', function () { 
+                this.value = this.value.replace(/[^0-9]/gi, '');
             });
         });
 

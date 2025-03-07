@@ -11,7 +11,9 @@ return [
         'Notification Email',
         'Matriks Approval',
         'Produk',
-        'Bahan Baku'
+        'Bahan Baku',
+        'Category',
+        'UOM'
     ],
 
     'sales_accesses' => [

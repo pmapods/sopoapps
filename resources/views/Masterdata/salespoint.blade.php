@@ -35,7 +35,7 @@
                     <th width="15%">{{__('Nama Area')}}</th>
                     <th width="10%">{{__('Region')}}</th>
                     <th width="8%">{{__('Status')}}</th>
-                    <th width="8%">Jawa Sumatra</th>
+                    {{-- <th width="8%">Jawa Sumatra</th> --}}
                     <th width="20%">Alamat</th>
                 </tr>
             </thead>
@@ -47,7 +47,7 @@
                     <td>{{$salespoint->name}} (<span class="text-uppercase">{{$salespoint->initial}}</span>)</td>
                     <td>{{$salespoint->region_name()}} ({{ $salespoint->region_type }})</td>
                     <td>{{$salespoint->status_name()}}</td>
-                    <td>{{$salespoint->jawasumatra()}}</td>
+                    {{-- <td>{{$salespoint->jawasumatra()}}</td> --}}
                     <td class="small">{{$salespoint->address}}</td>
                 </tr>
                 @endforeach
@@ -119,15 +119,15 @@
                                 <label class="required_field">Status Point</label>
                                 <select class="form-control" name="status" required>
                                     <option value="">-- Pilih Status --</option>
-                                    <option value="0">Depo</option>
+                                    {{-- <option value="0">Depo</option> --}}
                                     <option value="1">Cabang</option>
-                                    <option value="2">Cellpoint</option>
+                                    {{-- <option value="2">Cellpoint</option> --}}
                                     <option value="3">Subdist</option>
                                     <option value="4">Nasional</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        {{-- <div class="col-md-4">
                             <div class="form-group">
                                 <label class="required_field">Trade Type</label>
                                 <select class="form-control" name="trade_type" required>
@@ -136,8 +136,8 @@
                                     <option value="1">Modern Trade</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="col-md-4">
+                        </div> --}}
+                        {{-- <div class="col-md-4">
                             <div class="form-group">
                                 <label class="required_field">Apakah area Jawa Sumatra</label>
                                 <select class="form-control" name="isJawaSumatra" required>
@@ -146,7 +146,7 @@
                                     <option value="0">Tidak (Luar Jawa Sumatra)</option>
                                 </select>
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="col-md-12">
                             <div class="form-group">
                               <label for="optional_field">Alamat</label>
@@ -239,15 +239,15 @@
                                 <label class="required_field">Status Point</label>
                                 <select class="form-control" name="status" required>
                                     <option value="">-- Pilih Status --</option>
-                                    <option value="0">Depo</option>
+                                    {{-- <option value="0">Depo</option> --}}
                                     <option value="1">Cabang</option>
-                                    <option value="2">Cellpoint</option>
+                                    {{-- <option value="2">Cellpoint</option> --}}
                                     <option value="3">Subdist</option>
                                     <option value="4">Nasional</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        {{-- <div class="col-md-4">
                             <div class="form-group">
                                 <label class="required_field">Trade Type</label>
                                 <select class="form-control" name="trade_type" required>
@@ -256,8 +256,8 @@
                                     <option value="1">Modern Trade</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="col-md-4">
+                        </div> --}}
+                        {{-- <div class="col-md-4">
                             <div class="form-group">
                                 <label class="required_field">Apakah area Jawa Sumatra</label>
                                 <select class="form-control" name="isJawaSumatra" required>
@@ -266,7 +266,7 @@
                                     <option value="0">Tidak (Luar Jawa Sumatra)</option>
                                 </select>
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="col-md-12">
                             <div class="form-group">
                               <label for="optional_field">Alamat</label>
@@ -305,8 +305,8 @@
             modal.find('select[name="region"]').val(data['region']);
             modal.find('select[name="region"]').trigger('change');
             modal.find('select[name="status"]').val(data['status']);
-            modal.find('select[name="trade_type"]').val(data['trade_type']);
-            modal.find('select[name="isJawaSumatra"]').val(data['isJawaSumatra']);
+            // modal.find('select[name="trade_type"]').val(data['trade_type']);
+            // modal.find('select[name="isJawaSumatra"]').val(data['isJawaSumatra']);
             modal.find('textarea[name="address"]').val(data['address']);
             modal.modal('show');
         });

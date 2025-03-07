@@ -9,6 +9,7 @@ use App\Models\Material;
 use App\Models\Salespoint;
 use App\Models\Province;
 use App\Models\Regency;
+use App\Models\Uom;
 
 class MaterialController extends Controller
 {
@@ -18,7 +19,9 @@ class MaterialController extends Controller
         $salespoint = Salespoint::all();
         $provinces = Province::all();
         $regency = Regency::inRandomOrder()->first()->name;
-        return view('Masterdata.material', compact('material', 'salespoint', 'provinces'));
+        $uom = Uom::all();
+        $uom2 = Uom::all();
+        return view('Masterdata.material', compact('material', 'salespoint', 'provinces', 'uom', 'uom2'));
     }
 
     public function addMaterial(Request $request)
@@ -35,6 +38,7 @@ class MaterialController extends Controller
             $newMaterial->alias              = $request->alias;
             $newMaterial->dimension          = $request->dimension;
             $newMaterial->salespoint         = $request->city;
+            $newMaterial->uom_id             = $request->uom;
             $newMaterial->save();
 
             return back()->with('success', 'Berhasil menambahkan material');
@@ -50,6 +54,8 @@ class MaterialController extends Controller
             $material->material           = $request->nama;
             $material->alias              = $request->alias;
             $material->dimension          = $request->dimension;
+            $material->salespoint         = $request->city;
+            $material->uom_id             = $request->uom;
             $material->save();
 
             return back()->with('success', 'Berhasil memperbarui material');
@@ -58,15 +64,15 @@ class MaterialController extends Controller
         }
     }
 
-    public function deleteProduct(Request $request)
+    public function deleteMaterial(Request $request)
     {
         try {
-            $product = Product::where('code', $request->kode)->first();
-            $product->delete();
+            $material = Material::where('code', $request->kode)->first();
+            $material->delete();
 
-            return back()->with('success', 'Berhasil menghapus product');
+            return back()->with('success', 'Berhasil menghapus material');
         } catch (\Exception $ex) {
-            return back()->with('error', 'Gagal menghapus product  "' . $ex->getMessage() . '"');
+            return back()->with('error', 'Gagal menghapus material  "' . $ex->getMessage() . '"');
         }
     }
 }

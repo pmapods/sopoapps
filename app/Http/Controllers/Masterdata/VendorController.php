@@ -35,6 +35,8 @@ class VendorController extends Controller
             $newVendor->city_id         = $request->city_id;
             $newVendor->salesperson     = $request->salesperson;
             $newVendor->phone           = $request->phone;
+            $newVendor->bank            = $request->bank;
+            $newVendor->no_rekening     = $request->rekening;
             $emails              = explode(',', $request->email);
             foreach ($emails as $key => $email) {
                 // trim setiap email

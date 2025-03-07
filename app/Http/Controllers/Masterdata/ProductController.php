@@ -9,6 +9,8 @@ use App\Models\Product;
 use App\Models\Salespoint;
 use App\Models\Province;
 use App\Models\Regency;
+use App\Models\Uom;
+use App\Models\Category;
 
 class ProductController extends Controller
 {
@@ -18,7 +20,11 @@ class ProductController extends Controller
         $salespoint = Salespoint::all();
         $provinces = Province::all();
         $regency = Regency::inRandomOrder()->first()->name;
-        return view('Masterdata.product', compact('product', 'salespoint', 'provinces'));
+        $uom = Uom::all();
+        $uom2 = Uom::all();
+        $category = Category::all();
+        $category2 = Category::all();
+        return view('Masterdata.product', compact('product', 'salespoint', 'provinces', 'uom', 'category', 'uom2', 'category2'));
     }
 
     public function addProduct(Request $request)
@@ -33,10 +39,12 @@ class ProductController extends Controller
             $newProduct->code               = $request->kode;
             $newProduct->nama_barang        = $request->nama;
             $newProduct->alias              = $request->alias;
-            $newProduct->dimension           = $request->dimension;
-            $newProduct->berat_barang       = $request->berat;
+            $newProduct->dimension          = $request->dimension;
             $newProduct->harga_jual         = $request->harga_jual;
             $newProduct->harga_sewa_harian  = $request->harga_sewa;
+            $newProduct->salespoint         = $request->city;
+            $newProduct->category_id        = $request->category;
+            $newProduct->uom_id             = $request->uom;
             $newProduct->save();
 
             return back()->with('success', 'Berhasil menambahkan product');
@@ -52,10 +60,11 @@ class ProductController extends Controller
             $product->nama_barang        = $request->nama;
             $product->alias              = $request->alias;
             $product->dimension          = $request->dimension;
-            $product->berat_barang       = $request->berat;
             $product->harga_jual         = $request->harga_jual;
             $product->harga_sewa_harian  = $request->harga_sewa;
             $product->salespoint         = $request->city;
+            $product->category_id        = $request->category;
+            $product->uom_id             = $request->uom;
             $product->save();
 
             return back()->with('success', 'Berhasil memperbarui product');

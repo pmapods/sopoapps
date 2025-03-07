@@ -113,14 +113,12 @@
                 <div class="form-group">
                     <label>Filter Area / SalesPoint</label>
                     <select class="form-control select2 salespoint_select2" name="salespoint_id" id="salespoint_id">
-                        <option value="" data-isjawasumatra="-1">-- Pilih SalesPoint --</option>
+                        <option value="">-- Pilih SalesPoint --</option>
                         @foreach ($available_salespoints as $region)
                             <optgroup label="{{ $region->first()->region_name() }}">
                                 @foreach ($region as $salespoint)
-                                    <option value="{{ $salespoint->id }}"
-                                        data-isjawasumatra="{{ $salespoint->isJawaSumatra }}">
-                                        {{ $salespoint->name }} --
-                                        {{ $salespoint->jawasumatra() }} Jawa Sumatra</option>
+                                    <option value="{{ $salespoint->id }}">
+                                        {{ $salespoint->name }}</option>
                                 @endforeach
                             </optgroup>
                         @endforeach

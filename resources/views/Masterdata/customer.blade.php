@@ -46,7 +46,7 @@
                                 <th>#</th>
                                 <th>Kode</th>
                                 <th>Nama</th>
-                                <th>Alias</th>
+                                <th>Alias/Brand</th>
                                 <th>Type</th>
                                 <th>Alamat</th>
                                 <th>Kota</th>
@@ -104,7 +104,7 @@
                             </div>
                             <div class="col-6">
                                 <div class="form-group">
-                                    <label class="required_field">Alias</label>
+                                    <label class="required_field">Alias/Brand</label>
                                     <input type="text" class="form-control alias" name="alias"
                                         placeholder="Masukkan alias" required>
                                 </div>
@@ -261,7 +261,7 @@
                         </div>
                         <div class="col-6">
                             <div class="form-group">
-                                <label class="required_field">Alias</label>
+                                <label class="required_field">Alias/Brand</label>
                                 <input type="text" class="form-control alias" name="alias"
                                     placeholder="Masukkan alias" required>
                             </div>

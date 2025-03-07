@@ -68,7 +68,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item font-weight-bold d-flex justify-content-center flex-column m-0"
                     style="font-weight: 600 !important; color: #FFF; font-size: 17px">
-                    Selamat Datang, {{ Auth::user()->name }}
+                    {{ Auth::user()->name }}
                 </li>
                 {{-- Profile Dropdown --}}
                 <li class="nav-item dropdown">
@@ -185,6 +185,22 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 <a href="/customer" class="nav-link">
                                                     <i class="fad fa-handshake nav-icon"></i>
                                                     <p>Customer</p>
+                                                </a>
+                                            </li>
+                                        @endif
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 2048) != 0)
+                                            <li class="nav-item">
+                                                <a href="/category" class="nav-link">
+                                                    <i class="fad fa-handshake nav-icon"></i>
+                                                    <p>Category</p>
+                                                </a>
+                                            </li>
+                                        @endif
+                                        @if (((Auth::user()->menu_access->masterdata ?? 0) & 4096) != 0)
+                                            <li class="nav-item">
+                                                <a href="/uom" class="nav-link">
+                                                    <i class="fad fa-handshake nav-icon"></i>
+                                                    <p>UOM</p>
                                                 </a>
                                             </li>
                                         @endif

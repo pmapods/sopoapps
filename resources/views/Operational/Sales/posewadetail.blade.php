@@ -85,7 +85,7 @@
             <div class="col-md-4">
                 <div class="form-group">
                     <label class="required_field">Tanggal Akhir Sewa</label>
-                    <input type="date" class="form-control requirement_enddate">
+                    <input type="date" class="form-control requirement_enddate" disabled>
                     <small class="text-danger">*Tanggal akhir sewa barang</small>
                 </div>
             </div>
@@ -109,12 +109,11 @@
                 <div class="form-group">
                     <label class="required_field">Pilihan Area / SalesPoint</label>
                     <select class="form-control select2 salespoint_select2">
-                        <option value="" data-isjawasumatra="-1">-- Pilih SalesPoint --</option>
+                        <option value="">-- Pilih SalesPoint --</option>
                         @foreach ($available_salespoints as $region)
                             <optgroup label="{{ $region->first()->region_name() }}">
                                 @foreach ($region as $salespoint)
                                     <option value="{{ $salespoint->id }}" data-status="{{ $salespoint->status }}"
-                                        data-isjawasumatra="{{ $salespoint->isJawaSumatra }}"
                                         data-region="{{ $salespoint->region }}">
                                         {{ $salespoint->name }}
                                 @endforeach

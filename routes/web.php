@@ -33,6 +33,8 @@ use App\Http\Controllers\Masterdata\ArmadaController;
 use App\Http\Controllers\Masterdata\MailingController;
 use App\Http\Controllers\Masterdata\ProductController;
 use App\Http\Controllers\Masterdata\MaterialController;
+use App\Http\Controllers\Masterdata\CategoryController;
+use App\Http\Controllers\Masterdata\UOMController;
 
 // Sales
 use App\Http\Controllers\Operational\POController;
@@ -268,6 +270,22 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/addcustomer', [CustomerController::class, 'addCustomer']);
         Route::patch('/updatecustomer', [CustomerController::class, 'updateCustomer']);
         Route::delete('/deletecustomer', [CustomerController::class, 'deleteCustomer']);
+    });
+
+    // Category
+    Route::middleware(['menu_access:masterdata:2048'])->group(function () {
+        Route::get('/category', [CategoryController::class, 'categoryView']);
+        Route::post('/addcategory', [CategoryController::class, 'addCategory']);
+        Route::patch('/updatecategory', [CategoryController::class, 'updateCategory']);
+        Route::delete('/deletecategory', [CategoryController::class, 'deleteCategory']);
+    });
+
+    // UOM
+    Route::middleware(['menu_access:masterdata:4096'])->group(function () {
+        Route::get('/uom', [UOMController::class, 'uomView']);
+        Route::post('/adduom', [UOMController::class, 'addUOM']);
+        Route::patch('/updateuom', [UOMController::class, 'updateUOM']);
+        Route::delete('/deleteuom', [UOMController::class, 'deleteUOM']);
     });
 
     // Armada

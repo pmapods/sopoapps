@@ -99,12 +99,12 @@ class SalesPoint extends Model
         }
     }
 
-    public function jawasumatra()
-    {
-        if ($this->isJawaSumatra) {
-            return 'Dalam';
-        } else {
-            return 'Luar';
-        }
-    }
+    // public function jawasumatra()
+    // {
+    //     if ($this->isJawaSumatra) {
+    //         return 'Dalam';
+    //     } else {
+    //         return 'Luar';
+    //     }
+    // }
 }

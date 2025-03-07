@@ -14,4 +14,13 @@ class Product extends Model
     public function regency(){
         return $this->belongsTo(Regency::class,'salespoint','id');
     }
+
+    public function uom(){
+        return $this->belongsTo(Uom::class,'uom_id','id');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class,'category_id','id');
+    }
 }

@@ -34,8 +34,8 @@ class SalesPointController extends Controller
                 $newSalesPoint->region         = $request->region;
                 $newSalesPoint->region_type    = $region_type;
                 $newSalesPoint->status         = $request->status;
-                $newSalesPoint->trade_type     = $request->trade_type;
-                $newSalesPoint->isJawaSumatra  = $request->isJawaSumatra;
+                // $newSalesPoint->trade_type     = null;
+                // $newSalesPoint->isJawaSumatra  = null;
                 $newSalesPoint->address        = $request->address ?? null;
                 $newSalesPoint->save();
 
@@ -64,8 +64,8 @@ class SalesPointController extends Controller
             $salespoint->region         = $request->region;
             $salespoint->region_type    = $region_type;
             $salespoint->status         = $request->status;
-            $salespoint->trade_type     = $request->trade_type;
-            $salespoint->isJawaSumatra  = $request->isJawaSumatra;
+            // $salespoint->trade_type     = $request->trade_type;
+            // $salespoint->isJawaSumatra  = $request->isJawaSumatra;
             $salespoint->address        = $request->address ?? null;
             $salespoint->save();
             return back()->with('success','Berhasil memperbarui data sales point '.$request->name);
